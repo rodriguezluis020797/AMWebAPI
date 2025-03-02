@@ -1,6 +1,8 @@
 
 using AMWebAPI.Services.CoreServices;
+using AMWebAPI.Services.DataServices;
 using AMWebAPI.Tools;
+using Microsoft.EntityFrameworkCore;
 
 namespace AMWebAPI
 {
@@ -10,6 +12,14 @@ namespace AMWebAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
+            builder.Configuration
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: false, reloadOnChange: true)
+                .AddEnvironmentVariables();
+
+            var config = builder.Configuration;
+
             // Add services to the container.
 
             builder.Services.AddControllers();
@@ -17,13 +27,16 @@ namespace AMWebAPI
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
+            builder.Services.AddDbContext<AMCoreData>(options => options.UseSqlServer(config.GetConnectionString("CoreConnectionString")), ServiceLifetime.Singleton);
             builder.Services.AddSingleton<IUserService, UserService>();
 
-            switch (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"))
+            switch (builder.Environment.EnvironmentName)
             {
                 case "Development":
                     builder.Services.AddSingleton<IAMLogger, AMDevLogger>();
                     break;
+                default:
+                    throw new ArgumentException(builder.Environment.EnvironmentName);
             }
 
             var app = builder.Build();
