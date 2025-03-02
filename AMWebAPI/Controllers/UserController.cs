@@ -1,6 +1,7 @@
 ﻿using AMWebAPI.Models;
 using AMWebAPI.Models.DTOModels.User;
 using AMWebAPI.Services.CoreServices;
+using AMWebAPI.Tools;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AMWebAPI.Controllers
@@ -10,9 +11,11 @@ namespace AMWebAPI.Controllers
     public class UserController : Controller
     {
         private readonly IUserService _userService;
-        public UserController(IUserService userService)
+        private readonly IAMLogger _logger;
+        public UserController(IAMLogger logger, IUserService userService)
         {
             _userService = userService;
+            _logger = logger;
         }
 
         [HttpPost]
@@ -20,6 +23,7 @@ namespace AMWebAPI.Controllers
         {
             try
             {
+                _logger.LogInfo("+");
                 dto.Validate();
                 if (!string.IsNullOrEmpty(dto.ErrorMessage))
                 {
@@ -37,10 +41,12 @@ namespace AMWebAPI.Controllers
             }
             catch (Exception e)
             {
+                _logger.LogError(e.ToString());
                 dto.ErrorMessage = "Server Error.";
                 dto.RequestStatus = RequestStatusEnum.Error;
-                return new ObjectResult(dto);
             }
+
+            _logger.LogInfo("-");
             return new ObjectResult(dto);
         }
     }

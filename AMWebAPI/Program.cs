@@ -1,5 +1,6 @@
 
 using AMWebAPI.Services.CoreServices;
+using AMWebAPI.Tools;
 
 namespace AMWebAPI
 {
@@ -17,6 +18,13 @@ namespace AMWebAPI
             builder.Services.AddSwaggerGen();
 
             builder.Services.AddSingleton<IUserService, UserService>();
+
+            switch (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"))
+            {
+                case "Development":
+                    builder.Services.AddSingleton<IAMLogger, AMDevLogger>();
+                    break;
+            }
 
             var app = builder.Build();
 

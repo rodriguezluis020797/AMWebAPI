@@ -1,4 +1,5 @@
 ﻿using AMWebAPI.Models.DTOModels.User;
+using AMWebAPI.Tools;
 
 namespace AMWebAPI.Services.CoreServices
 {
@@ -8,17 +9,16 @@ namespace AMWebAPI.Services.CoreServices
     }
     public class UserService : IUserService
     {
+        private readonly IAMLogger _logger;
+        public UserService(IAMLogger logger)
+        {
+            _logger = logger;
+        }
         public void AddUser(CreateUserDTO dto, out long userId)
         {
             userId = 0;
-            try
-            {
-                userId++;
-            }
-            catch (Exception e)
-            {
-                //log error
-            }
+            userId++;
+            _logger.LogAudit($"User Id: {userId}{Environment.NewLine}E-Mail: {dto.EMail}");
         }
     }
 }
