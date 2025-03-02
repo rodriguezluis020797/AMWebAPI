@@ -1,4 +1,4 @@
-﻿using AMWebAPI.Models.DTOModels.User;
+﻿using AMWebAPI.Models.DTOModels;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
@@ -16,7 +16,7 @@ namespace AMWebAPI.Models.CoreModels
         public DateTime? UpdateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
 
-        public void CreateNewRecordFromDTO(CreateUserDTO dto)
+        public void CreateNewRecordFromDTO(UserDTO dto)
         {
             FirstName = dto.FirstName;
             MiddleName = dto.MiddleName;

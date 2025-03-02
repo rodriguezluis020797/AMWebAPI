@@ -1,5 +1,5 @@
 ﻿using AMWebAPI.Models;
-using AMWebAPI.Models.DTOModels.User;
+using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.CoreServices;
 using AMWebAPI.Tools;
 using Microsoft.AspNetCore.Mvc;
@@ -19,11 +19,11 @@ namespace AMWebAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> CreateUser([FromBody] CreateUserDTO dto)
+        public async Task<IActionResult> CreateUser([FromBody] UserDTO dto)
         {
+            _logger.LogInfo("+");
             try
             {
-                _logger.LogInfo("+");
                 dto.Validate();
                 if (!string.IsNullOrEmpty(dto.ErrorMessage))
                 {
@@ -40,9 +40,9 @@ namespace AMWebAPI.Controllers
                     return new ObjectResult(dto);
                 }
 
-                dto = new CreateUserDTO
+                dto = new UserDTO
                 {
-                    UserId = userId,
+                    UserId = userId.ToString(),
                     RequestStatus = RequestStatusEnum.Success,
                 };
             }
@@ -53,6 +53,27 @@ namespace AMWebAPI.Controllers
                 dto.RequestStatus = RequestStatusEnum.Error;
             }
 
+            _logger.LogInfo("-");
+            return new ObjectResult(dto);
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> GetUser([FromQuery] string userId)
+        {
+            _logger.LogInfo("+");
+            var dto = new UserDTO();
+            try
+            {
+                long.TryParse(userId, out long id);
+
+                _userService.GetUser(id, out dto);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.ToString());
+                dto.ErrorMessage = "Server Error.";
+                dto.RequestStatus = RequestStatusEnum.Error;
+            }
             _logger.LogInfo("-");
             return new ObjectResult(dto);
         }

@@ -1,10 +1,10 @@
 ﻿using AMWebAPI.Tools;
 
-namespace AMWebAPI.Models.DTOModels.User
+namespace AMWebAPI.Models.DTOModels
 {
-    public class CreateUserDTO : BaseDTO
+    public class UserDTO : BaseDTO
     {
-        public long UserId { get; set; } = default;
+        public string UserId { get; set; } = default;
         public string FirstName { get; set; } = string.Empty;
         public string? MiddleName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
