@@ -24,7 +24,7 @@ namespace AMWebAPI.Services.CoreServices
             message = string.Empty;
             if (_amCoreData.Users.Any(x => x.EMail.Equals(dto.EMail)))
             {
-                message = "User already exists.";
+                message = "User with given e-mail already exists.";
             }
             else
             {
