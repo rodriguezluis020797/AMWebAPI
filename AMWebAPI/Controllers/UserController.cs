@@ -31,7 +31,14 @@ namespace AMWebAPI.Controllers
                     return new ObjectResult(dto);
                 }
 
-                _userService.AddUser(dto, out long userId);
+                _userService.AddUser(dto, out long userId, out string message);
+
+                if (!string.IsNullOrEmpty(message))
+                {
+                    dto.ErrorMessage = message;
+                    dto.RequestStatus = RequestStatusEnum.BadRequest;
+                    return new ObjectResult(dto);
+                }
 
                 dto = new CreateUserDTO
                 {
