@@ -1,4 +1,4 @@
-﻿using AMWebAPI.Models.DTOModels;
+﻿using AMWebAPI.Models.DTOModels.User;
 
 namespace AMWebAPI.Models.CoreModels
 {
@@ -13,7 +13,7 @@ namespace AMWebAPI.Models.CoreModels
         public DateTime? UpdateDate { get; set; }
         public DateTime DeleteDate { get; set; }
 
-        public void CreateNewRecordFromDTO(UserDTO dto)
+        public void CreateNewRecordFromDTO(CreateUserDTO dto)
         {
             FirstName = dto.FirstName;
             MiddleName = dto.MiddleName;

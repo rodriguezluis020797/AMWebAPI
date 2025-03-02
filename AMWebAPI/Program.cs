@@ -1,4 +1,6 @@
 
+using AMWebAPI.Services.CoreServices;
+
 namespace AMWebAPI
 {
     public class Program
@@ -13,6 +15,8 @@ namespace AMWebAPI
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
+
+            builder.Services.AddSingleton<IUserService, UserService>();
 
             var app = builder.Build();
 
