@@ -49,6 +49,7 @@ namespace AMWebAPI.Controllers
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
+                dto = new UserDTO();
                 dto.ErrorMessage = "Server Error.";
                 dto.RequestStatus = RequestStatusEnum.Error;
             }
@@ -65,12 +66,12 @@ namespace AMWebAPI.Controllers
             try
             {
                 long.TryParse(userId, out long id);
-
                 _userService.GetUser(id, out dto);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
+                dto = new UserDTO();
                 dto.ErrorMessage = "Server Error.";
                 dto.RequestStatus = RequestStatusEnum.Error;
             }

@@ -69,7 +69,7 @@ namespace AMWebAPI.Services.CoreServices
                     LastName = user.LastName,
                     MiddleName = user.MiddleName,
                     RequestStatus = Models.RequestStatusEnum.Unknown,
-                    UserId = user.UserId.ToString()
+                    UserId = Uri.EscapeDataString(EncryptionTool.Encrypt(user.UserId.ToString()))
                 };
             }
         }
