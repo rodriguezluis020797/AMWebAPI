@@ -1,4 +1,5 @@
-﻿using AMWebAPI.Models.CoreModels;
+﻿using AMWebAPI.Models;
+using AMWebAPI.Models.CoreModels;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Tools;
@@ -7,8 +8,9 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface IUserService
     {
-        public void AddUser(UserDTO dto, out long userId, out string message);
-        public void GetUser(long userId, out UserDTO dto);
+        public UserDTO AddUser(UserDTO dto);
+        public UserDTO GetUserById(string userId);
+        public UserDTO GetUserByEMail(string eMail);
     }
     public class UserService : IUserService
     {
@@ -19,40 +21,66 @@ namespace AMWebAPI.Services.CoreServices
             _logger = logger;
             _amCoreData = amCoreData;
         }
-        public void AddUser(UserDTO dto, out long userId, out string message)
+
+        public UserDTO AddUser(UserDTO dto)
         {
-            userId = default;
-            message = string.Empty;
+            dto.Validate();
+            if (!string.IsNullOrEmpty(dto.ErrorMessage))
+            {
+                dto.RequestStatus = RequestStatusEnum.BadRequest;
+                return dto;
+            }
             if (_amCoreData.Users.Any(x => x.EMail.Equals(dto.EMail)))
             {
-                message = "User with given e-mail already exists.";
+                dto.RequestStatus = RequestStatusEnum.BadRequest;
+                dto.ErrorMessage = "User with given e-mail already exists.";
+                return dto;
             }
             else
             {
-                var user = new UserModel()
-                {
-                    CreateDate = DateTime.UtcNow,
-                    DeleteDate = null,
-                    EMail = dto.EMail,
-                    FirstName = dto.FirstName,
-                    LastName = dto.LastName,
-                    MiddleName = dto.MiddleName,
-                    UpdateDate = null,
-                    UserId = default,
-                };
-
+                var user = new UserModel();
+                user.CreateNewRecordFromDTO(dto);
                 _amCoreData.Users.Add(user);
                 _amCoreData.SaveChanges();
 
-                userId = user.UserId;
-                _logger.LogAudit($"User Id: {userId}{Environment.NewLine}E-Mail: {dto.EMail}");
+                _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}E-Mail: {user.EMail}");
+
+                dto.CreateNewRecordFromModel(user);
+                dto.RequestStatus = RequestStatusEnum.Success;
+                return dto;
             }
         }
 
-        public void GetUser(long userId, out UserDTO dto)
+        public UserDTO GetUserByEMail(string eMail)
         {
+            var dto = new UserDTO();
+
             var user = _amCoreData.Users
-                .Where(x => x.UserId == userId)
+                .Where(x => x.EMail.Equals(eMail))
+                .FirstOrDefault();
+
+            if (user == null)
+            {
+                dto.ErrorMessage = "User Not Foound";
+                dto.RequestStatus = RequestStatusEnum.BadRequest;
+                return dto;
+            }
+            else
+            {
+                dto.CreateNewRecordFromModel(user);
+                dto.RequestStatus = RequestStatusEnum.Success;
+            }
+            return dto;
+        }
+
+        public UserDTO GetUserById(string userId)
+        {
+            var dto = new UserDTO();
+
+            long.TryParse(EncryptionTool.Decrypt(userId), out long result);
+
+            var user = _amCoreData.Users
+                .Where(x => x.UserId == result)
                 .FirstOrDefault();
 
             if (user == null)
@@ -61,16 +89,9 @@ namespace AMWebAPI.Services.CoreServices
             }
             else
             {
-                dto = new UserDTO()
-                {
-                    EMail = user.EMail,
-                    ErrorMessage = string.Empty,
-                    FirstName = user.FirstName,
-                    LastName = user.LastName,
-                    MiddleName = user.MiddleName,
-                    RequestStatus = Models.RequestStatusEnum.Unknown,
-                    UserId = Uri.EscapeDataString(EncryptionTool.Encrypt(user.UserId.ToString()))
-                };
+                dto.CreateNewRecordFromModel(user);
+                dto.RequestStatus = RequestStatusEnum.Success;
+                return dto;
             }
         }
     }

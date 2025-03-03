@@ -1,4 +1,5 @@
-﻿using AMWebAPI.Tools;
+﻿using AMWebAPI.Models.CoreModels;
+using AMWebAPI.Tools;
 
 namespace AMWebAPI.Models.DTOModels
 {
@@ -42,6 +43,15 @@ namespace AMWebAPI.Models.DTOModels
                     ErrorMessage = "Please enter valid e-mail.";
                 }
             }
+        }
+
+        public void CreateNewRecordFromModel(UserModel user)
+        {
+            UserId = Uri.EscapeDataString(EncryptionTool.Encrypt(user.UserId.ToString()));
+            FirstName = user.FirstName;
+            MiddleName = user.MiddleName;
+            LastName = user.LastName;
+            EMail = user.EMail;
         }
     }
 }

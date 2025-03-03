@@ -22,6 +22,9 @@ namespace AMWebAPI.Models.CoreModels
             MiddleName = dto.MiddleName;
             LastName = dto.LastName;
             EMail = dto.EMail;
+            CreateDate = DateTime.UtcNow;
+            UpdateDate = null;
+            DeleteDate = null;
         }
     }
 }

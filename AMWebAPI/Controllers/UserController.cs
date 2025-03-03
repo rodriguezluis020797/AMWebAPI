@@ -18,65 +18,67 @@ namespace AMWebAPI.Controllers
             _logger = logger;
         }
 
+
+        //Tested Endpoint
         [HttpPost]
         public async Task<IActionResult> CreateUser([FromBody] UserDTO dto)
         {
             _logger.LogInfo("+");
+            var response = new UserDTO();
             try
             {
-                dto.Validate();
-                if (!string.IsNullOrEmpty(dto.ErrorMessage))
-                {
-                    dto.RequestStatus = RequestStatusEnum.BadRequest;
-                    return new ObjectResult(dto);
-                }
-
-                _userService.AddUser(dto, out long userId, out string message);
-
-                if (!string.IsNullOrEmpty(message))
-                {
-                    dto.ErrorMessage = message;
-                    dto.RequestStatus = RequestStatusEnum.BadRequest;
-                    return new ObjectResult(dto);
-                }
-
-                dto = new UserDTO
-                {
-                    UserId = userId.ToString(),
-                    RequestStatus = RequestStatusEnum.Success,
-                };
+                response = _userService.AddUser(dto);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
-                dto = new UserDTO();
-                dto.ErrorMessage = "Server Error.";
-                dto.RequestStatus = RequestStatusEnum.Error;
+                response = new UserDTO();
+                response.ErrorMessage = "Server Error.";
+                response.RequestStatus = RequestStatusEnum.Error;
             }
-
             _logger.LogInfo("-");
-            return new ObjectResult(dto);
+            return new ObjectResult(response);
         }
 
+
         [HttpGet]
-        public async Task<IActionResult> GetUser([FromQuery] string userId)
+        public async Task<IActionResult> GetUserById([FromQuery] string userId)
         {
             _logger.LogInfo("+");
-            var dto = new UserDTO();
+            var response = new UserDTO();
             try
             {
-                long.TryParse(userId, out long id);
-                _userService.GetUser(id, out dto);
+                response = _userService.GetUserById(userId);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
-                dto = new UserDTO();
-                dto.ErrorMessage = "Server Error.";
-                dto.RequestStatus = RequestStatusEnum.Error;
+                response = new UserDTO();
+                response.ErrorMessage = "Server Error.";
+                response.RequestStatus = RequestStatusEnum.Error;
             }
             _logger.LogInfo("-");
-            return new ObjectResult(dto);
+            return new ObjectResult(response);
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> GetUserByEMail([FromBody] GetUserDTO dto)
+        {
+            _logger.LogInfo("+");
+            var response = new UserDTO();
+            try
+            {
+                response = _userService.GetUserByEMail(dto.EMail);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.ToString());
+                response = new UserDTO();
+                response.ErrorMessage = "Server Error.";
+                response.RequestStatus = RequestStatusEnum.Error;
+            }
+            _logger.LogInfo("-");
+            return new ObjectResult(response);
         }
     }
 }
