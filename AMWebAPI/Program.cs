@@ -29,6 +29,7 @@ namespace AMWebAPI
 
             builder.Services.AddDbContext<AMCoreData>(options => options.UseSqlServer(config.GetConnectionString("CoreConnectionString")), ServiceLifetime.Singleton);
             builder.Services.AddSingleton<IUserService, UserService>();
+            builder.Services.AddSingleton<ISystemStatusService, SystemStatusService>();
 
             switch (builder.Environment.EnvironmentName)
             {
