@@ -10,7 +10,7 @@ namespace AMWebAPI.Models.DTOModels
         public string? MiddleName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string EMail { get; set; } = string.Empty;
-
+        public string Password {  get; set; } = string.Empty;
         public void Validate()
         {
             ValidationTool.ValidateName(FirstName, out string fnOutput);
