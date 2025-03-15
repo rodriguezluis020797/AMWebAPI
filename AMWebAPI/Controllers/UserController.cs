@@ -62,7 +62,7 @@ namespace AMWebAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> GetUserByEMail([FromBody] GetUserDTO dto)
+        public async Task<IActionResult> GetUserByEMail([FromBody] UserDTO dto)
         {
             _logger.LogInfo("+");
             var response = new UserDTO();
