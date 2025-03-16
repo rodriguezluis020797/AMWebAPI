@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace AMWebAPI.Controllers
 {
     [ApiController]
-    [Route("[controller]/[action]")]
+    [Route("api/[controller]/[action]")]
     public class SystemStatusController : Controller
     {
 
