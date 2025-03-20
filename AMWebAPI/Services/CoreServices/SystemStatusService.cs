@@ -1,4 +1,5 @@
 ﻿using AMWebAPI.Models;
+using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Tools;
 
@@ -38,14 +39,14 @@ namespace AMWebAPI.Services.CoreServices
                 {
                     response = new SystemStatusDTO()
                     {
-                        requestStatus = RequestStatusEnum.Success,
+                        RequestStatus = RequestStatusEnum.Success,
                     };
                 }
                 else
                 {
                     response = new SystemStatusDTO()
                     {
-                        requestStatus = RequestStatusEnum.Error,
+                        RequestStatus = RequestStatusEnum.Error,
                     };
                     var index = 0;
                     foreach (var item in taskResults)
@@ -62,7 +63,7 @@ namespace AMWebAPI.Services.CoreServices
             {
                 response = new SystemStatusDTO()
                 {
-                    requestStatus = RequestStatusEnum.Error,
+                    RequestStatus = RequestStatusEnum.Error,
                 };
                 _logger.LogError(e.ToString());
             }
@@ -77,10 +78,5 @@ namespace AMWebAPI.Services.CoreServices
         {
             return true;
         }
-    }
-
-    public class SystemStatusDTO
-    {
-        public RequestStatusEnum requestStatus { get; set; } = RequestStatusEnum.Unknown;
     }
 }
