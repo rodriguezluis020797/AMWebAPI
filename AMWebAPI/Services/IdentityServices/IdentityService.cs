@@ -45,12 +45,12 @@ namespace AMWebAPI.Services.IdentityServices
                 return dto;
             }
             dto.CreateNewRecordFromModel(user);
-            dto.JWTToken = GenerateToken(dto.UserId, dto.EMail);
+            dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail);
             dto.RequestStatus = Models.RequestStatusEnum.Success;
 
             return dto;
         }
-        public string GenerateToken(string userId, string email)
+        public string GenerateJWTToken(string userId, string email)
         {
             var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
             var issuer = _configuration["Jwt:Issuer"];
