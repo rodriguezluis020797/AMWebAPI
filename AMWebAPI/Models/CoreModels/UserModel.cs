@@ -15,6 +15,7 @@ namespace AMWebAPI.Models.CoreModels
         public DateTime CreateDate { get; set; }
         public DateTime? UpdateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
+        [NotMapped] public virtual List<SessionModel> Sessions { get; set; }
 
         public void CreateNewRecordFromDTO(UserDTO dto)
         {

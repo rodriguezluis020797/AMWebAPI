@@ -7,4 +7,9 @@
         BadRequest,
         Error
     }
+    public enum SessionActionEnum
+    {
+        Unknown = 0,
+        LogIn,
+    }
 }

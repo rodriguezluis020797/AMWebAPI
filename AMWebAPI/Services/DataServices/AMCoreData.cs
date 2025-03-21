@@ -19,7 +19,17 @@ namespace AMWebAPI.Services.DataServices
         {
             modelBuilder.Entity<UserModel>()
                 .HasKey(x => x.UserId);
+            modelBuilder.Entity<SessionModel>()
+                .HasKey(x => x.SessionId);
+
+            modelBuilder.Entity<UserModel>()
+                .HasMany(u => u.Sessions)
+                .WithOne(s => s.User)
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
+
+        public DbSet<SessionModel> Sessions { get; set; }
         public DbSet<UserModel> Users { get; set; }
     }
 }

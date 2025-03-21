@@ -10,7 +10,7 @@ namespace AMWebAPI.Services.IdentityServices
 {
     public interface IIdentityService
     {
-        public UserDTO LogIn(UserDTO dto);
+        public UserDTO LogIn(UserDTO dto, string ipAddress);
     }
     public class IdentityService : IIdentityService
     {
@@ -23,7 +23,7 @@ namespace AMWebAPI.Services.IdentityServices
             _coreData = coreData;
             _configuration = configuration;
         }
-        public UserDTO LogIn(UserDTO dto)
+        public UserDTO LogIn(UserDTO dto, string ipAddress)
         {
             var user = _coreData.Users
                 .Where(x => x.EMail.Equals(dto.EMail))
@@ -47,7 +47,8 @@ namespace AMWebAPI.Services.IdentityServices
             dto.CreateNewRecordFromModel(user);
             dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail);
             dto.RequestStatus = Models.RequestStatusEnum.Success;
-
+            _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
+                $"IP Address: {ipAddress}");
             return dto;
         }
         public string GenerateJWTToken(string userId, string email)
