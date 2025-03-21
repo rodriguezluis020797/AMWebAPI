@@ -9,8 +9,6 @@ namespace AMWebAPI.Models.CoreModels
         [Key] public long SessionId { get; set; }
         [ForeignKey("User")] public long UserId { get; set; }
         public DateTime CreateDate { get; set; }
-        public SessionActionEnum SessionAction { get; set; }
-        public string? SessionActionMetadata { get; set; }
         [NotMapped] public virtual UserModel User { get; set; }
     }
 }

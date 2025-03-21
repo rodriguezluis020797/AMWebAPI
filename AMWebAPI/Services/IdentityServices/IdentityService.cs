@@ -1,4 +1,5 @@
-﻿using AMWebAPI.Models.DTOModels;
+﻿using AMWebAPI.Models.CoreModels;
+using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Tools;
 using Microsoft.IdentityModel.Tokens;
@@ -44,14 +45,29 @@ namespace AMWebAPI.Services.IdentityServices
                 dto.RequestStatus = Models.RequestStatusEnum.BadRequest;
                 return dto;
             }
+            var session = new SessionModel()
+            {
+                CreateDate = DateTime.UtcNow,
+                SessionId = 0,
+                UserId = user.UserId
+            };
             dto.CreateNewRecordFromModel(user);
-            dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail);
-            dto.RequestStatus = Models.RequestStatusEnum.Success;
-            _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
-                $"IP Address: {ipAddress}");
+            using (var trans = _coreData.Database.BeginTransaction())
+            {
+                _coreData.Sessions.Add(session);
+                _coreData.SaveChanges();
+
+                dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail, session.ToString());
+
+                dto.RequestStatus = Models.RequestStatusEnum.Success;
+                _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
+                    $"IP Address: {ipAddress}");
+
+                trans.Commit();
+            }
             return dto;
         }
-        public string GenerateJWTToken(string userId, string email)
+        public string GenerateJWTToken(string userId, string email, string sessionId)
         {
             var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
             var issuer = _configuration["Jwt:Issuer"];
@@ -62,8 +78,8 @@ namespace AMWebAPI.Services.IdentityServices
             {
             new Claim(JwtRegisteredClaimNames.Sub, userId),
             new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
+            new Claim(JwtRegisteredClaimNames.Sid, sessionId),
+            };
 
             var tokenDescriptor = new SecurityTokenDescriptor
             {
