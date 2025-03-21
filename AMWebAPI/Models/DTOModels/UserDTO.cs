@@ -10,7 +10,8 @@ namespace AMWebAPI.Models.DTOModels
         public string? MiddleName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string EMail { get; set; } = string.Empty;
-        public string Password {  get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+        public string JWTToken { get; set; } = string.Empty;
         public void Validate()
         {
             ValidationTool.ValidateName(FirstName, out string fnOutput);
@@ -47,11 +48,13 @@ namespace AMWebAPI.Models.DTOModels
 
         public void CreateNewRecordFromModel(UserModel user)
         {
+            base.ResetModel();
             UserId = Uri.EscapeDataString(EncryptionTool.Encrypt(user.UserId.ToString()));
             FirstName = user.FirstName;
             MiddleName = user.MiddleName;
             LastName = user.LastName;
             EMail = user.EMail;
+            Password = string.Empty;
         }
     }
 }

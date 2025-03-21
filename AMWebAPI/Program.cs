@@ -1,8 +1,12 @@
 
 using AMWebAPI.Services.CoreServices;
 using AMWebAPI.Services.DataServices;
+using AMWebAPI.Services.IdentityServices;
 using AMWebAPI.Tools;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace AMWebAPI
 {
@@ -21,6 +25,24 @@ namespace AMWebAPI
             var config = builder.Configuration;
 
             // Add services to the container.
+
+
+            builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true,
+                        ValidateAudience = true,
+                        ValidateLifetime = true,
+                        ValidateIssuerSigningKey = true,
+                        ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                        ValidAudience = builder.Configuration["Jwt:Audience"],
+                        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+                    };
+                });
+
+            builder.Services.AddAuthorization();
 
             builder.Services.AddControllers();
             // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -41,6 +63,7 @@ namespace AMWebAPI
             builder.Services.AddDbContext<AMCoreData>(options => options.UseSqlServer(config.GetConnectionString("CoreConnectionString")), ServiceLifetime.Singleton);
             builder.Services.AddSingleton<IUserService, UserService>();
             builder.Services.AddSingleton<ISystemStatusService, SystemStatusService>();
+            builder.Services.AddSingleton<IIdentityService, IdentityService>();
 
             switch (builder.Environment.EnvironmentName)
             {
@@ -64,8 +87,8 @@ namespace AMWebAPI
 
             app.UseHttpsRedirection();
 
+            app.UseAuthentication();
             app.UseAuthorization();
-
 
             app.MapControllers();
 

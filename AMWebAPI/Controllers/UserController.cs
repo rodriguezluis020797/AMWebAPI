@@ -2,12 +2,14 @@
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.CoreServices;
 using AMWebAPI.Tools;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AMWebAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]/[action]")]
+    [Authorize]
     public class UserController : Controller
     {
         private readonly IUserService _userService;
@@ -21,6 +23,7 @@ namespace AMWebAPI.Controllers
 
         //Tested Endpoint
         [HttpPost]
+        [AllowAnonymous]
         public async Task<IActionResult> CreateUser([FromBody] UserDTO dto)
         {
             _logger.LogInfo("+");
