@@ -19,6 +19,7 @@ namespace AMWebAPI.Services.DataServices
         {
 
         }
+        public DbSet<PasswordModel> Passwords { get; set; }
         public DbSet<RefreshTokenModel> RefreshTokens { get; set; }
     }
 }

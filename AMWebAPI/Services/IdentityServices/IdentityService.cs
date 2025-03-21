@@ -6,6 +6,7 @@ using AMWebAPI.Tools;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using System.Transactions;
 
@@ -131,6 +132,16 @@ namespace AMWebAPI.Services.IdentityServices
                 return false;
             }
             return refreshToken.Token.Equals(token);
+        }
+
+        public static byte[] GenerateSalt(int size = 32)
+        {
+            byte[] salt = new byte[size];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+            }
+            return salt;
         }
     }
 }
