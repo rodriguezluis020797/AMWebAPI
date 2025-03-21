@@ -24,8 +24,6 @@ namespace AMWebAPI
 
             var config = builder.Configuration;
 
-            // Add services to the container.
-
 
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
@@ -61,6 +59,7 @@ namespace AMWebAPI
             });
 
             builder.Services.AddDbContext<AMCoreData>(options => options.UseSqlServer(config.GetConnectionString("CoreConnectionString")), ServiceLifetime.Singleton);
+            builder.Services.AddDbContext<AMIdentityData>(options => options.UseSqlServer(config.GetConnectionString("IdentityConnectionString")), ServiceLifetime.Singleton);
             builder.Services.AddSingleton<IUserService, UserService>();
             builder.Services.AddSingleton<ISystemStatusService, SystemStatusService>();
             builder.Services.AddSingleton<IIdentityService, IdentityService>();

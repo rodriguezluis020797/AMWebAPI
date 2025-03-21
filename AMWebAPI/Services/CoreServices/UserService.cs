@@ -41,6 +41,7 @@ namespace AMWebAPI.Services.CoreServices
                 var user = new UserModel();
                 user.CreateNewRecordFromDTO(dto);
                 _amCoreData.Users.Add(user);
+                //Add communication
                 _amCoreData.SaveChanges();
 
                 _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}E-Mail: {user.EMail}");

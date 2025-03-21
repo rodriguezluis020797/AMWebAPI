@@ -1,11 +1,13 @@
 ﻿using AMWebAPI.Models.CoreModels;
 using AMWebAPI.Models.DTOModels;
+using AMWebAPI.Models.IdentityModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Tools;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Transactions;
 
 namespace AMWebAPI.Services.IdentityServices
 {
@@ -17,12 +19,14 @@ namespace AMWebAPI.Services.IdentityServices
     {
         private readonly IAMLogger _logger;
         private readonly AMCoreData _coreData;
+        private readonly AMIdentityData _identityData;
         private readonly IConfiguration _configuration;
-        public IdentityService(AMCoreData coreData, IAMLogger logger, IConfiguration configuration)
+        public IdentityService(AMCoreData coreData, AMIdentityData identityData, IAMLogger logger, IConfiguration configuration)
         {
             _logger = logger;
             _coreData = coreData;
             _configuration = configuration;
+            _identityData = identityData;
         }
         public UserDTO LogIn(UserDTO dto, string ipAddress)
         {
@@ -37,7 +41,7 @@ namespace AMWebAPI.Services.IdentityServices
                 return dto;
             }
 
-            var decryptedPassword = string.Empty; //get after setting up identity server
+            var decryptedPassword = string.Empty; //get after setting up identity server, check if it is a temp passowrd
 
             if (!dto.Password.Equals(decryptedPassword))
             {
@@ -51,20 +55,29 @@ namespace AMWebAPI.Services.IdentityServices
                 SessionId = 0,
                 UserId = user.UserId
             };
+            var refreshToken = GenerateRefreshToken(user.UserId);
+
             dto.CreateNewRecordFromModel(user);
-            using (var trans = _coreData.Database.BeginTransaction())
+
+            dto.RefreshToken = EncryptionTool.Encrypt(refreshToken.Token);
+            dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail, session.SessionId.ToString());
+
+
+            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
                 _coreData.Sessions.Add(session);
                 _coreData.SaveChanges();
 
-                dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail, session.ToString());
+                _identityData.RefreshTokens.Add(refreshToken);
+                _identityData.SaveChanges();
 
-                dto.RequestStatus = Models.RequestStatusEnum.Success;
-                _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
-                    $"IP Address: {ipAddress}");
-
-                trans.Commit();
+                scope.Complete();
             }
+
+            dto.RequestStatus = Models.RequestStatusEnum.Success;
+            _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
+                $"IP Address: {ipAddress}");
+
             return dto;
         }
         public string GenerateJWTToken(string userId, string email, string sessionId)
@@ -94,6 +107,30 @@ namespace AMWebAPI.Services.IdentityServices
             var token = tokenHandler.CreateToken(tokenDescriptor);
 
             return tokenHandler.WriteToken(token);
+        }
+        public RefreshTokenModel GenerateRefreshToken(long userId)
+        {
+            var refreshToken = new RefreshTokenModel
+            {
+                Token = Guid.NewGuid().ToString(),
+                ExpiresDate = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)),
+                CreateDate = DateTime.UtcNow,
+                UserId = userId
+            };
+
+            return refreshToken;
+        }
+
+        public bool ValidateRefreshToken(long userId, string token)
+        {
+            var refreshToken = _identityData.RefreshTokens
+                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate)
+                .FirstOrDefault();
+            if (refreshToken == null)
+            {
+                return false;
+            }
+            return refreshToken.Token.Equals(token);
         }
     }
 }
