@@ -15,6 +15,7 @@ namespace AMWebAPI.Services.IdentityServices
     public interface IIdentityService
     {
         public UserDTO LogIn(UserDTO dto, string ipAddress);
+        public void CreateNewPassword(UserDTO dto, bool tempPassword);
     }
     public class IdentityService : IIdentityService
     {
@@ -81,6 +82,44 @@ namespace AMWebAPI.Services.IdentityServices
 
             return dto;
         }
+        public void CreateNewPassword(UserDTO dto, bool tempPassword)
+        {
+            var salt = GenerateSalt();
+            var hash = HashPassword(dto.Password, salt);
+
+            var saltString = Convert.ToBase64String(salt);
+            var hashString = Convert.ToBase64String(hash);
+
+            var passwordModel = new PasswordModel()
+            {
+                CreateDate = DateTime.Now,
+                DeleteDate = null,
+                HashedPassword = hashString,
+                PasswordId = 0,
+                Salt = saltString,
+                UserId = Convert.ToInt64(EncryptionTool.Decrypt(dto.UserId)),
+                Temporary = tempPassword,
+            };
+
+            _identityData.Passwords.Add(passwordModel);
+            _identityData.SaveChanges();
+        }
+        private byte[] GenerateSalt()
+        {
+            byte[] salt = new byte[32];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+            }
+            return salt;
+        }
+        public byte[] HashPassword(string password, byte[] salt, int iterations = 100000, int hashSize = 32)
+        {
+            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256))
+            {
+                return pbkdf2.GetBytes(hashSize);
+            }
+        }
         public string GenerateJWTToken(string userId, string email, string sessionId)
         {
             var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
@@ -121,7 +160,6 @@ namespace AMWebAPI.Services.IdentityServices
 
             return refreshToken;
         }
-
         public bool ValidateRefreshToken(long userId, string token)
         {
             var refreshToken = _identityData.RefreshTokens
@@ -133,15 +171,22 @@ namespace AMWebAPI.Services.IdentityServices
             }
             return refreshToken.Token.Equals(token);
         }
-
-        public static byte[] GenerateSalt(int size = 32)
+        public bool VerifyPassword(string enteredPassword, long userId)
         {
-            byte[] salt = new byte[size];
-            using (var rng = RandomNumberGenerator.Create())
+            var passwordModel = _identityData.Passwords
+                .Where(x => x.UserId == userId && x.DeleteDate == null)
+                .FirstOrDefault();
+
+            if(passwordModel == null)
             {
-                rng.GetBytes(salt);
+                return false;
             }
-            return salt;
+
+            var salt = Convert.FromBase64String(passwordModel.Salt);
+            var hash = Convert.FromBase64String(passwordModel.HashedPassword);
+
+            byte[] computedHash = HashPassword(enteredPassword, salt);
+            return CryptographicOperations.FixedTimeEquals(computedHash, hash);
         }
     }
 }
