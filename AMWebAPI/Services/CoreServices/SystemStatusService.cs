@@ -14,10 +14,12 @@ namespace AMWebAPI.Services.CoreServices
     {
         private readonly IAMLogger _logger;
         private readonly AMCoreData _amCoreData;
-        public SystemStatusService(IAMLogger logger, AMCoreData aMCoreData)
+        private readonly AMIdentityData _amIdentityData;
+        public SystemStatusService(IAMLogger logger, AMCoreData amCoreData, AMIdentityData amIdentityData)
         {
             _logger = logger;
-            _amCoreData = aMCoreData;
+            _amCoreData = amCoreData;
+            _amIdentityData = amIdentityData;
         }
         public async Task<SystemStatusDTO> FullSystemCheck()
         {
@@ -76,7 +78,7 @@ namespace AMWebAPI.Services.CoreServices
         }
         private bool CheckIdentityDbTask()
         {
-            return true;
+            return _amIdentityData.Database.CanConnect();
         }
     }
 }

@@ -2,6 +2,7 @@
 using AMWebAPI.Models.CoreModels;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
+using AMWebAPI.Services.IdentityServices;
 using AMWebAPI.Tools;
 
 namespace AMWebAPI.Services.CoreServices
@@ -33,7 +34,8 @@ namespace AMWebAPI.Services.CoreServices
             if (_amCoreData.Users.Any(x => x.EMail.Equals(dto.EMail)))
             {
                 dto.RequestStatus = RequestStatusEnum.BadRequest;
-                dto.ErrorMessage = "User with given e-mail already exists.";
+                dto.ErrorMessage = $"User with given e-mail already exists.{Environment.NewLine}" +
+                    $"Please wait to be given access.";
                 return dto;
             }
             else
