@@ -12,6 +12,7 @@ namespace AMWebAPI.Models.CoreModels
         public string? MiddleName { get; set; }
         public string LastName { get; set; }
         public string EMail { get; set; }
+        public bool AccessGranted { get; set; }
         public DateTime CreateDate { get; set; }
         public DateTime? UpdateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
@@ -26,6 +27,7 @@ namespace AMWebAPI.Models.CoreModels
             CreateDate = DateTime.UtcNow;
             UpdateDate = null;
             DeleteDate = null;
+            AccessGranted = false;
         }
     }
 }
