@@ -13,6 +13,7 @@ namespace AMWebAPI.Models.CoreModels
         public DateTime? AttemptOne { get; set; }
         public DateTime? AttemptTwo { get; set; }
         public DateTime? AttemptThree { get; set; }
+        public DateTime CreateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
         [NotMapped] public virtual UserModel User { get; set; }
     }

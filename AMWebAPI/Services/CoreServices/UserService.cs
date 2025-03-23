@@ -4,7 +4,6 @@ using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Services.IdentityServices;
 using AMWebAPI.Tools;
-using System.Transactions;
 
 namespace AMWebAPI.Services.CoreServices
 {
@@ -18,10 +17,14 @@ namespace AMWebAPI.Services.CoreServices
     {
         private readonly IAMLogger _logger;
         private readonly AMCoreData _amCoreData;
-        public UserService(IAMLogger logger, AMCoreData amCoreData, IIdentityService identityService)
+        private readonly ICommunicationService _communicationService;
+        private readonly IConfiguration _configuration;
+        public UserService(IAMLogger logger, AMCoreData amCoreData, IIdentityService identityService, ICommunicationService communicationService, IConfiguration configuration)
         {
             _logger = logger;
             _amCoreData = amCoreData;
+            _communicationService = communicationService;
+            _configuration = configuration;
         }
 
         public UserDTO AddUser(UserDTO dto)
@@ -44,13 +47,22 @@ namespace AMWebAPI.Services.CoreServices
                 var user = new UserModel();
                 user.CreateNewRecordFromDTO(dto);
 
-                using (var trans = _amCoreData.Database.BeginTransaction())
-                {
-                    _amCoreData.Users.Add(user);
-                    //Add communication
-                    _amCoreData.SaveChanges();
-                }
+                _amCoreData.Users.Add(user);
+                _amCoreData.SaveChanges();
 
+                var message = _configuration["Messages:NewUserMessage"];
+
+                if (!string.IsNullOrEmpty(message))
+                {
+                    try
+                    {
+                        _communicationService.AddUserCommunication(user.UserId, message);
+                    }
+                    catch
+                    {
+                        //do nothing... same message that would be sent is the same as displayed in UI.
+                    }
+                }
                 _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}E-Mail: {user.EMail}");
 
                 dto.CreateNewRecordFromModel(user);

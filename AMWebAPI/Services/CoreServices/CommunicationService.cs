@@ -10,12 +10,14 @@ namespace AMWebAPI.Services.CoreServices
     public class CommunicationService : ICommunicationService
     {
         private readonly AMCoreData _coreData;
-        CommunicationService(AMCoreData coreData)
+        public CommunicationService(AMCoreData coreData)
         {
+            _coreData = coreData;
             _coreData = coreData;
         }
         public void AddUserCommunication(long userId, string message)
         {
+            var utcTime = DateTime.UtcNow;
             var userComm = new UserCommunicationModel()
             {
                 UserId = userId,
@@ -24,10 +26,12 @@ namespace AMWebAPI.Services.CoreServices
                 AttemptTwo = null,
                 CommunicationId = 0,
                 DeleteDate = null,
-                Message = message
+                Message = message,
+                SendAfter = utcTime
             };
 
             _coreData.UserCommunications.Add(userComm);
+            _coreData.SaveChanges();
         }
     }
 }
