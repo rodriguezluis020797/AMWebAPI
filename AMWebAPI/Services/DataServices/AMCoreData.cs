@@ -17,18 +17,32 @@ namespace AMWebAPI.Services.DataServices
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<UserModel>()
-                .HasKey(x => x.UserId);
+            #region Communication
+            modelBuilder.Entity<CommunicationModel>()
+                .HasKey(x => x.CommunicationId);
+            #endregion
+
+            #region Session
             modelBuilder.Entity<SessionModel>()
                 .HasKey(x => x.SessionId);
+            #endregion
 
+            #region User
+            modelBuilder.Entity<UserModel>()
+                .HasKey(x => x.UserId);
             modelBuilder.Entity<UserModel>()
                 .HasMany(u => u.Sessions)
                 .WithOne(s => s.User)
                 .HasForeignKey(s => s.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+            modelBuilder.Entity<UserModel>()
+                .HasMany(u => u.Communications)
+                .WithOne(c => c.User)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+            #endregion
         }
-
+        public DbSet<CommunicationModel> Communications { get; set; }
         public DbSet<SessionModel> Sessions { get; set; }
         public DbSet<UserModel> Users { get; set; }
     }

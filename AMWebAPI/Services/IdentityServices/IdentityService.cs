@@ -15,7 +15,7 @@ namespace AMWebAPI.Services.IdentityServices
     public interface IIdentityService
     {
         public UserDTO LogIn(UserDTO dto, string ipAddress);
-        public void CreateNewPassword(UserDTO dto, bool tempPassword);
+        public bool CreateNewPassword(long userId, string password, bool isTempPassword);
     }
     public class IdentityService : IIdentityService
     {
@@ -82,10 +82,21 @@ namespace AMWebAPI.Services.IdentityServices
 
             return dto;
         }
-        public void CreateNewPassword(UserDTO dto, bool tempPassword)
+        public bool CreateNewPassword(long userId, string password, bool isTempPassword)
         {
+            var tempPassword = string.Empty;
+            var hash = new byte[32];
             var salt = GenerateSalt();
-            var hash = HashPassword(dto.Password, salt);
+
+            if (isTempPassword)
+            {
+                tempPassword = Guid.NewGuid().ToString().Replace("-", "");
+                hash = HashPassword(password, salt);
+            }
+            else
+            {
+                hash = HashPassword(password, salt);
+            }
 
             var saltString = Convert.ToBase64String(salt);
             var hashString = Convert.ToBase64String(hash);
@@ -97,27 +108,44 @@ namespace AMWebAPI.Services.IdentityServices
                 HashedPassword = hashString,
                 PasswordId = 0,
                 Salt = saltString,
-                UserId = Convert.ToInt64(CryptographyTool.Decrypt(dto.UserId)),
-                Temporary = tempPassword,
+                UserId = userId,
+                Temporary = isTempPassword,
             };
 
-            _identityData.Passwords.Add(passwordModel);
-            _identityData.SaveChanges();
+            var currentPasswords = _identityData.Passwords
+                .Where(x => x.UserId == userId && x.DeleteDate == null)
+                .ToList();
+
+            using (var trans = _identityData.Database.BeginTransaction())
+            {
+                foreach (var cp in currentPasswords)
+                {
+                    cp.DeleteDate = DateTime.UtcNow;
+                    _identityData.Passwords.Update(cp);
+                    _identityData.SaveChanges();
+                }
+
+                _identityData.Passwords.Add(passwordModel);
+                _identityData.SaveChanges();
+
+                trans.Commit();
+            }
+            return true;
         }
         private byte[] GenerateSalt()
         {
-            byte[] salt = new byte[32];
+            var salt = new byte[32];
             using (var rng = RandomNumberGenerator.Create())
             {
                 rng.GetBytes(salt);
             }
             return salt;
         }
-        public byte[] HashPassword(string password, byte[] salt, int iterations = 100000, int hashSize = 32)
+        public byte[] HashPassword(string password, byte[] salt)
         {
-            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, iterations, HashAlgorithmName.SHA256))
+            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA256))
             {
-                return pbkdf2.GetBytes(hashSize);
+                return pbkdf2.GetBytes(32);
             }
         }
         public string GenerateJWTToken(string userId, string email, string sessionId)
@@ -177,7 +205,7 @@ namespace AMWebAPI.Services.IdentityServices
                 .Where(x => x.UserId == userId && x.DeleteDate == null)
                 .FirstOrDefault();
 
-            if(passwordModel == null)
+            if (passwordModel == null)
             {
                 return false;
             }

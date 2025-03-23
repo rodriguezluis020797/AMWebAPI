@@ -4,6 +4,7 @@ using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Services.IdentityServices;
 using AMWebAPI.Tools;
+using System.Transactions;
 
 namespace AMWebAPI.Services.CoreServices
 {
@@ -17,7 +18,7 @@ namespace AMWebAPI.Services.CoreServices
     {
         private readonly IAMLogger _logger;
         private readonly AMCoreData _amCoreData;
-        public UserService(IAMLogger logger, AMCoreData amCoreData)
+        public UserService(IAMLogger logger, AMCoreData amCoreData, IIdentityService identityService)
         {
             _logger = logger;
             _amCoreData = amCoreData;
@@ -42,9 +43,13 @@ namespace AMWebAPI.Services.CoreServices
             {
                 var user = new UserModel();
                 user.CreateNewRecordFromDTO(dto);
-                _amCoreData.Users.Add(user);
-                //Add communication
-                _amCoreData.SaveChanges();
+
+                using (var trans = _amCoreData.Database.BeginTransaction())
+                {
+                    _amCoreData.Users.Add(user);
+                    //Add communication
+                    _amCoreData.SaveChanges();
+                }
 
                 _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}E-Mail: {user.EMail}");
 
