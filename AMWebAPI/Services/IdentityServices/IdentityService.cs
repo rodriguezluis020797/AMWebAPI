@@ -61,7 +61,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             dto.CreateNewRecordFromModel(user);
 
-            dto.RefreshToken = EncryptionTool.Encrypt(refreshToken.Token);
+            dto.RefreshToken = CryptographyTool.Encrypt(refreshToken.Token);
             dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail, session.SessionId.ToString());
 
 
@@ -97,7 +97,7 @@ namespace AMWebAPI.Services.IdentityServices
                 HashedPassword = hashString,
                 PasswordId = 0,
                 Salt = saltString,
-                UserId = Convert.ToInt64(EncryptionTool.Decrypt(dto.UserId)),
+                UserId = Convert.ToInt64(CryptographyTool.Decrypt(dto.UserId)),
                 Temporary = tempPassword,
             };
 

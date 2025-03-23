@@ -3,7 +3,7 @@ using System.Text;
 
 namespace AMWebAPI.Tools
 {
-    public static class EncryptionTool
+    public static class CryptographyTool
     {
         private static readonly string Key = "MySuperSecureKey1234567890123456"; // Must be 16, 24, or 32 bytes
         private static readonly string IV = "MySecureIV123456"; // Must be 16 bytes
