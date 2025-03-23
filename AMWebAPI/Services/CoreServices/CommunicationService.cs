@@ -27,7 +27,8 @@ namespace AMWebAPI.Services.CoreServices
                 CommunicationId = 0,
                 DeleteDate = null,
                 Message = message,
-                SendAfter = utcTime
+                SendAfter = utcTime,
+                CreateDate = utcTime
             };
 
             _coreData.UserCommunications.Add(userComm);
