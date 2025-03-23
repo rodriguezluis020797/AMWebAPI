@@ -42,7 +42,7 @@ namespace AMWebAPI.Services.DataServices
                 .OnDelete(DeleteBehavior.Cascade);
             #endregion
         }
-        public DbSet<UserCommunicationModel> Communications { get; set; }
+        public DbSet<UserCommunicationModel> UserCommunications { get; set; }
         public DbSet<SessionModel> Sessions { get; set; }
         public DbSet<UserModel> Users { get; set; }
     }
