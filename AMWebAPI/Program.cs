@@ -58,11 +58,20 @@ namespace AMWebAPI
                 });
             });
 
+            #region Core Services
+            builder.Services.AddSingleton<ICommunicationService, CommunicationService>();
+            builder.Services.AddSingleton<ISystemStatusService, SystemStatusService>();
+            builder.Services.AddSingleton<IUserService, UserService>();
+            #endregion
+
+            #region Data Services
             builder.Services.AddDbContext<AMCoreData>(options => options.UseSqlServer(config.GetConnectionString("CoreConnectionString")), ServiceLifetime.Singleton);
             builder.Services.AddDbContext<AMIdentityData>(options => options.UseSqlServer(config.GetConnectionString("IdentityConnectionString")), ServiceLifetime.Singleton);
-            builder.Services.AddSingleton<IUserService, UserService>();
-            builder.Services.AddSingleton<ISystemStatusService, SystemStatusService>();
+            #endregion
+
+            #region Identity Services
             builder.Services.AddSingleton<IIdentityService, IdentityService>();
+            #endregion
 
             switch (builder.Environment.EnvironmentName)
             {
