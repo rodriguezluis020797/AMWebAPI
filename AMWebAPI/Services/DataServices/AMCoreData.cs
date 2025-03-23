@@ -18,7 +18,7 @@ namespace AMWebAPI.Services.DataServices
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             #region Communication
-            modelBuilder.Entity<CommunicationModel>()
+            modelBuilder.Entity<UserCommunicationModel>()
                 .HasKey(x => x.CommunicationId);
             #endregion
 
@@ -42,7 +42,7 @@ namespace AMWebAPI.Services.DataServices
                 .OnDelete(DeleteBehavior.Cascade);
             #endregion
         }
-        public DbSet<CommunicationModel> Communications { get; set; }
+        public DbSet<UserCommunicationModel> Communications { get; set; }
         public DbSet<SessionModel> Sessions { get; set; }
         public DbSet<UserModel> Users { get; set; }
     }

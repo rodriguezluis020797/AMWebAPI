@@ -3,8 +3,8 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AMWebAPI.Models.CoreModels
 {
-    [Table("Communication")]
-    public class CommunicationModel
+    [Table("UserCommunication")]
+    public class UserCommunicationModel
     {
         [Key] public long CommunicationId { get; set; }
         [ForeignKey("User")] public long UserId { get; set; }
