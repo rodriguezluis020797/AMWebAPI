@@ -1,8 +1,7 @@
 ﻿using AMData.Models;
 using AMTools.Tools;
-using AMWebAPI.Models;
-using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.CoreServices;
+using AMWebAPI.Models.DTOModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -54,6 +53,7 @@ namespace AMWebAPI.Controllers
             {
                 response = _userService.GetUserById(userId);
             }
+
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());

@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMData", "..\AMData\AMData.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMTools", "..\AMTools\AMTools.csproj", "{7766EF55-E3CB-458A-93A8-21C348DE65EA}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMServices", "..\AMServices\AMServices.csproj", "{3D6B2D5B-EE93-47E8-B177-13ABF755EE24}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{7766EF55-E3CB-458A-93A8-21C348DE65EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7766EF55-E3CB-458A-93A8-21C348DE65EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7766EF55-E3CB-458A-93A8-21C348DE65EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D6B2D5B-EE93-47E8-B177-13ABF755EE24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D6B2D5B-EE93-47E8-B177-13ABF755EE24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D6B2D5B-EE93-47E8-B177-13ABF755EE24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D6B2D5B-EE93-47E8-B177-13ABF755EE24}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

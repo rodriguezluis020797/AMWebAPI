@@ -1,5 +1,6 @@
 ﻿using AMData.Models.IdentityModels;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace AMWebAPI.Services.DataServices
 {

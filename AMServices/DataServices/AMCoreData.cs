@@ -1,5 +1,6 @@
 ﻿using AMData.Models.CoreModels;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace AMWebAPI.Services.DataServices
 {
