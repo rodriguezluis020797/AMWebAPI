@@ -1,6 +1,7 @@
-﻿using AMWebAPI.Models.CoreModels;
+﻿using AMData.Models;
+using AMData.Models.CoreModels;
+using AMData.Models.IdentityModels;
 using AMWebAPI.Models.DTOModels;
-using AMWebAPI.Models.IdentityModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Tools;
 using Microsoft.IdentityModel.Tokens;
@@ -39,7 +40,7 @@ namespace AMWebAPI.Services.IdentityServices
             if (user == null)
             {
                 dto.Password = string.Empty;
-                dto.RequestStatus = Models.RequestStatusEnum.BadRequest;
+                dto.RequestStatus = RequestStatusEnum.BadRequest;
                 return dto;
             }
 
@@ -48,7 +49,7 @@ namespace AMWebAPI.Services.IdentityServices
             if (!dto.Password.Equals(decryptedPassword))
             {
                 dto.Password = string.Empty;
-                dto.RequestStatus = Models.RequestStatusEnum.BadRequest;
+                dto.RequestStatus = RequestStatusEnum.BadRequest;
                 return dto;
             }
             var session = new SessionModel()
@@ -76,7 +77,7 @@ namespace AMWebAPI.Services.IdentityServices
                 scope.Complete();
             }
 
-            dto.RequestStatus = Models.RequestStatusEnum.Success;
+            dto.RequestStatus = RequestStatusEnum.Success;
             _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
                 $"IP Address: {ipAddress}");
 

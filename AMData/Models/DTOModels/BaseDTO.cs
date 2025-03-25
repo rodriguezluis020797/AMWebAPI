@@ -1,4 +1,4 @@
-﻿namespace AMWebAPI.Models.DTOModels
+﻿namespace AMData.Models.DTOModels
 {
     public class BaseDTO
     {

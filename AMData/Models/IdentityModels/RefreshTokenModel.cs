@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace AMWebAPI.Models.IdentityModels
+namespace AMData.Models.IdentityModels
 {
     [Table("RefreshToken")]
     public class RefreshTokenModel

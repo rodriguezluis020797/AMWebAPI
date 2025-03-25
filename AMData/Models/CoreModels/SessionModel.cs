@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace AMWebAPI.Models.CoreModels
+namespace AMData.Models.CoreModels
 {
     [Table("Session")]
     public class SessionModel

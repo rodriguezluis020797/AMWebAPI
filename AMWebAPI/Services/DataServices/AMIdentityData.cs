@@ -1,4 +1,4 @@
-﻿using AMWebAPI.Models.IdentityModels;
+﻿using AMData.Models.IdentityModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace AMWebAPI.Services.DataServices

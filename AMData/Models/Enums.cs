@@ -1,4 +1,4 @@
-﻿namespace AMWebAPI.Models
+﻿namespace AMData.Models
 {
     public enum RequestStatusEnum
     {

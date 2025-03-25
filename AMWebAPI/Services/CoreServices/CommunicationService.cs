@@ -1,4 +1,4 @@
-﻿using AMWebAPI.Models.CoreModels;
+﻿using AMData.Models.CoreModels;
 using AMWebAPI.Services.DataServices;
 
 namespace AMWebAPI.Services.CoreServices

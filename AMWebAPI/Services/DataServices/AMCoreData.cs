@@ -1,4 +1,4 @@
-﻿using AMWebAPI.Models.CoreModels;
+﻿using AMData.Models.CoreModels;
 using Microsoft.EntityFrameworkCore;
 
 namespace AMWebAPI.Services.DataServices

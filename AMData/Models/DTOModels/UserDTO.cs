@@ -1,5 +1,6 @@
-﻿using AMWebAPI.Models.CoreModels;
-using AMWebAPI.Tools;
+﻿using AMData.Models.CoreModels;
+using AMData.Models.DTOModels;
+using AMData.Tools;
 
 namespace AMWebAPI.Models.DTOModels
 {

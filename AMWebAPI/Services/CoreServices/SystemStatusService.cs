@@ -1,5 +1,5 @@
-﻿using AMWebAPI.Models;
-using AMWebAPI.Models.DTOModels;
+﻿using AMData.Models;
+using AMData.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Tools;
 

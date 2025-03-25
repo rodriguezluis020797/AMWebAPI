@@ -1,4 +1,5 @@
-﻿using AMWebAPI.Models;
+﻿using AMData.Models;
+using AMWebAPI.Models;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.IdentityServices;
 using AMWebAPI.Tools;
