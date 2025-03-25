@@ -9,7 +9,7 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface IUserService
     {
-        public UserDTO AddUser(UserDTO dto);
+        public UserDTO CreateUser(UserDTO dto);
         public UserDTO GetUserById(string userId);
         public UserDTO GetUserByEMail(string eMail);
     }
@@ -27,7 +27,7 @@ namespace AMWebAPI.Services.CoreServices
             _configuration = configuration;
         }
 
-        public UserDTO AddUser(UserDTO dto)
+        public UserDTO CreateUser(UserDTO dto)
         {
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))

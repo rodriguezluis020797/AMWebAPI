@@ -30,7 +30,7 @@ namespace AMWebAPI.Controllers
             var response = new UserDTO();
             try
             {
-                response = _userService.AddUser(dto);
+                response = _userService.CreateUser(dto);
             }
             catch (Exception e)
             {
