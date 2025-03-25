@@ -1,5 +1,5 @@
-﻿using AMWebAPI.Services.CoreServices;
-using AMWebAPI.Tools;
+﻿using AMTools.Tools;
+using AMWebAPI.Services.CoreServices;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AMWebAPI.Controllers

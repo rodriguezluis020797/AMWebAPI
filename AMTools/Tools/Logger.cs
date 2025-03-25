@@ -1,7 +1,7 @@
 ﻿using NLog;
 using System.Runtime.CompilerServices;
 
-namespace AMWebAPI.Tools
+namespace AMTools.Tools
 {
     public interface IAMLogger
     {

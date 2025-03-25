@@ -1,6 +1,6 @@
 ﻿using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
-using AMData.Tools;
+using AMTools.Tools;
 
 namespace AMWebAPI.Models.DTOModels
 {

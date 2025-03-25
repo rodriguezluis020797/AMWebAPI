@@ -1,7 +1,7 @@
 ﻿using AMData.Models;
 using AMData.Models.DTOModels;
+using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
-using AMWebAPI.Tools;
 
 namespace AMWebAPI.Services.CoreServices
 {

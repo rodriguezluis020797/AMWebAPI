@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace AMData.Tools
+namespace AMTools.Tools
 {
     public static class ValidationTool
     {
