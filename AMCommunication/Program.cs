@@ -12,15 +12,18 @@ namespace AMCommunication
     {
         static async Task Main(string[] args)
         {
+            var logger = new AMDevLogger();
+
+            logger.LogInfo("+");
             var programInstance = new Program();
-            await programInstance.SendUserCommunicationAsync();
+            await programInstance.SendUserCommunicationAsync(logger);
+
+            logger.LogInfo("-");
         }
 
-        public async Task SendUserCommunicationAsync()
+        public async Task SendUserCommunicationAsync(AMDevLogger logger)
         {
             {
-                var logger = new AMDevLogger();
-                logger.LogInfo("+");
 
                 var config = new ConfigurationManager();
                 config.SetBasePath(Directory.GetCurrentDirectory())
@@ -61,6 +64,7 @@ namespace AMCommunication
                         {
                             userComm = _coreData.UserCommunications
                                     .Where(x => x.CommunicationId == result.Communication.CommunicationId)
+                                    .Include(x => x.User)
                                     .FirstOrDefault();
                             try
                             {
@@ -85,8 +89,14 @@ namespace AMCommunication
                                 if (result.Response.IsSuccessStatusCode)
                                 {
                                     userComm.Sent = true;
+                                    logger.LogAudit($"Sent user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId}");
+                                }
+                                else
+                                {
+                                    logger.LogError($"Unable to send user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId}");
                                 }
 
+                                _coreData.Update(userComm);
                                 _coreData.Update(userComm);
                                 _coreData.SaveChanges();
                             }
@@ -102,13 +112,12 @@ namespace AMCommunication
                     logger.LogError(e.ToString());
                 }
                 logger.LogInfo("-");
-                Console.ReadKey();
             }
         }
 
         public async Task<AMUserEmail> SendEmailAsyncHelper(AMUserEmail email)
         {
-            var apiKey = "a";
+            var apiKey = "replace me";
             var client = new SendGridClient(apiKey);
             var from = new EmailAddress("your-email@example.com", "Your Name");
             var to = new EmailAddress(email.Communication.User.EMail);
