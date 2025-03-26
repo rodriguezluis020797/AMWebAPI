@@ -20,7 +20,18 @@ namespace AMCommunication
 
             logger.LogInfo("-");
         }
-
+        public async Task<AMUserEmail> SendEmailAsyncHelper(AMUserEmail email, string apiKey)
+        {
+            var client = new SendGridClient(apiKey);
+            var from = new EmailAddress("rodriguez.luis020797@gmail.com", "Luis Rodriguez");
+            var subject = "AM Tech - Thank You For Registering!";
+            var to = new EmailAddress("rodriguez.luis020797@gmail.com", "Jane Doe");
+            var plainTextContent = email.Communication.Message;
+            var htmlContent = $"<strong>{email.Communication.Message}</strong>";
+            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
+            email.Response = await client.SendEmailAsync(msg);
+            return email;
+        }
         public async Task SendUserCommunicationAsync(AMDevLogger logger)
         {
             {
@@ -54,7 +65,7 @@ namespace AMCommunication
 
                         foreach (var email in emailsToSend)
                         {
-                            tasks.Add(Task.Run(() => SendEmailAsyncHelper(email)));
+                            tasks.Add(Task.Run(() => SendEmailAsyncHelper(email, config["SendGrid:APIKey"])));
                         }
 
                         results = await Task.WhenAll(tasks);
@@ -86,17 +97,20 @@ namespace AMCommunication
                                     userComm.AttemptThree = DateTime.UtcNow;
                                 }
 
+                                var str = string.Empty;
                                 if (result.Response.IsSuccessStatusCode)
                                 {
                                     userComm.Sent = true;
-                                    logger.LogAudit($"Sent user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId}");
+                                    str = $"Sent user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId}";
+                                    logger.LogInfo(str);
+                                    logger.LogAudit(str);
                                 }
                                 else
                                 {
-                                    logger.LogError($"Unable to send user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId}");
+                                    str = $"Unable to send user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId} - Reason: {result.Response.Body.ReadAsStringAsync()}";
+                                    logger.LogError(str);
                                 }
 
-                                _coreData.Update(userComm);
                                 _coreData.Update(userComm);
                                 _coreData.SaveChanges();
                             }
@@ -114,19 +128,6 @@ namespace AMCommunication
                 logger.LogInfo("-");
             }
         }
-
-        public async Task<AMUserEmail> SendEmailAsyncHelper(AMUserEmail email)
-        {
-            var apiKey = "replace me";
-            var client = new SendGridClient(apiKey);
-            var from = new EmailAddress("your-email@example.com", "Your Name");
-            var to = new EmailAddress(email.Communication.User.EMail);
-            var msg = MailHelper.CreateSingleEmail(from, to, string.Empty, email.Communication.Message, email.Communication.Message);
-
-            email.Response = await client.SendEmailAsync(msg);
-            return email;
-        }
-
         public class AMUserEmail
         {
             public UserCommunicationModel Communication { get; set; } = new UserCommunicationModel();
