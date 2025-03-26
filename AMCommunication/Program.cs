@@ -16,30 +16,17 @@ namespace AMCommunication
 
             logger.LogInfo("+");
             var programInstance = new Program();
-            await programInstance.SendUserCommunicationAsync(logger);
+            var config = new ConfigurationManager();
+            config.SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+
+            await programInstance.SendUserCommunicationAsync(logger, config);
 
             logger.LogInfo("-");
         }
-        public async Task<AMUserEmail> SendEmailAsyncHelper(AMUserEmail email, string apiKey)
-        {
-            var client = new SendGridClient(apiKey);
-            var from = new EmailAddress("rodriguez.luis020797@gmail.com", "Luis Rodriguez");
-            var subject = "AM Tech - Thank You For Registering!";
-            var to = new EmailAddress("rodriguez.luis020797@gmail.com", "Jane Doe");
-            var plainTextContent = email.Communication.Message;
-            var htmlContent = $"<strong>{email.Communication.Message}</strong>";
-            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
-            email.Response = await client.SendEmailAsync(msg);
-            return email;
-        }
-        public async Task SendUserCommunicationAsync(AMDevLogger logger)
+        public async Task SendUserCommunicationAsync(AMDevLogger logger, IConfiguration config)
         {
             {
-
-                var config = new ConfigurationManager();
-                config.SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
-
                 var optionsBuilder = new DbContextOptionsBuilder<AMCoreData>();
                 optionsBuilder.UseSqlServer(config.GetConnectionString("CoreConnectionString"));
                 DbContextOptions<AMCoreData> options = optionsBuilder.Options;
@@ -81,7 +68,7 @@ namespace AMCommunication
                             {
                                 if (userComm == null)
                                 {
-                                    throw new Exception(nameof(userComm));
+                                    throw new ArgumentException(nameof(userComm));
                                 }
 
                                 if (userComm.AttemptOne == null)
@@ -128,10 +115,17 @@ namespace AMCommunication
                 logger.LogInfo("-");
             }
         }
-        public class AMUserEmail
+        public async Task<AMUserEmail> SendEmailAsyncHelper(AMUserEmail email, string apiKey)
         {
-            public UserCommunicationModel Communication { get; set; } = new UserCommunicationModel();
-            public Response Response { get; set; } = default!;
+            var client = new SendGridClient(apiKey);
+            var from = new EmailAddress("rodriguez.luis020797@gmail.com", "Luis Rodriguez");
+            var subject = "AM Tech - Thank You For Registering!";
+            var to = new EmailAddress("rodriguez.luis020797@gmail.com", "Jane Doe");
+            var plainTextContent = email.Communication.Message;
+            var htmlContent = $"<strong>{email.Communication.Message}</strong>";
+            var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
+            email.Response = await client.SendEmailAsync(msg);
+            return email;
         }
     }
 }
