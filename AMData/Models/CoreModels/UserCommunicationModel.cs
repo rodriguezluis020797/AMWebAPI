@@ -10,6 +10,7 @@ namespace AMData.Models.CoreModels
         [ForeignKey("User")] public long UserId { get; set; }
         public string Message { get; set; }
         public DateTime SendAfter { get; set; }
+        public bool Sent { get; set; }
         public DateTime? AttemptOne { get; set; }
         public DateTime? AttemptTwo { get; set; }
         public DateTime? AttemptThree { get; set; }
