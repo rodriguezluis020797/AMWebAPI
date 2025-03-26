@@ -65,7 +65,7 @@ namespace AMCommunication
 
                         foreach (var email in emailsToSend)
                         {
-                            tasks.Add(Task.Run(() => SendEmailAsyncHelper(email, config["SendGrid:APIKey"])));
+                            tasks.Add(Task.Run(() => SendEmailAsyncHelper(email, "SG."+config["SendGrid:APIKeyPt1"]+ config["SendGrid:APIKeyPt2"])));
                         }
 
                         results = await Task.WhenAll(tasks);
