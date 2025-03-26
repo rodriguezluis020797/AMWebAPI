@@ -108,7 +108,7 @@ namespace AMCommunication
 
         public async Task<AMUserEmail> SendEmailAsyncHelper(AMUserEmail email)
         {
-            var apiKey = "";
+            var apiKey = "a";
             var client = new SendGridClient(apiKey);
             var from = new EmailAddress("your-email@example.com", "Your Name");
             var to = new EmailAddress(email.Communication.User.EMail);

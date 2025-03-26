@@ -14,7 +14,7 @@ namespace AMWebAPI.Services.DataServices
         }
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
-            options.UseSqlServer(_configuration.GetConnectionString("IdentityConnectionString"));
+            options.UseSqlServer(_configuration.GetConnectionString("IdentityConnectionString"), b => b.MigrationsAssembly("AMWebAPI"));
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
