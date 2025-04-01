@@ -37,7 +37,6 @@ namespace AMTools.Tools
         {
             var utcTime = DateTime.UtcNow.ToString("O");
             auditLog.Info($"{utcTime} | Audit | TID: {Thread.CurrentThread.ManagedThreadId} | {Path.GetFileNameWithoutExtension(path)} | {caller} () | Line: {lineNumber}{Environment.NewLine}{message}");
-            rollingLog.Info($"{utcTime} | Audit | TID: {Thread.CurrentThread.ManagedThreadId} | {Path.GetFileNameWithoutExtension(path)} | {caller} () | Line: {lineNumber}{Environment.NewLine}{message}");
         }
 
         public void LogError(string message, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string path = null,

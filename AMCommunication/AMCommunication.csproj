@@ -29,4 +29,10 @@
     <ProjectReference Include="..\AMServices\AMServices.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="emailContent.html">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

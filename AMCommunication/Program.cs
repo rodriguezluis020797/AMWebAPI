@@ -117,12 +117,13 @@ namespace AMCommunication
         }
         public async Task<AMUserEmail> SendEmailAsyncHelper(AMUserEmail email, string apiKey)
         {
+            var tempEMailSubject = "Thank you for registering!";
             var client = new SendGridClient(apiKey);
-            var from = new EmailAddress("rodriguez.luis020797@gmail.com", "Luis Rodriguez");
-            var subject = "AM Tech - Thank You For Registering!";
-            var to = new EmailAddress("rodriguez.luis020797@gmail.com", "Jane Doe");
+            var from = new EmailAddress("rodriguez.luis020797@gmail.com", "AM Tech No Reply");
+            var subject = $"AM Tech - {tempEMailSubject}!";
+            var to = new EmailAddress("rodriguez.luis020797@gmail.com", email.Communication.User.FirstName + " " + email.Communication.User.LastName);
             var plainTextContent = email.Communication.Message;
-            var htmlContent = $"<strong>{email.Communication.Message}</strong>";
+            var htmlContent = File.ReadAllText(Directory.GetCurrentDirectory() + "/emailContent.html").Replace("#Subject#", tempEMailSubject).Replace("#Body#", email.Communication.Message);
             var msg = MailHelper.CreateSingleEmail(from, to, subject, plainTextContent, htmlContent);
             email.Response = await client.SendEmailAsync(msg);
             return email;
