@@ -51,7 +51,8 @@ namespace AMWebAPI.Models.DTOModels
         public void CreateNewRecordFromModel(UserModel user)
         {
             base.ResetModel();
-            UserId = Uri.EscapeDataString(CryptographyTool.Encrypt(user.UserId.ToString()));
+            CryptographyTool.Encrypt(user.UserId.ToString(), out string encryptedId);
+            UserId = Uri.EscapeDataString(encryptedId);
             FirstName = user.FirstName;
             MiddleName = user.MiddleName;
             LastName = user.LastName;

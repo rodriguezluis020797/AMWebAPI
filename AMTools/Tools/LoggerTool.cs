@@ -35,7 +35,9 @@ namespace AMTools.Tools
         public void LogAudit(string message, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string path = null,
             [CallerMemberName] string caller = null)
         {
-            auditLog.Info($"{DateTime.UtcNow.ToString("O")} | Audit | TID: {Thread.CurrentThread.ManagedThreadId} | {Path.GetFileNameWithoutExtension(path)} | {caller} () | Line: {lineNumber}{Environment.NewLine}{message}");
+            var utcTime = DateTime.UtcNow.ToString("O");
+            auditLog.Info($"{utcTime} | Audit | TID: {Thread.CurrentThread.ManagedThreadId} | {Path.GetFileNameWithoutExtension(path)} | {caller} () | Line: {lineNumber}{Environment.NewLine}{message}");
+            rollingLog.Info($"{utcTime} | Audit | TID: {Thread.CurrentThread.ManagedThreadId} | {Path.GetFileNameWithoutExtension(path)} | {caller} () | Line: {lineNumber}{Environment.NewLine}{message}");
         }
 
         public void LogError(string message, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string path = null,

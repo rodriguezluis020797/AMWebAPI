@@ -98,7 +98,9 @@ namespace AMWebAPI.Services.CoreServices
         {
             var dto = new UserDTO();
 
-            long.TryParse(CryptographyTool.Decrypt(userId), out long result);
+            CryptographyTool.Decrypt(userId, out string decryptedId);
+
+            long.TryParse(decryptedId, out long result);
 
             var user = _amCoreData.Users
                 .Where(x => x.UserId == result)

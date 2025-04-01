@@ -8,7 +8,7 @@ namespace AMTools.Tools
         private static readonly string Key = "MySuperSecureKey1234567890123456"; // Must be 16, 24, or 32 bytes
         private static readonly string IV = "MySecureIV123456"; // Must be 16 bytes
 
-        public static string Encrypt(string plainText)
+        public static void Encrypt(string plainText, out string encryptedText)
         {
             using Aes aes = Aes.Create();
             aes.Key = Encoding.UTF8.GetBytes(Key);
@@ -21,20 +21,20 @@ namespace AMTools.Tools
             writer.Flush(); // Ensures all data is written
             cs.FlushFinalBlock(); // Ensures all encryption data is finalized
 
-            return Convert.ToBase64String(ms.ToArray());
+            encryptedText = Convert.ToBase64String(ms.ToArray());
         }
 
-        public static string Decrypt(string cipherText)
+        public static void Decrypt(string encryptedText, out string plainText)
         {
             using Aes aes = Aes.Create();
             aes.Key = Encoding.UTF8.GetBytes(Key);
             aes.IV = Encoding.UTF8.GetBytes(IV);
 
-            using MemoryStream ms = new(Convert.FromBase64String(cipherText));
+            using MemoryStream ms = new(Convert.FromBase64String(encryptedText));
             using CryptoStream cs = new(ms, aes.CreateDecryptor(), CryptoStreamMode.Read);
             using StreamReader reader = new(cs);
 
-            return reader.ReadToEnd();
+            plainText = reader.ReadToEnd();
         }
     }
 }
