@@ -9,7 +9,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using System.Transactions;
 
@@ -46,43 +45,64 @@ namespace AMWebAPI.Services.IdentityServices
                 return dto;
             }
 
-            var decryptedPassword = string.Empty; //get after setting up identity server, check if it is a temp passowrd
+            var passwordModels = _identityData.Passwords
+                .Where(x => x.UserId == user.UserId && x.DeleteDate == null)
+                .ToList();
 
-            if (!dto.Password.Equals(decryptedPassword))
+            if (passwordModels.Count > 1 || !passwordModels.Any())
+            {
+                throw new Exception(nameof(passwordModels.Count));
+            }
+
+            var passwordModel = passwordModels.Single();
+
+            var hashedPassword = PasswordTool.HashPassword(dto.Password, passwordModel.Salt);
+
+            if (!hashedPassword.Equals(passwordModel.HashedPassword))
             {
                 dto.Password = string.Empty;
                 dto.RequestStatus = RequestStatusEnum.BadRequest;
                 return dto;
             }
-            var session = new SessionModel()
+            else
             {
-                CreateDate = DateTime.UtcNow,
-                SessionId = 0,
-                UserId = user.UserId
-            };
-            var refreshToken = GenerateRefreshToken(user.UserId);
+                /*
+                 * TODO:
+                 * - Let F.E. know it is a temp password
+                 * - Session
+                 * - JWT
+                 * - Refresh Token
+                 */
+                var session = new SessionModel()
+                {
+                    CreateDate = DateTime.UtcNow,
+                    SessionId = 0,
+                    UserId = user.UserId
+                };
+                var refreshToken = GenerateRefreshToken(user.UserId);
 
-            dto.CreateNewRecordFromModel(user);
+                dto.CreateNewRecordFromModel(user);
 
-            CryptographyTool.Encrypt(refreshToken.Token, out string encryptedToken);
-            dto.RefreshToken = encryptedToken;
-            dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail, session.SessionId.ToString());
+                CryptographyTool.Encrypt(refreshToken.Token, out string encryptedToken);
+                dto.RefreshToken = encryptedToken;
+                dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail, session.SessionId.ToString());
 
 
-            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-            {
-                _coreData.Sessions.Add(session);
-                _coreData.SaveChanges();
+                using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+                {
+                    _coreData.Sessions.Add(session);
+                    _coreData.SaveChanges();
 
-                _identityData.RefreshTokens.Add(refreshToken);
-                _identityData.SaveChanges();
+                    _identityData.RefreshTokens.Add(refreshToken);
+                    _identityData.SaveChanges();
 
-                scope.Complete();
+                    scope.Complete();
+                }
+
+                dto.RequestStatus = RequestStatusEnum.Success;
+                _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
+                    $"IP Address: {ipAddress}");
             }
-
-            dto.RequestStatus = RequestStatusEnum.Success;
-            _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
-                $"IP Address: {ipAddress}");
 
             return dto;
         }
@@ -187,23 +207,6 @@ namespace AMWebAPI.Services.IdentityServices
                 return false;
             }
             return refreshToken.Token.Equals(token);
-        }
-        public bool VerifyPassword(string enteredPassword, long userId)
-        {
-            var passwordModel = _identityData.Passwords
-                .Where(x => x.UserId == userId && x.DeleteDate == null)
-                .FirstOrDefault();
-
-            if (passwordModel == null)
-            {
-                return false;
-            }
-
-            var salt = passwordModel.Salt;
-            var hash = Convert.FromBase64String(passwordModel.HashedPassword);
-
-            byte[] computedHash = Convert.FromBase64String(PasswordTool.HashPassword(enteredPassword, salt));
-            return CryptographicOperations.FixedTimeEquals(computedHash, hash);
         }
     }
 }
