@@ -3,7 +3,7 @@ using System.Text;
 
 namespace AMTools
 {
-    public static class PasswordTool
+    public static class IdentityTool
     {
         public static string GenerateSaltString()
         {
@@ -42,6 +42,11 @@ namespace AMTools
             {
                 return Convert.ToBase64String(pbkdf2.GetBytes(32));
             }
+        }
+
+        public static string GenerateRefreshToken()
+        {
+            return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)); // 64 bytes for security
         }
     }
 }

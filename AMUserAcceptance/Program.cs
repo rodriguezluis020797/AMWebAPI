@@ -53,13 +53,13 @@ namespace AMUserAcceptance
 
             foreach (var user in users)
             {
-                salt = PasswordTool.GenerateSaltString();
-                password = PasswordTool.GenerateRandomPassword();
+                salt = IdentityTool.GenerateSaltString();
+                password = IdentityTool.GenerateRandomPassword();
                 passwordModel = new PasswordModel()
                 {
                     CreateDate = DateTime.UtcNow,
                     DeleteDate = null,
-                    HashedPassword = PasswordTool.HashPassword(password, salt),
+                    HashedPassword = IdentityTool.HashPassword(password, salt),
                     PasswordId = 0,
                     Salt = salt,
                     Temporary = true,

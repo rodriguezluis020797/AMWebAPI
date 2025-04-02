@@ -12,6 +12,7 @@ namespace AMWebAPI.Models.DTOModels
         public string LastName { get; set; } = string.Empty;
         public string EMail { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public bool IsTempPassword { get; set; } = false;
         public string JWTToken { get; set; } = string.Empty;
         public string RefreshToken { get; set; } = string.Empty;
         public void Validate()

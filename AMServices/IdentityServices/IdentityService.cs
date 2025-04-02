@@ -49,6 +49,7 @@ namespace AMWebAPI.Services.IdentityServices
                 .Where(x => x.UserId == user.UserId && x.DeleteDate == null)
                 .ToList();
 
+            //Should never be hit, but never know
             if (passwordModels.Count > 1 || !passwordModels.Any())
             {
                 throw new Exception(nameof(passwordModels.Count));
@@ -56,7 +57,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             var passwordModel = passwordModels.Single();
 
-            var hashedPassword = PasswordTool.HashPassword(dto.Password, passwordModel.Salt);
+            var hashedPassword = IdentityTool.HashPassword(dto.Password, passwordModel.Salt);
 
             if (!hashedPassword.Equals(passwordModel.HashedPassword))
             {
@@ -68,18 +69,34 @@ namespace AMWebAPI.Services.IdentityServices
             {
                 /*
                  * TODO:
-                 * - Let F.E. know it is a temp password
                  * - Session
                  * - JWT
                  * - Refresh Token
                  */
+
+                if (passwordModel.Temporary)
+                {
+                    dto.IsTempPassword = true;
+                }
+                else
+                {
+                    dto.IsTempPassword = false;
+                }
+
                 var session = new SessionModel()
                 {
                     CreateDate = DateTime.UtcNow,
                     SessionId = 0,
                     UserId = user.UserId
                 };
-                var refreshToken = GenerateRefreshToken(user.UserId);
+                var refreshToken = new RefreshTokenModel()
+                {
+                    CreateDate = DateTime.UtcNow,
+                    ExpiresDate = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)),
+                    RefreshTokenId = 0,
+                    Token = IdentityTool.GenerateRefreshToken(),
+                    UserId = user.UserId
+                };
 
                 dto.CreateNewRecordFromModel(user);
 
@@ -110,16 +127,16 @@ namespace AMWebAPI.Services.IdentityServices
         {
             var tempPassword = string.Empty;
             var hash = string.Empty;
-            var salt = PasswordTool.GenerateSaltString();
+            var salt = IdentityTool.GenerateSaltString();
 
             if (isTempPassword)
             {
                 tempPassword = Guid.NewGuid().ToString().Replace("-", "");
-                hash = PasswordTool.HashPassword(password, salt);
+                hash = IdentityTool.HashPassword(password, salt);
             }
             else
             {
-                hash = PasswordTool.HashPassword(password, salt);
+                hash = IdentityTool.HashPassword(password, salt);
             }
             /*
             var saltString = Convert.ToBase64String(salt);
@@ -185,18 +202,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             return tokenHandler.WriteToken(token);
         }
-        public RefreshTokenModel GenerateRefreshToken(long userId)
-        {
-            var refreshToken = new RefreshTokenModel
-            {
-                Token = Guid.NewGuid().ToString(),
-                ExpiresDate = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)),
-                CreateDate = DateTime.UtcNow,
-                UserId = userId
-            };
-
-            return refreshToken;
-        }
+        
         public bool ValidateRefreshToken(long userId, string token)
         {
             var refreshToken = _identityData.RefreshTokens
