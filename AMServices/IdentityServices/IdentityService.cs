@@ -67,13 +67,6 @@ namespace AMWebAPI.Services.IdentityServices
             }
             else
             {
-                /*
-                 * TODO:
-                 * - Session
-                 * - JWT
-                 * - Refresh Token
-                 */
-
                 if (passwordModel.Temporary)
                 {
                     dto.IsTempPassword = true;
@@ -89,13 +82,21 @@ namespace AMWebAPI.Services.IdentityServices
                     SessionId = 0,
                     UserId = user.UserId
                 };
+                var sessionAction = new SessionActionModel()
+                {
+                    CreateDate = DateTime.UtcNow,
+                    SessionId = session.SessionId,
+                    SessionAction = SessionActionEnum.LogIn,
+                    SessionActionId = 0
+                };
                 var refreshToken = new RefreshTokenModel()
                 {
                     CreateDate = DateTime.UtcNow,
                     ExpiresDate = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)),
                     RefreshTokenId = 0,
                     Token = IdentityTool.GenerateRefreshToken(),
-                    UserId = user.UserId
+                    UserId = user.UserId,
+                    DeleteDate = null
                 };
 
                 dto.CreateNewRecordFromModel(user);
@@ -109,6 +110,20 @@ namespace AMWebAPI.Services.IdentityServices
                 {
                     _coreData.Sessions.Add(session);
                     _coreData.SaveChanges();
+
+                    sessionAction.SessionId = session.SessionId;
+                    _coreData.SessionActions.Add(sessionAction);
+                    _coreData.SaveChanges();
+
+                    var existingRefreshTokens = _identityData.RefreshTokens
+                        .Where(x => x.UserId == user.UserId && x.DeleteDate == null)
+                        .ToList();
+                    foreach (var existingRefreshToken in existingRefreshTokens)
+                    {
+                        existingRefreshToken.DeleteDate = DateTime.UtcNow;
+                        _identityData.RefreshTokens.Update(existingRefreshToken);
+                        _identityData.SaveChanges();
+                    }
 
                     _identityData.RefreshTokens.Add(refreshToken);
                     _identityData.SaveChanges();
@@ -202,7 +217,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             return tokenHandler.WriteToken(token);
         }
-        
+
         public bool ValidateRefreshToken(long userId, string token)
         {
             var refreshToken = _identityData.RefreshTokens

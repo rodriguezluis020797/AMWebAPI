@@ -11,5 +11,6 @@ namespace AMData.Models.IdentityModels
         public string Token { get; set; } = string.Empty;
         public DateTime ExpiresDate { get; set; }
         public DateTime CreateDate { get; set; }
+        public DateTime? DeleteDate { get; set; }
     }
 }
