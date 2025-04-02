@@ -1,9 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace AMTools
 {
@@ -17,6 +13,26 @@ namespace AMTools
                 rng.GetBytes(salt);
             }
             return Convert.ToBase64String(salt);
+        }
+
+        public static string GenerateRandomPassword()
+        {
+            var length = 12;
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
+            StringBuilder result = new(length);
+            byte[] data = new byte[length];
+
+            using (RandomNumberGenerator rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(data); // Fill byte array with cryptographically strong random bytes
+            }
+
+            for (int i = 0; i < length; i++)
+            {
+                result.Append(chars[data[i] % chars.Length]); // Map byte to a valid character
+            }
+
+            return result.ToString();
         }
 
         public static string HashPassword(string password, string salt)

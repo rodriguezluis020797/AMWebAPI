@@ -202,7 +202,7 @@ namespace AMWebAPI.Services.IdentityServices
             var salt = passwordModel.Salt;
             var hash = Convert.FromBase64String(passwordModel.HashedPassword);
 
-            byte[] computedHash = Convert.FromBase64String( PasswordTool.HashPassword(enteredPassword, salt));
+            byte[] computedHash = Convert.FromBase64String(PasswordTool.HashPassword(enteredPassword, salt));
             return CryptographicOperations.FixedTimeEquals(computedHash, hash);
         }
     }

@@ -1,5 +1,6 @@
 ﻿using AMData.Models.CoreModels;
 using AMData.Models.IdentityModels;
+using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +39,8 @@ namespace AMUserAcceptance
             var users = new List<UserModel>();
             var passwordModel = new PasswordModel();
             var userComm = new UserCommunicationModel();
+            var salt = string.Empty;
+            var password = string.Empty;
             var _coreData = new AMCoreData(coreOptions, config);
             var _identityData = new AMIdentityData(identityOptions, config);
 
@@ -47,15 +50,48 @@ namespace AMUserAcceptance
                 .Take(5)
                 .ToList();
 
+
             foreach (var user in users)
             {
-                passwordModel = new PasswordModel();
-                userComm = new UserCommunicationModel();
+                salt = PasswordTool.GenerateSaltString();
+                password = PasswordTool.GenerateRandomPassword();
+                passwordModel = new PasswordModel()
+                {
+                    CreateDate = DateTime.UtcNow,
+                    DeleteDate = null,
+                    HashedPassword = PasswordTool.HashPassword(password, salt),
+                    PasswordId = 0,
+                    Salt = salt,
+                    Temporary = true,
+                    UserId = user.UserId,
+                };
+
+                userComm = new UserCommunicationModel()
+                {
+                    UserId = user.UserId,
+                    AttemptOne = null,
+                    AttemptThree = null,
+                    AttemptTwo = null,
+                    CommunicationId = 0,
+                    CreateDate = DateTime.UtcNow,
+                    DeleteDate = null,
+                    Message = $"Good news! You can now use the system!{Environment.NewLine}" +
+                    $"Temporary password: {password}",
+                    SendAfter = DateTime.UtcNow,
+                    Sent = false
+                };
 
                 using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
                     user.AccessGranted = true;
+                    _coreData.Users.Update(user);
+                    _coreData.UserCommunications.Add(userComm);
+                    _coreData.SaveChanges();
 
+                    _identityData.Passwords.Add(passwordModel);
+                    _identityData.SaveChanges();
+
+                    scope.Complete();
                 }
             }
         }
