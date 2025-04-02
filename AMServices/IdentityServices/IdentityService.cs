@@ -1,6 +1,7 @@
 ﻿using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.IdentityModels;
+using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
@@ -88,19 +89,19 @@ namespace AMWebAPI.Services.IdentityServices
         public bool CreateNewPassword(long userId, string password, bool isTempPassword)
         {
             var tempPassword = string.Empty;
-            var hash = new byte[32];
-            var salt = GenerateSalt();
+            var hash = string.Empty;
+            var salt = PasswordTool.GenerateSaltString();
 
             if (isTempPassword)
             {
                 tempPassword = Guid.NewGuid().ToString().Replace("-", "");
-                hash = HashPassword(password, salt);
+                hash = PasswordTool.HashPassword(password, salt);
             }
             else
             {
-                hash = HashPassword(password, salt);
+                hash = PasswordTool.HashPassword(password, salt);
             }
-
+            /*
             var saltString = Convert.ToBase64String(salt);
             var hashString = Convert.ToBase64String(hash);
 
@@ -133,23 +134,8 @@ namespace AMWebAPI.Services.IdentityServices
 
                 trans.Commit();
             }
+            */
             return true;
-        }
-        private byte[] GenerateSalt()
-        {
-            var salt = new byte[32];
-            using (var rng = RandomNumberGenerator.Create())
-            {
-                rng.GetBytes(salt);
-            }
-            return salt;
-        }
-        public byte[] HashPassword(string password, byte[] salt)
-        {
-            using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, 100000, HashAlgorithmName.SHA256))
-            {
-                return pbkdf2.GetBytes(32);
-            }
         }
         public string GenerateJWTToken(string userId, string email, string sessionId)
         {
@@ -213,10 +199,10 @@ namespace AMWebAPI.Services.IdentityServices
                 return false;
             }
 
-            var salt = Convert.FromBase64String(passwordModel.Salt);
+            var salt = passwordModel.Salt;
             var hash = Convert.FromBase64String(passwordModel.HashedPassword);
 
-            byte[] computedHash = HashPassword(enteredPassword, salt);
+            byte[] computedHash = Convert.FromBase64String( PasswordTool.HashPassword(enteredPassword, salt));
             return CryptographicOperations.FixedTimeEquals(computedHash, hash);
         }
     }
