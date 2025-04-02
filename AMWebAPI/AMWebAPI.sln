@@ -5,13 +5,15 @@ VisualStudioVersion = 17.11.35431.28
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AMWebAPI", "AMWebAPI.csproj", "{7C885B9A-0429-45D7-832E-940823939BD0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMData", "..\AMData\AMData.csproj", "{E419A45D-A61A-4DBE-903C-DE478A2A8D1F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AMData", "..\AMData\AMData.csproj", "{E419A45D-A61A-4DBE-903C-DE478A2A8D1F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMTools", "..\AMTools\AMTools.csproj", "{7766EF55-E3CB-458A-93A8-21C348DE65EA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AMTools", "..\AMTools\AMTools.csproj", "{7766EF55-E3CB-458A-93A8-21C348DE65EA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMServices", "..\AMServices\AMServices.csproj", "{3D6B2D5B-EE93-47E8-B177-13ABF755EE24}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AMServices", "..\AMServices\AMServices.csproj", "{3D6B2D5B-EE93-47E8-B177-13ABF755EE24}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMCommunication", "..\AMCommunication\AMCommunication.csproj", "{8C5A6A68-214A-48EE-8797-AE6D5924500A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AMCommunication", "..\AMCommunication\AMCommunication.csproj", "{8C5A6A68-214A-48EE-8797-AE6D5924500A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMUserAcceptance", "..\AMUserAcceptance\AMUserAcceptance.csproj", "{8D4B6F53-D84F-4CA4-8271-3B29D3EED465}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +41,10 @@ Global
 		{8C5A6A68-214A-48EE-8797-AE6D5924500A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8C5A6A68-214A-48EE-8797-AE6D5924500A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8C5A6A68-214A-48EE-8797-AE6D5924500A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8D4B6F53-D84F-4CA4-8271-3B29D3EED465}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8D4B6F53-D84F-4CA4-8271-3B29D3EED465}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8D4B6F53-D84F-4CA4-8271-3B29D3EED465}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8D4B6F53-D84F-4CA4-8271-3B29D3EED465}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

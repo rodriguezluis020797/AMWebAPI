@@ -15,13 +15,19 @@ namespace AMCommunication
             var logger = new AMDevLogger();
 
             logger.LogInfo("+");
-            var programInstance = new Program();
-            var config = new ConfigurationManager();
-            config.SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+            try
+            {
+                var programInstance = new Program();
+                var config = new ConfigurationManager();
+                config.SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-            await programInstance.SendUserCommunicationAsync(logger, config);
-
+                await programInstance.SendUserCommunicationAsync(logger, config);
+            }
+            catch (Exception e)
+            {
+                logger.LogError(e.ToString());
+            }
             logger.LogInfo("-");
         }
         public async Task SendUserCommunicationAsync(AMDevLogger logger, IConfiguration config)
@@ -31,87 +37,81 @@ namespace AMCommunication
                 optionsBuilder.UseSqlServer(config.GetConnectionString("CoreConnectionString"));
                 DbContextOptions<AMCoreData> options = optionsBuilder.Options;
 
-                try
+                var emailsToSend = new List<AMUserEmail>();
+                var tasks = new List<Task<AMUserEmail>>();
+                var results = new AMUserEmail[0];
+
+                using (var _coreData = new AMCoreData(options, config))
                 {
-                    var emailsToSend = new List<AMUserEmail>();
-                    var tasks = new List<Task<AMUserEmail>>();
-                    var results = new AMUserEmail[0];
+                    var userComms = _coreData.UserCommunications
+                        .Where(x => (x.DeleteDate == null) && (x.AttemptThree == null) && (x.SendAfter < DateTime.UtcNow) && (x.Sent == false))
+                        .Include(x => x.User)
+                        .AsNoTracking()
+                        .ToList();
 
-                    using (var _coreData = new AMCoreData(options, config))
+                    foreach (var comm in userComms)
                     {
-                        var userComms = _coreData.UserCommunications
-                            .Where(x => (x.DeleteDate == null) && (x.AttemptThree == null) && (x.SendAfter < DateTime.UtcNow) && (x.Sent == false))
-                            .Include(x => x.User)
-                            .AsNoTracking()
-                            .ToList();
+                        emailsToSend.Add(new AMUserEmail() { Communication = comm });
+                    }
 
-                        foreach (var comm in userComms)
+                    foreach (var email in emailsToSend)
+                    {
+                        tasks.Add(Task.Run(() => SendEmailAsyncHelper(email, config["SendGrid:APIKey"])));
+                    }
+
+                    results = await Task.WhenAll(tasks);
+
+                    var userComm = new UserCommunicationModel();
+                    foreach (var result in results)
+                    {
+                        userComm = _coreData.UserCommunications
+                                .Where(x => x.CommunicationId == result.Communication.CommunicationId)
+                                .Include(x => x.User)
+                                .FirstOrDefault();
+                        try
                         {
-                            emailsToSend.Add(new AMUserEmail() { Communication = comm });
-                        }
-
-                        foreach (var email in emailsToSend)
-                        {
-                            tasks.Add(Task.Run(() => SendEmailAsyncHelper(email, config["SendGrid:APIKey"])));
-                        }
-
-                        results = await Task.WhenAll(tasks);
-
-                        var userComm = new UserCommunicationModel();
-                        foreach (var result in results)
-                        {
-                            userComm = _coreData.UserCommunications
-                                    .Where(x => x.CommunicationId == result.Communication.CommunicationId)
-                                    .Include(x => x.User)
-                                    .FirstOrDefault();
-                            try
+                            if (userComm == null)
                             {
-                                if (userComm == null)
-                                {
-                                    throw new ArgumentException(nameof(userComm));
-                                }
-
-                                if (userComm.AttemptOne == null)
-                                {
-                                    userComm.AttemptOne = DateTime.UtcNow;
-                                }
-                                else if (userComm.AttemptTwo == null)
-                                {
-                                    userComm.AttemptTwo = DateTime.UtcNow;
-                                }
-                                else if (userComm.AttemptThree == null)
-                                {
-                                    userComm.AttemptThree = DateTime.UtcNow;
-                                }
-
-                                var str = string.Empty;
-                                if (result.Response.IsSuccessStatusCode)
-                                {
-                                    userComm.Sent = true;
-                                    str = $"Sent user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId}";
-                                    logger.LogInfo(str);
-                                    logger.LogAudit(str);
-                                }
-                                else
-                                {
-                                    str = $"Unable to send user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId} - Reason: {result.Response.Body.ReadAsStringAsync()}";
-                                    logger.LogError(str);
-                                }
-
-                                _coreData.Update(userComm);
-                                _coreData.SaveChanges();
+                                throw new ArgumentException(nameof(userComm));
                             }
-                            catch (Exception e)
+
+                            if (userComm.AttemptOne == null)
                             {
-                                logger.LogError(e.ToString());
+                                userComm.AttemptOne = DateTime.UtcNow;
                             }
+                            else if (userComm.AttemptTwo == null)
+                            {
+                                userComm.AttemptTwo = DateTime.UtcNow;
+                            }
+                            else if (userComm.AttemptThree == null)
+                            {
+                                userComm.AttemptThree = DateTime.UtcNow;
+                            }
+
+                            var str = string.Empty;
+                            if (result.Response.IsSuccessStatusCode)
+                            {
+                                userComm.Sent = true;
+                                str = $"Sent user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId}";
+                                logger.LogInfo(str);
+                                logger.LogAudit(str);
+                            }
+                            else
+                            {
+                                str = $"Unable to send user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId} - Reason: {result.Response.Body.ReadAsStringAsync()}";
+                                logger.LogError(str);
+                            }
+
+                            _coreData.Update(userComm);
+                            _coreData.SaveChanges();
+                        }
+                        catch (Exception e)
+                        {
+                            logger.LogError(e.ToString());
                         }
                     }
                 }
-                catch (Exception e)
-                {
-                    logger.LogError(e.ToString());
-                }
+
                 logger.LogInfo("-");
             }
         }
