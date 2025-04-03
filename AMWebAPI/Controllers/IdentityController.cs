@@ -28,6 +28,7 @@ namespace AMWebAPI.Controllers
             var response = new UserDTO();
             try
             {
+                
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
                 if (string.IsNullOrEmpty(ipAddress))
                 {
@@ -35,6 +36,7 @@ namespace AMWebAPI.Controllers
                 }
 
                 response = _identityService.LogIn(dto, ipAddress);
+                response.EMail = dto.EMail;
             }
             catch (Exception e)
             {

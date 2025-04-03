@@ -40,6 +40,7 @@ namespace AMWebAPI.Services.IdentityServices
             {
                 dto.Password = string.Empty;
                 dto.RequestStatus = RequestStatusEnum.BadRequest;
+;                dto.ErrorMessage = "Incorrect username or password";
                 return dto;
             }
 
@@ -56,12 +57,18 @@ namespace AMWebAPI.Services.IdentityServices
 
             var passwordModel = passwordModels.Single();
 
+            if(passwordModel == null)
+            {
+                throw new Exception(nameof(passwordModel));
+            }
+
             var hashedPassword = IdentityTool.HashPassword(dto.Password, passwordModel.Salt);
 
             if (!hashedPassword.Equals(passwordModel.HashedPassword))
             {
                 dto.Password = string.Empty;
                 dto.RequestStatus = RequestStatusEnum.BadRequest;
+                dto.ErrorMessage = "Incorrect username or password";
                 return dto;
             }
             else
@@ -140,6 +147,7 @@ namespace AMWebAPI.Services.IdentityServices
                     $"IP Address: {ipAddress}");
 
                 dto.CreateNewRecordFromModel(user);
+                dto.RequestStatus = RequestStatusEnum.Success;
             }
 
             return dto;
