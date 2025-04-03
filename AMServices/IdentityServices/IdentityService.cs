@@ -93,7 +93,8 @@ namespace AMWebAPI.Services.IdentityServices
                     RefreshTokenId = 0,
                     Token = IdentityTool.GenerateRefreshToken(),
                     UserId = user.UserId,
-                    DeleteDate = null
+                    DeleteDate = null,
+                    FingerPrint = ipAddress
                 };
 
                 CryptographyTool.Encrypt(refreshToken.Token, out string encryptedToken);
