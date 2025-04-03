@@ -111,7 +111,7 @@ namespace AMWebAPI.Services.IdentityServices
                     _coreData.SaveChanges();
 
                     var existingRefreshTokens = _identityData.RefreshTokens
-                        .Where(x => x.UserId == user.UserId && x.DeleteDate == null)
+                        .Where(x => x.UserId == user.UserId && x.DeleteDate == null && x.FingerPrint.Equals(ipAddress))
                         .ToList();
                     foreach (var existingRefreshToken in existingRefreshTokens)
                     {
@@ -164,13 +164,8 @@ namespace AMWebAPI.Services.IdentityServices
             var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
             var refreshTokenModel = _identityData.RefreshTokens
-                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate && x.DeleteDate == null)
+                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate && x.FingerPrint.Equals(ipAddress))
                 .FirstOrDefault();
-
-            if (refreshTokenModel == null)
-            {
-                throw new UnauthorizedAccessException("Invalid or expired token");
-            }
 
             CryptographyTool.Decrypt(refreshToken, out string decryptedToken);
 
