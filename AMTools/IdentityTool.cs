@@ -1,4 +1,7 @@
-﻿using System.Security.Cryptography;
+﻿using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace AMTools
@@ -47,6 +50,53 @@ namespace AMTools
         public static string GenerateRefreshToken()
         {
             return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)); // 64 bytes for security
+        }
+
+        public static ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+
+            // You can add validation parameters (optional)
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = false, // if you don't need to validate issuer
+                ValidateAudience = false, // if you don't need to validate audience
+                ValidateLifetime = true, // Ensure token has not expired
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)), // Validate signing key
+                ClockSkew = TimeSpan.Zero
+            };
+
+            try
+            {
+                // Decode and validate the token
+                var principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
+                return principal; // Returns the ClaimsPrincipal with the decoded claims
+            }
+            catch (Exception ex)
+            {
+                // Handle invalid or expired token
+                throw new UnauthorizedAccessException("Invalid or expired token", ex);
+            }
+        }
+
+        public static string GenerateJWTToken(Claim[] claims, string keyString, string issuer, string audience, string expiresInMinutes)
+        {
+            var key = Encoding.UTF8.GetBytes(keyString);
+            var expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(expiresInMinutes));
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = expires,
+                Issuer = issuer,
+                Audience = audience,
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256),
+            };
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+
+            return tokenHandler.WriteToken(token);
         }
     }
 }

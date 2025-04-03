@@ -45,5 +45,54 @@ namespace AMWebAPI.Controllers
             _logger.LogInfo("-");
             return new ObjectResult(response);
         }
+
+        [HttpPost]
+        public async Task<IActionResult> RefreshToken()
+        {
+            _logger.LogInfo("+");
+            var response = new UserDTO();
+            try
+            {
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.ToString());
+                response = new UserDTO();
+                response.ErrorMessage = "Server Error.";
+                response.RequestStatus = RequestStatusEnum.Error;
+            }
+
+            return new ObjectResult(nameof(NotImplementedException));
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> ResetPassword([FromBody] UserDTO dto)
+        {
+            _logger.LogInfo("+");
+            var response = new UserDTO();
+
+            try
+            {
+                var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", string.Empty);
+                response = _identityService.UpdatePassword(dto, token);
+
+            }
+            catch(UnauthorizedAccessException e)
+            {
+                _logger.LogError(e.ToString());
+                response = new UserDTO();
+                response.ErrorMessage = "Server Error.";
+                response.RequestStatus = RequestStatusEnum.JWTError;
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.ToString());
+                response = new UserDTO();
+                response.ErrorMessage = "Server Error.";
+                response.RequestStatus = RequestStatusEnum.Error;
+            }
+
+            return new OkObjectResult(response);
+        }
     }
 }

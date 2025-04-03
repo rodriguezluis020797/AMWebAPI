@@ -6,10 +6,7 @@ using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using System.Transactions;
 
 namespace AMWebAPI.Services.IdentityServices
@@ -17,7 +14,7 @@ namespace AMWebAPI.Services.IdentityServices
     public interface IIdentityService
     {
         public UserDTO LogIn(UserDTO dto, string ipAddress);
-        public bool CreateNewPassword(long userId, string password, bool isTempPassword);
+        public UserDTO UpdatePassword(UserDTO dto, string token);
     }
     public class IdentityService : IIdentityService
     {
@@ -99,11 +96,8 @@ namespace AMWebAPI.Services.IdentityServices
                     DeleteDate = null
                 };
 
-                dto.CreateNewRecordFromModel(user);
-
                 CryptographyTool.Encrypt(refreshToken.Token, out string encryptedToken);
                 dto.RefreshToken = encryptedToken;
-                dto.JWTToken = GenerateJWTToken(dto.UserId, dto.EMail, session.SessionId.ToString());
 
 
                 using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
@@ -131,91 +125,34 @@ namespace AMWebAPI.Services.IdentityServices
                     scope.Complete();
                 }
 
+                var claims = new[]
+                {
+                    new Claim(SessionClaimEnum.UserId.ToString(), user.UserId.ToString()),
+                    new Claim(SessionClaimEnum.SessionId.ToString(), session.SessionId.ToString()),
+                };
+
+                dto.JWTToken = IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
+
                 dto.RequestStatus = RequestStatusEnum.Success;
                 _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
                     $"IP Address: {ipAddress}");
+
+                dto.CreateNewRecordFromModel(user);
             }
 
             return dto;
         }
-        public bool CreateNewPassword(long userId, string password, bool isTempPassword)
+
+        public UserDTO UpdatePassword(UserDTO dto, string token)
         {
-            var tempPassword = string.Empty;
-            var hash = string.Empty;
-            var salt = IdentityTool.GenerateSaltString();
+            var principal = IdentityTool.GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
 
-            if (isTempPassword)
-            {
-                tempPassword = Guid.NewGuid().ToString().Replace("-", "");
-                hash = IdentityTool.HashPassword(password, salt);
-            }
-            else
-            {
-                hash = IdentityTool.HashPassword(password, salt);
-            }
-            /*
-            var saltString = Convert.ToBase64String(salt);
-            var hashString = Convert.ToBase64String(hash);
+            var userId = principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value;
+            var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
-            var passwordModel = new PasswordModel()
-            {
-                CreateDate = DateTime.Now,
-                DeleteDate = null,
-                HashedPassword = hashString,
-                PasswordId = 0,
-                Salt = saltString,
-                UserId = userId,
-                Temporary = isTempPassword,
-            };
 
-            var currentPasswords = _identityData.Passwords
-                .Where(x => x.UserId == userId && x.DeleteDate == null)
-                .ToList();
 
-            using (var trans = _identityData.Database.BeginTransaction())
-            {
-                foreach (var cp in currentPasswords)
-                {
-                    cp.DeleteDate = DateTime.UtcNow;
-                    _identityData.Passwords.Update(cp);
-                    _identityData.SaveChanges();
-                }
-
-                _identityData.Passwords.Add(passwordModel);
-                _identityData.SaveChanges();
-
-                trans.Commit();
-            }
-            */
-            return true;
-        }
-        public string GenerateJWTToken(string userId, string email, string sessionId)
-        {
-            var key = Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]!);
-            var issuer = _configuration["Jwt:Issuer"];
-            var audience = _configuration["Jwt:Audience"];
-            var expires = DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpiresInMinutes"]));
-
-            var claims = new[]
-            {
-            new Claim(JwtRegisteredClaimNames.Sub, userId),
-            new Claim(JwtRegisteredClaimNames.Email, email),
-            new Claim(JwtRegisteredClaimNames.Sid, sessionId),
-            };
-
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(claims),
-                Expires = expires,
-                Issuer = issuer,
-                Audience = audience,
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256)
-            };
-
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-
-            return tokenHandler.WriteToken(token);
+            throw new NotImplementedException();
         }
 
         public bool ValidateRefreshToken(long userId, string token)

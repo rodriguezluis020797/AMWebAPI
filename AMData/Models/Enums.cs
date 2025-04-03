@@ -5,7 +5,14 @@
         Unknown = 0,
         Success,
         BadRequest,
-        Error
+        Error,
+        JWTError
+    }
+    public enum SessionClaimEnum
+    {
+        Unknown = 0,
+        UserId,
+        SessionId,
     }
     public enum SessionActionEnum
     {

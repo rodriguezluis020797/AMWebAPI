@@ -6,7 +6,6 @@ namespace AMWebAPI.Models.DTOModels
 {
     public class UserDTO : BaseDTO
     {
-        public string UserId { get; set; } = string.Empty;
         public string FirstName { get; set; } = string.Empty;
         public string? MiddleName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
@@ -52,8 +51,6 @@ namespace AMWebAPI.Models.DTOModels
         public void CreateNewRecordFromModel(UserModel user)
         {
             base.ResetModel();
-            CryptographyTool.Encrypt(user.UserId.ToString(), out string encryptedId);
-            UserId = Uri.EscapeDataString(encryptedId);
             FirstName = user.FirstName;
             MiddleName = user.MiddleName;
             LastName = user.LastName;
