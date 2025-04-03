@@ -15,6 +15,7 @@ namespace AMWebAPI.Services.IdentityServices
     {
         public UserDTO LogIn(UserDTO dto, string ipAddress);
         public UserDTO UpdatePassword(UserDTO dto, string token);
+        public string RefreshToken(string jwtToken, string refreshToken, string ipAddress);
     }
     public class IdentityService : IIdentityService
     {
@@ -156,16 +157,34 @@ namespace AMWebAPI.Services.IdentityServices
             throw new NotImplementedException();
         }
 
-        public bool ValidateRefreshToken(long userId, string token)
+        public string RefreshToken(string jwtToken, string refreshToken, string ipAddress)
         {
-            var refreshToken = _identityData.RefreshTokens
+            var principal = IdentityTool.GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
+
+            var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
+            var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
+
+            var refreshTokenModel = _identityData.RefreshTokens
                 .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate)
                 .FirstOrDefault();
-            if (refreshToken == null)
+                
+            if (refreshTokenModel == null || !refreshTokenModel.Token.Equals(refreshToken) || !refreshTokenModel.FingerPrint.Equals(ipAddress))
             {
-                return false;
+                throw new UnauthorizedAccessException("Invalid or expired token");
             }
-            return refreshToken.Token.Equals(token);
+
+            refreshTokenModel.ExpiresDate = refreshTokenModel.ExpiresDate.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!));
+            _identityData.RefreshTokens.Update(refreshTokenModel);
+            _identityData.SaveChanges();
+
+            var claims = new[]
+                {
+                    new Claim(SessionClaimEnum.UserId.ToString(), userId.ToString()),
+                    new Claim(SessionClaimEnum.SessionId.ToString(), sessionId),
+                };
+
+            return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
+
         }
     }
 }

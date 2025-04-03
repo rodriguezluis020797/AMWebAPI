@@ -31,8 +31,9 @@ namespace AMWebAPI.Controllers
                 var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
                 if (string.IsNullOrEmpty(ipAddress))
                 {
-                    ipAddress = "Not Detected";
+                    ipAddress = "0.0.0.0";
                 }
+
                 response = _identityService.LogIn(dto, ipAddress);
             }
             catch (Exception e)
@@ -47,19 +48,33 @@ namespace AMWebAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> RefreshToken()
+        public async Task<IActionResult> RefreshToken([FromBody] UserDTO dto)
         {
             _logger.LogInfo("+");
-            var response = new UserDTO();
             try
             {
+                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+                if (string.IsNullOrEmpty(ipAddress))
+                {
+                    ipAddress = "0.0.0.0";
+                }
+                var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", string.Empty);
+
+                dto.JWTToken = _identityService.RefreshToken(token, dto.RefreshToken, ipAddress);
+            }
+            catch (UnauthorizedAccessException e)
+            {
+                _logger.LogError(e.ToString());
+                dto = new UserDTO();
+                dto.ErrorMessage = "Server Error.";
+                dto.RequestStatus = RequestStatusEnum.JWTError;
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
-                response = new UserDTO();
-                response.ErrorMessage = "Server Error.";
-                response.RequestStatus = RequestStatusEnum.Error;
+                dto = new UserDTO();
+                dto.ErrorMessage = "Server Error.";
+                dto.RequestStatus = RequestStatusEnum.Error;
             }
 
             return new ObjectResult(nameof(NotImplementedException));
