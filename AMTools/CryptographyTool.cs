@@ -30,7 +30,9 @@ namespace AMTools.Tools
             aes.Key = Encoding.UTF8.GetBytes(Key);
             aes.IV = Encoding.UTF8.GetBytes(IV);
 
-            using MemoryStream ms = new(Convert.FromBase64String(encryptedText));
+            byte[] cipherBytes = Convert.FromBase64String(encryptedText);
+
+            using MemoryStream ms = new(cipherBytes);
             using CryptoStream cs = new(ms, aes.CreateDecryptor(), CryptoStreamMode.Read);
             using StreamReader reader = new(cs);
 

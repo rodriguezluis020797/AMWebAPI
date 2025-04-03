@@ -101,7 +101,6 @@ namespace AMWebAPI.Services.IdentityServices
                 CryptographyTool.Encrypt(refreshToken.Token, out string encryptedToken);
                 dto.RefreshToken = encryptedToken;
 
-
                 using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
                     _coreData.Sessions.Add(session);
@@ -165,10 +164,17 @@ namespace AMWebAPI.Services.IdentityServices
             var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
             var refreshTokenModel = _identityData.RefreshTokens
-                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate)
+                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate && x.DeleteDate == null)
                 .FirstOrDefault();
-                
-            if (refreshTokenModel == null || !refreshTokenModel.Token.Equals(refreshToken) || !refreshTokenModel.FingerPrint.Equals(ipAddress))
+
+            if (refreshTokenModel == null)
+            {
+                throw new UnauthorizedAccessException("Invalid or expired token");
+            }
+
+            CryptographyTool.Decrypt(refreshToken, out string decryptedToken);
+
+            if (!refreshTokenModel.Token.Equals(decryptedToken) || !refreshTokenModel.FingerPrint.Equals(ipAddress))
             {
                 throw new UnauthorizedAccessException("Invalid or expired token");
             }

@@ -61,6 +61,7 @@ namespace AMWebAPI.Controllers
                 var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", string.Empty);
 
                 dto.JWTToken = _identityService.RefreshToken(token, dto.RefreshToken, ipAddress);
+                dto.RequestStatus = RequestStatusEnum.Success;
             }
             catch (UnauthorizedAccessException e)
             {
@@ -77,7 +78,7 @@ namespace AMWebAPI.Controllers
                 dto.RequestStatus = RequestStatusEnum.Error;
             }
 
-            return new ObjectResult(nameof(NotImplementedException));
+            return new ObjectResult(dto);
         }
 
         [HttpPost]
@@ -92,7 +93,7 @@ namespace AMWebAPI.Controllers
                 response = _identityService.UpdatePassword(dto, token);
 
             }
-            catch(UnauthorizedAccessException e)
+            catch (UnauthorizedAccessException e)
             {
                 _logger.LogError(e.ToString());
                 response = new UserDTO();
