@@ -50,6 +50,7 @@ namespace AMWebAPI.Services.IdentityServices
             //Should never be hit, but never know
             if (passwordModels.Count > 1 || !passwordModels.Any())
             {
+                //set temp password, email user
                 throw new Exception(nameof(passwordModels.Count));
             }
 
