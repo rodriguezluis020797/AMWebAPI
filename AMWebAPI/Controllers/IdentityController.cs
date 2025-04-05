@@ -2,6 +2,7 @@
 using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.IdentityServices;
+using Azure;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -45,6 +46,16 @@ namespace AMWebAPI.Controllers
                 response.ErrorMessage = "Server Error.";
                 response.RequestStatus = RequestStatusEnum.Error;
             }
+
+            Response.Cookies.Append(SessionClaimEnum.JWT.ToString(), response.JWTToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddMinutes(15)
+            });
+
+            response.JWTToken = string.Empty;
             _logger.LogInfo("-");
             return new ObjectResult(response);
         }
@@ -79,6 +90,16 @@ namespace AMWebAPI.Controllers
                 dto.ErrorMessage = "Server Error.";
                 dto.RequestStatus = RequestStatusEnum.Error;
             }
+
+            Response.Cookies.Append(SessionClaimEnum.JWT.ToString(), dto.JWTToken, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.Strict,
+                Expires = DateTime.UtcNow.AddMinutes(15)
+            });
+
+            dto.JWTToken = string.Empty;
 
             return new ObjectResult(dto);
         }

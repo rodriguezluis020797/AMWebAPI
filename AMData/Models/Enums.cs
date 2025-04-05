@@ -13,6 +13,7 @@
         Unknown = 0,
         UserId,
         SessionId,
+        JWT
     }
     public enum SessionActionEnum
     {
