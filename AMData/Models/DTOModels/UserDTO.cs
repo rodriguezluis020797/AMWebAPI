@@ -12,8 +12,17 @@ namespace AMWebAPI.Models.DTOModels
         public string EMail { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
         public bool IsTempPassword { get; set; } = false;
-        public string JWTToken { get; set; } = string.Empty;
-        public string RefreshToken { get; set; } = string.Empty;
+
+        public void CreateNewRecordFromModel(UserModel user)
+        {
+            base.ResetModel();
+            FirstName = user.FirstName;
+            MiddleName = user.MiddleName;
+            LastName = user.LastName;
+            EMail = user.EMail;
+            Password = string.Empty;
+            IsTempPassword = false;
+        }
         public void Validate()
         {
             ValidationTool.ValidateName(FirstName, out string fnOutput);
@@ -46,16 +55,6 @@ namespace AMWebAPI.Models.DTOModels
                     ErrorMessage = "Please enter valid e-mail.";
                 }
             }
-        }
-
-        public void CreateNewRecordFromModel(UserModel user)
-        {
-            base.ResetModel();
-            FirstName = user.FirstName;
-            MiddleName = user.MiddleName;
-            LastName = user.LastName;
-            EMail = user.EMail;
-            Password = string.Empty;
         }
     }
 }

@@ -1,5 +1,4 @@
-﻿using AMData.Models;
-using AMData.Models.CoreModels;
+﻿using AMData.Models.CoreModels;
 using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
@@ -33,12 +32,10 @@ namespace AMWebAPI.Services.CoreServices
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
             {
-                dto.RequestStatus = RequestStatusEnum.BadRequest;
                 return dto;
             }
             if (_amCoreData.Users.Any(x => x.EMail.Equals(dto.EMail)))
             {
-                dto.RequestStatus = RequestStatusEnum.BadRequest;
                 dto.ErrorMessage = $"User with given e-mail already exists.{Environment.NewLine}" +
                     $"Please wait to be given access.";
                 return dto;
@@ -67,7 +64,6 @@ namespace AMWebAPI.Services.CoreServices
                 _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}E-Mail: {user.EMail}");
 
                 dto.CreateNewRecordFromModel(user);
-                dto.RequestStatus = RequestStatusEnum.Success;
                 return dto;
             }
         }
@@ -83,13 +79,11 @@ namespace AMWebAPI.Services.CoreServices
             if (user == null)
             {
                 dto.ErrorMessage = "User Not Foound";
-                dto.RequestStatus = RequestStatusEnum.BadRequest;
                 return dto;
             }
             else
             {
                 dto.CreateNewRecordFromModel(user);
-                dto.RequestStatus = RequestStatusEnum.Success;
             }
             return dto;
         }
@@ -113,7 +107,6 @@ namespace AMWebAPI.Services.CoreServices
             else
             {
                 dto.CreateNewRecordFromModel(user);
-                dto.RequestStatus = RequestStatusEnum.Success;
                 return dto;
             }
         }

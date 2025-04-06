@@ -6,16 +6,20 @@ using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
 using System.Transactions;
 
 namespace AMWebAPI.Services.IdentityServices
 {
     public interface IIdentityService
     {
-        public UserDTO LogIn(UserDTO dto, string ipAddress);
+        public UserDTO LogIn(UserDTO dto, string ipAddress, out string jwToken, out string refreshToken);
         public UserDTO UpdatePassword(UserDTO dto, string token);
-        public string RefreshToken(string jwtToken, string refreshToken, string ipAddress);
+        public string RefreshJWToken(string jwtToken, string refreshToken, string ipAddress);
+        public ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey);
     }
     public class IdentityService : IIdentityService
     {
@@ -30,7 +34,7 @@ namespace AMWebAPI.Services.IdentityServices
             _configuration = configuration;
             _identityData = identityData;
         }
-        public UserDTO LogIn(UserDTO dto, string ipAddress)
+        public UserDTO LogIn(UserDTO dto, string ipAddress, out string jwToken, out string refreshToken)
         {
             var user = _coreData.Users
                 .Where(x => x.EMail.Equals(dto.EMail))
@@ -38,10 +42,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             if (user == null)
             {
-                dto.Password = string.Empty;
-                dto.RequestStatus = RequestStatusEnum.BadRequest;
-;                dto.ErrorMessage = "Incorrect username or password";
-                return dto;
+                throw new ArgumentException();
             }
 
             var passwordModels = _identityData.Passwords
@@ -57,7 +58,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             var passwordModel = passwordModels.Single();
 
-            if(passwordModel == null)
+            if (passwordModel == null)
             {
                 throw new Exception(nameof(passwordModel));
             }
@@ -66,10 +67,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             if (!hashedPassword.Equals(passwordModel.HashedPassword))
             {
-                dto.Password = string.Empty;
-                dto.RequestStatus = RequestStatusEnum.BadRequest;
-                dto.ErrorMessage = "Incorrect username or password";
-                return dto;
+                throw new ArgumentException();
             }
             else
             {
@@ -95,7 +93,7 @@ namespace AMWebAPI.Services.IdentityServices
                     SessionAction = SessionActionEnum.LogIn,
                     SessionActionId = 0
                 };
-                var refreshToken = new RefreshTokenModel()
+                var refreshTokenModel = new RefreshTokenModel()
                 {
                     CreateDate = DateTime.UtcNow,
                     ExpiresDate = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)),
@@ -106,8 +104,9 @@ namespace AMWebAPI.Services.IdentityServices
                     FingerPrint = ipAddress
                 };
 
-                CryptographyTool.Encrypt(refreshToken.Token, out string encryptedToken);
-                dto.RefreshToken = encryptedToken;
+                CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
+
+                refreshToken = encryptedRefreshToken;
 
                 using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
@@ -128,7 +127,7 @@ namespace AMWebAPI.Services.IdentityServices
                         _identityData.SaveChanges();
                     }
 
-                    _identityData.RefreshTokens.Add(refreshToken);
+                    _identityData.RefreshTokens.Add(refreshTokenModel);
                     _identityData.SaveChanges();
 
                     scope.Complete();
@@ -140,14 +139,13 @@ namespace AMWebAPI.Services.IdentityServices
                     new Claim(SessionClaimEnum.SessionId.ToString(), session.SessionId.ToString()),
                 };
 
-                dto.JWTToken = IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
+                jwToken = IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
 
-                dto.RequestStatus = RequestStatusEnum.Success;
                 _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
                     $"IP Address: {ipAddress}");
 
                 dto.CreateNewRecordFromModel(user);
-                dto.RequestStatus = RequestStatusEnum.Success;
+                dto.IsTempPassword = passwordModel.Temporary;
             }
 
             return dto;
@@ -155,7 +153,7 @@ namespace AMWebAPI.Services.IdentityServices
 
         public UserDTO UpdatePassword(UserDTO dto, string token)
         {
-            var principal = IdentityTool.GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
+            var principal = GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
 
             var userId = principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value;
             var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
@@ -165,22 +163,27 @@ namespace AMWebAPI.Services.IdentityServices
             throw new NotImplementedException();
         }
 
-        public string RefreshToken(string jwtToken, string refreshToken, string ipAddress)
+        public string RefreshJWToken(string jwtToken, string refreshToken, string ipAddress)
         {
-            var principal = IdentityTool.GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
+            var principal = GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
 
             var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
             var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
             var refreshTokenModel = _identityData.RefreshTokens
-                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate && x.FingerPrint.Equals(ipAddress))
+                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate && x.FingerPrint.Equals(ipAddress) && x.DeleteDate == null)
                 .FirstOrDefault();
+
+            if (refreshTokenModel == null)
+            {
+                throw new ArgumentException();
+            }
 
             CryptographyTool.Decrypt(refreshToken, out string decryptedToken);
 
             if (!refreshTokenModel.Token.Equals(decryptedToken) || !refreshTokenModel.FingerPrint.Equals(ipAddress))
             {
-                throw new UnauthorizedAccessException("Invalid or expired token");
+                throw new ArgumentException();
             }
 
             refreshTokenModel.ExpiresDate = refreshTokenModel.ExpiresDate.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!));
@@ -188,13 +191,40 @@ namespace AMWebAPI.Services.IdentityServices
             _identityData.SaveChanges();
 
             var claims = new[]
-                {
-                    new Claim(SessionClaimEnum.UserId.ToString(), userId.ToString()),
-                    new Claim(SessionClaimEnum.SessionId.ToString(), sessionId),
-                };
+            {
+                new Claim(SessionClaimEnum.UserId.ToString(), userId.ToString()),
+                new Claim(SessionClaimEnum.SessionId.ToString(), sessionId),
+            };
 
-            return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
+            return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, "-1");// _configuration["Jwt:ExpiresInMinutes"]!);
 
+        }
+
+        public ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+
+            // You can add validation parameters (optional)
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = false, // if you don't need to validate issuer
+                ValidateAudience = false, // if you don't need to validate audience
+                ValidateLifetime = false, // Ensure token has not expired
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)), // Validate signing key
+                ClockSkew = TimeSpan.Zero
+            };
+
+            try
+            {
+                // Decode and validate the token
+                var principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
+                return principal; // Returns the ClaimsPrincipal with the decoded claims
+            }
+            catch (Exception ex)
+            {
+                // Handle invalid or expired token
+                throw new UnauthorizedAccessException("Invalid or expired token", ex);
+            }
         }
     }
 }

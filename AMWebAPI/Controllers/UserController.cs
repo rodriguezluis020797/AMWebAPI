@@ -1,5 +1,4 @@
-﻿using AMData.Models;
-using AMTools.Tools;
+﻿using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.CoreServices;
 using Microsoft.AspNetCore.Authorization;
@@ -37,7 +36,6 @@ namespace AMWebAPI.Controllers
                 _logger.LogError(e.ToString());
                 response = new UserDTO();
                 response.ErrorMessage = "Server Error.";
-                response.RequestStatus = RequestStatusEnum.Error;
             }
             _logger.LogInfo("-");
             return new ObjectResult(response);
@@ -59,7 +57,6 @@ namespace AMWebAPI.Controllers
                 _logger.LogError(e.ToString());
                 response = new UserDTO();
                 response.ErrorMessage = "Server Error.";
-                response.RequestStatus = RequestStatusEnum.Error;
             }
             _logger.LogInfo("-");
             return new ObjectResult(response);
@@ -79,7 +76,6 @@ namespace AMWebAPI.Controllers
                 _logger.LogError(e.ToString());
                 response = new UserDTO();
                 response.ErrorMessage = "Server Error.";
-                response.RequestStatus = RequestStatusEnum.Error;
             }
             _logger.LogInfo("-");
             return new ObjectResult(response);
