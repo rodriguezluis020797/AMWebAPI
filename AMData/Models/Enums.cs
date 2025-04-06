@@ -1,12 +1,11 @@
 ﻿namespace AMData.Models
 {
-    public enum RequestStatusEnum
+    public enum HttpStatusCodeEnum
     {
         Unknown = 0,
-        Success,
-        BadRequest,
-        Error,
-        JWTError
+        Success = 200,
+        ServerError = 500,
+        BadCredentials = 400,
     }
     public enum SessionClaimEnum
     {

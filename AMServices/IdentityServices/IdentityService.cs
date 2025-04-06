@@ -71,15 +71,6 @@ namespace AMWebAPI.Services.IdentityServices
             }
             else
             {
-                if (passwordModel.Temporary)
-                {
-                    dto.IsTempPassword = true;
-                }
-                else
-                {
-                    dto.IsTempPassword = false;
-                }
-
                 var session = new SessionModel()
                 {
                     CreateDate = DateTime.UtcNow,

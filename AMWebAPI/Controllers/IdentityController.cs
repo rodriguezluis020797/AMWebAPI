@@ -44,12 +44,12 @@ namespace AMWebAPI.Controllers
             }
             catch (ArgumentException)
             {
-                return StatusCode(400);
+                return StatusCode(Convert.ToInt32(HttpStatusCodeEnum.BadCredentials), dto);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
-                return StatusCode(500);
+                return StatusCode(Convert.ToInt32(HttpStatusCodeEnum.ServerError));
             }
 
             Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwToken, new CookieOptions
@@ -69,7 +69,7 @@ namespace AMWebAPI.Controllers
             });
 
             _logger.LogInfo("-");
-            return StatusCode(200, dto);
+            return StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success), dto);
         }
 
         [HttpGet]

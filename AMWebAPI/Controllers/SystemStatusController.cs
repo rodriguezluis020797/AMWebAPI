@@ -1,4 +1,6 @@
-﻿using AMTools.Tools;
+﻿using AMData.Models;
+using AMTools.Tools;
+using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.CoreServices;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,11 +22,18 @@ namespace AMWebAPI.Controllers
         [HttpGet]
         public async Task<IActionResult> FullSystemCheck()
         {
-            _logger.LogInfo("+");
-            var result = await _systemStatusService.FullSystemCheck();
-            _logger.LogInfo("-");
+            var result = await _systemStatusService.IsFullSystemActive();
+            var response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown));
 
-            return new ObjectResult(result);
+            if (result)
+            {
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success));
+            }
+            else
+            {
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.ServerError));
+            }
+            return response;
 
         }
     }

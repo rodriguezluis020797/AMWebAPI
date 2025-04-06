@@ -7,7 +7,7 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface ISystemStatusService
     {
-        public Task<SystemStatusDTO> FullSystemCheck();
+        public Task<bool> IsFullSystemActive();
     }
 
     public class SystemStatusService : ISystemStatusService
@@ -21,9 +21,8 @@ namespace AMWebAPI.Services.CoreServices
             _amCoreData = amCoreData;
             _amIdentityData = amIdentityData;
         }
-        public async Task<SystemStatusDTO> FullSystemCheck()
+        public async Task<bool> IsFullSystemActive()
         {
-            var response = new SystemStatusDTO();
             try
             {
                 var checkCoreDbTask = Task.Run(() => CheckCoreDbTask());
@@ -39,17 +38,10 @@ namespace AMWebAPI.Services.CoreServices
 
                 if (taskResults.All(t => t))
                 {
-                    response = new SystemStatusDTO()
-                    {
-                        RequestStatus = RequestStatusEnum.Success,
-                    };
+                    return true;
                 }
                 else
                 {
-                    response = new SystemStatusDTO()
-                    {
-                        RequestStatus = RequestStatusEnum.Error,
-                    };
                     var index = 0;
                     foreach (var item in taskResults)
                     {
@@ -59,17 +51,14 @@ namespace AMWebAPI.Services.CoreServices
                         }
                         index++;
                     }
+                    return false;
                 }
             }
             catch (Exception e)
             {
-                response = new SystemStatusDTO()
-                {
-                    RequestStatus = RequestStatusEnum.Error,
-                };
                 _logger.LogError(e.ToString());
+                return false;
             }
-            return response;
         }
 
         private bool CheckCoreDbTask()
