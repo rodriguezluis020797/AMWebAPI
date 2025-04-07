@@ -80,61 +80,52 @@ namespace AMWebAPI.Controllers
             var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
             var newJWT = string.Empty;
             var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
+            var response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown));
 
             try
             {
 
-                if (string.IsNullOrEmpty(jwToken))
+                if (!string.IsNullOrEmpty(jwToken) || !string.IsNullOrEmpty(refreshToken))
                 {
-                    return StatusCode(200);
-                }
-
-                if (IdentityTool.IsTheJWTExpired(jwToken) || string.IsNullOrEmpty(refreshToken))
-                {
-                    if (string.IsNullOrEmpty(refreshToken))
+                    if (IdentityTool.IsTheJWTExpired(jwToken))
                     {
-                        return StatusCode(400);
-                    }
+                        if (string.IsNullOrEmpty(ipAddress))
+                        {
+                            ipAddress = "0.0.0.0";
+                        }
 
-                    if (string.IsNullOrEmpty(ipAddress))
-                    {
-                        ipAddress = "0.0.0.0";
-                    }
+                        newJWT = _identityService.RefreshJWToken(jwToken, refreshToken, ipAddress);
 
-                    newJWT = _identityService.RefreshJWToken(jwToken, refreshToken, ipAddress);
+                        Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), newJWT, new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            SameSite = SameSiteMode.Strict,
+                            Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
+                        });
+
+                        Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, new CookieOptions
+                        {
+                            HttpOnly = true,
+                            Secure = true,
+                            SameSite = SameSiteMode.Strict,
+                            Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
+                        });
+                    }
                 }
-                else
-                {
-                    return StatusCode(200);
-                }
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success));
             }
             catch (ArgumentException)
             {
-                return StatusCode(400);
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.BadCredentials));
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
-                return StatusCode(500);
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.ServerError));
             }
 
-            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), newJWT, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
-            });
-
-            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
-            });
-
-            return StatusCode(200);
+            return response;
         }
 
 

@@ -1,6 +1,4 @@
-﻿using AMData.Models;
-using AMData.Models.DTOModels;
-using AMTools.Tools;
+﻿using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 
 namespace AMWebAPI.Services.CoreServices
