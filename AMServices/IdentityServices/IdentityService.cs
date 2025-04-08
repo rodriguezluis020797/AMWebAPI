@@ -1,5 +1,6 @@
 ﻿using AMData.Models;
 using AMData.Models.CoreModels;
+using AMData.Models.DTOModels;
 using AMData.Models.IdentityModels;
 using AMTools;
 using AMTools.Tools;
@@ -8,6 +9,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Transactions;
@@ -16,9 +18,9 @@ namespace AMWebAPI.Services.IdentityServices
 {
     public interface IIdentityService
     {
-        public UserDTO LogIn(UserDTO dto, string ipAddress, out string jwToken, out string refreshToken);
+        public UserDTO LogIn(UserDTO userDTO, FingerprintDTO fingerprintDTO, out string jwToken, out string refreshToken);
         public UserDTO UpdatePassword(UserDTO dto, string token);
-        public string RefreshJWToken(string jwtToken, string refreshToken, string ipAddress);
+        public string RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
         public ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey);
     }
     public class IdentityService : IIdentityService
@@ -34,10 +36,10 @@ namespace AMWebAPI.Services.IdentityServices
             _configuration = configuration;
             _identityData = identityData;
         }
-        public UserDTO LogIn(UserDTO dto, string ipAddress, out string jwToken, out string refreshToken)
+        public UserDTO LogIn(UserDTO userDTO, FingerprintDTO fingerprintDTO, out string jwToken, out string refreshToken)
         {
             var user = _coreData.Users
-                .Where(x => x.EMail.Equals(dto.EMail))
+                .Where(x => x.EMail.Equals(userDTO.EMail))
                 .FirstOrDefault();
 
             if (user == null)
@@ -63,7 +65,7 @@ namespace AMWebAPI.Services.IdentityServices
                 throw new Exception(nameof(passwordModel));
             }
 
-            var hashedPassword = IdentityTool.HashPassword(dto.Password, passwordModel.Salt);
+            var hashedPassword = IdentityTool.HashPassword(userDTO.Password, passwordModel.Salt);
 
             if (!hashedPassword.Equals(passwordModel.HashedPassword))
             {
@@ -92,7 +94,10 @@ namespace AMWebAPI.Services.IdentityServices
                     Token = IdentityTool.GenerateRefreshToken(),
                     UserId = user.UserId,
                     DeleteDate = null,
-                    FingerPrint = ipAddress
+                    IPAddress = fingerprintDTO.IPAddress,
+                    Language = fingerprintDTO.Language,
+                    Platform = fingerprintDTO.Platform,
+                    UserAgent = fingerprintDTO.UserAgent
                 };
 
                 CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
@@ -109,7 +114,7 @@ namespace AMWebAPI.Services.IdentityServices
                     _coreData.SaveChanges();
 
                     var existingRefreshTokens = _identityData.RefreshTokens
-                        .Where(x => x.UserId == user.UserId && x.DeleteDate == null && x.FingerPrint.Equals(ipAddress))
+                        //.Where(x => x.UserId == user.UserId && x.DeleteDate == null && x.FingerPrint.Equals(ipAddress))
                         .ToList();
                     foreach (var existingRefreshToken in existingRefreshTokens)
                     {
@@ -133,13 +138,16 @@ namespace AMWebAPI.Services.IdentityServices
                 jwToken = IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
 
                 _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
-                    $"IP Address: {ipAddress}");
+                  $"IP Address: {fingerprintDTO.IPAddress}" +
+                  $"UserAgent: {fingerprintDTO.UserAgent}" +
+                  $"Platform: {fingerprintDTO.Platform}" +
+                  $"Language: {fingerprintDTO.Language}");
 
-                dto.CreateNewRecordFromModel(user);
-                dto.IsTempPassword = passwordModel.Temporary;
+                userDTO.CreateNewRecordFromModel(user);
+                userDTO.IsTempPassword = passwordModel.Temporary;
             }
 
-            return dto;
+            return userDTO;
         }
 
         public UserDTO UpdatePassword(UserDTO dto, string token)
@@ -154,15 +162,17 @@ namespace AMWebAPI.Services.IdentityServices
             throw new NotImplementedException();
         }
 
-        public string RefreshJWToken(string jwtToken, string refreshToken, string ipAddress)
+        public string RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO)
         {
+
             var principal = GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
 
             var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
             var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
             var refreshTokenModel = _identityData.RefreshTokens
-                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate && x.FingerPrint.Equals(ipAddress) && x.DeleteDate == null)
+                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate && x.DeleteDate == null)
+                .OrderByDescending(x => x.CreateDate)
                 .FirstOrDefault();
 
             if (refreshTokenModel == null)
@@ -170,9 +180,22 @@ namespace AMWebAPI.Services.IdentityServices
                 throw new ArgumentException();
             }
 
+            var existingFingerprint = new FingerprintDTO
+            {
+                IPAddress = refreshTokenModel.IPAddress,
+                Language = refreshTokenModel.Language,
+                Platform = refreshTokenModel.Platform,
+                UserAgent = refreshTokenModel.UserAgent
+            };
+
+            if(!IsFingerprintTrustworthy(existingFingerprint, fingerprintDTO))
+            {
+                throw new ArgumentException();
+            }
+
             CryptographyTool.Decrypt(refreshToken, out string decryptedToken);
 
-            if (!refreshTokenModel.Token.Equals(decryptedToken) || !refreshTokenModel.FingerPrint.Equals(ipAddress))
+            if (!refreshTokenModel.Token.Equals(decryptedToken) )//|| !refreshTokenModel.FingerPrint.Equals(ipAddress))
             {
                 throw new ArgumentException();
             }
@@ -216,6 +239,48 @@ namespace AMWebAPI.Services.IdentityServices
                 // Handle invalid or expired token
                 throw new UnauthorizedAccessException("Invalid or expired token", ex);
             }
+        }
+
+        private bool IsFingerprintTrustworthy(FingerprintDTO databaseFingerprint, FingerprintDTO providedFingerpirnt)
+        {
+            var trustScore = 0;
+            var maxScore = 100;
+            var trustScoreThreshold = 80;
+
+            if (databaseFingerprint.IPAddress == providedFingerpirnt.IPAddress)
+            {
+                trustScore += 25;
+            }
+            else
+            {
+                trustScore -= 10;
+            }
+            if (databaseFingerprint.Language == providedFingerpirnt.Language)
+            {
+                trustScore += 25;
+            }
+            else
+            {
+                trustScore -= 5;
+            }
+            if (databaseFingerprint.Platform == providedFingerpirnt.Platform)
+            {
+                trustScore += 25;
+            }
+            else
+            {
+                trustScore -= 10;
+            }
+            if (databaseFingerprint.UserAgent == providedFingerpirnt.UserAgent)
+            {
+                trustScore += 25;
+            }
+            else
+            {
+                trustScore -= 15;
+            }
+            trustScore = Math.Max(0, Math.Min(maxScore, trustScore));
+            return trustScore >= trustScoreThreshold;
         }
     }
 }

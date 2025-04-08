@@ -1,4 +1,5 @@
 ﻿using AMData.Models;
+using AMData.Models.DTOModels;
 using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
@@ -33,14 +34,16 @@ namespace AMWebAPI.Controllers
             var refreshToken = string.Empty;
             try
             {
-
-                var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
-                if (string.IsNullOrEmpty(ipAddress))
+                var fingerprint = new FingerprintDTO()
                 {
-                    ipAddress = "0.0.0.0";
-                }
+                    IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    Language = HttpContext.Request.Headers["X-Fingerprint-Language"].ToString(),
+                    Platform = HttpContext.Request.Headers["X-Fingerprint-Platform"].ToString(),
+                    UserAgent = HttpContext.Request.Headers["X-Fingerprint-UA"].ToString()
+                };
+                fingerprint.Validate();
 
-                response = _identityService.LogIn(dto, ipAddress, out jwToken, out refreshToken);
+                response = _identityService.LogIn(dto, fingerprint, out jwToken, out refreshToken);
             }
             catch (ArgumentException)
             {
@@ -79,22 +82,25 @@ namespace AMWebAPI.Controllers
             var jwToken = Request.Cookies["JWToken"];
             var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
             var newJWT = string.Empty;
-            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString();
             var response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown));
 
             try
             {
+                var fingerprint = new FingerprintDTO()
+                {
+                    IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    Language = HttpContext.Request.Headers["X-Fingerprint-Language"].ToString(),
+                    Platform = HttpContext.Request.Headers["X-Fingerprint-Platform"].ToString(),
+                    UserAgent = HttpContext.Request.Headers["X-Fingerprint-UA"].ToString()
+                };
+                fingerprint.Validate();
 
                 if (!string.IsNullOrEmpty(jwToken) || !string.IsNullOrEmpty(refreshToken))
                 {
                     if (IdentityTool.IsTheJWTExpired(jwToken))
                     {
-                        if (string.IsNullOrEmpty(ipAddress))
-                        {
-                            ipAddress = "0.0.0.0";
-                        }
 
-                        newJWT = _identityService.RefreshJWToken(jwToken, refreshToken, ipAddress);
+                        newJWT = _identityService.RefreshJWToken(jwToken, refreshToken, fingerprint);
 
                         Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), newJWT, new CookieOptions
                         {

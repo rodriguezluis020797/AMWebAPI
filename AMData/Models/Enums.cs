@@ -4,8 +4,9 @@
     {
         Unknown = 0,
         Success = 200,
-        ServerError = 500,
         BadCredentials = 400,
+        ServerError = 500,
+        SystemUnavailable = 501
     }
     public enum SessionClaimEnum
     {

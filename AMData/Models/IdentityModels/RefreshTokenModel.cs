@@ -9,7 +9,10 @@ namespace AMData.Models.IdentityModels
         [Key] public long RefreshTokenId { get; set; }
         public long UserId { get; set; }
         public string Token { get; set; }
-        public string FingerPrint { get; set; }
+        public string IPAddress { get; set; }
+        public string UserAgent { get; set; }
+        public string Platform { get; set; }
+        public string Language { get; set; }
         public DateTime ExpiresDate { get; set; }
         public DateTime CreateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
