@@ -9,7 +9,6 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
-using System.Net;
 using System.Security.Claims;
 using System.Text;
 using System.Transactions;
@@ -188,14 +187,14 @@ namespace AMWebAPI.Services.IdentityServices
                 UserAgent = refreshTokenModel.UserAgent
             };
 
-            if(!IsFingerprintTrustworthy(existingFingerprint, fingerprintDTO))
+            if (!IsFingerprintTrustworthy(existingFingerprint, fingerprintDTO))
             {
                 throw new ArgumentException();
             }
 
             CryptographyTool.Decrypt(refreshToken, out string decryptedToken);
 
-            if (!refreshTokenModel.Token.Equals(decryptedToken) )//|| !refreshTokenModel.FingerPrint.Equals(ipAddress))
+            if (!refreshTokenModel.Token.Equals(decryptedToken))//|| !refreshTokenModel.FingerPrint.Equals(ipAddress))
             {
                 throw new ArgumentException();
             }

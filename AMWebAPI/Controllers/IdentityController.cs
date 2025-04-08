@@ -134,7 +134,6 @@ namespace AMWebAPI.Controllers
             return response;
         }
 
-
         [HttpPost]
         public async Task<IActionResult> ResetPassword([FromBody] UserDTO dto)
         {
