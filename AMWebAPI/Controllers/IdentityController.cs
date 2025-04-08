@@ -55,21 +55,17 @@ namespace AMWebAPI.Controllers
                 return StatusCode(Convert.ToInt32(HttpStatusCodeEnum.ServerError));
             }
 
-            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwToken, new CookieOptions
+            var cookieOptions = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
-                SameSite = SameSiteMode.Strict,
+                SameSite = SameSiteMode.None,
                 Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
-            });
+            };
 
-            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.Strict,
-                Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
-            });
+            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwToken, cookieOptions);
+
+            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, cookieOptions);
 
             _logger.LogInfo("-");
             return StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success), dto);
@@ -102,21 +98,17 @@ namespace AMWebAPI.Controllers
 
                         newJWT = _identityService.RefreshJWToken(jwToken, refreshToken, fingerprint);
 
-                        Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), newJWT, new CookieOptions
+                        var cookieOptions = new CookieOptions
                         {
                             HttpOnly = true,
                             Secure = true,
-                            SameSite = SameSiteMode.Strict,
+                            SameSite = SameSiteMode.None,
                             Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
-                        });
+                        };
 
-                        Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, new CookieOptions
-                        {
-                            HttpOnly = true,
-                            Secure = true,
-                            SameSite = SameSiteMode.Strict,
-                            Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
-                        });
+                        Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), newJWT, cookieOptions);
+
+                        Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, cookieOptions);
                     }
                 }
                 response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success));
@@ -134,6 +126,7 @@ namespace AMWebAPI.Controllers
             return response;
         }
 
+        [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> ResetPassword([FromBody] UserDTO dto)
         {
