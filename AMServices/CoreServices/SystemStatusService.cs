@@ -61,11 +61,25 @@ namespace AMWebAPI.Services.CoreServices
 
         private bool CheckCoreDbTask()
         {
-            return _amCoreData.Database.CanConnect();
+            try
+            {
+                return _amCoreData.Database.CanConnect();
+            }
+            catch(Exception e)
+            {
+                throw;
+            }
         }
         private bool CheckIdentityDbTask()
         {
-            return _amIdentityData.Database.CanConnect();
+            try
+            {
+                return _amIdentityData.Database.CanConnect();
+            }
+            catch (Exception e)
+            {
+                throw;
+            }
         }
     }
 }

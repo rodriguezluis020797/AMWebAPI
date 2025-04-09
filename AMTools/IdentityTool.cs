@@ -3,6 +3,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace AMTools
 {
@@ -79,6 +80,11 @@ namespace AMTools
             var exp = jsonToken.ValidTo;
 
             return exp < DateTime.UtcNow;
+        }
+
+        public static bool IsValidPassword(string password)
+        {
+            return Regex.IsMatch(password, @"^(?!.*[\'\""\\<>|; \t:/$^~`()!?]).*(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$");
         }
     }
 }

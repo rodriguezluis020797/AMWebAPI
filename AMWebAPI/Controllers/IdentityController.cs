@@ -75,7 +75,7 @@ namespace AMWebAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Ping()
         {
-            var jwToken = Request.Cookies["JWToken"];
+            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
             var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
             var newJWT = string.Empty;
             var response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown));
@@ -126,32 +126,43 @@ namespace AMWebAPI.Controllers
             return response;
         }
 
-        [AllowAnonymous]
         [HttpPost]
         public async Task<IActionResult> ResetPassword([FromBody] UserDTO dto)
         {
             _logger.LogInfo("+");
-            var response = new UserDTO();
+            var dtoResponse = new UserDTO();
+            var response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown), dtoResponse);
+            var jwToken = string.Empty;
 
             try
             {
-                var token = Request.Headers["Authorization"].ToString().Replace("Bearer ", string.Empty);
-                response = _identityService.UpdatePassword(dto, token);
+                if (!IdentityTool.IsValidPassword(dto.Password))
+                {
+                    response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.BadPassword), null);
+                    return response;
+                }
 
-            }
-            catch (UnauthorizedAccessException e)
-            {
-                _logger.LogError(e.ToString());
-                return Unauthorized();
+                jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+
+                if (!string.IsNullOrEmpty(jwToken))
+                {
+                    dtoResponse = _identityService.UpdatePassword(dto, jwToken);
+                    response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown), dtoResponse);
+                }
+                else
+                {
+                    throw new Exception(nameof(jwToken));
+                }
+
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
-                response = new UserDTO();
-                return StatusCode(500);
+                dtoResponse = new UserDTO();
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown), dtoResponse);
             }
 
-            return new OkObjectResult(response);
+            return response;
         }
     }
 }
