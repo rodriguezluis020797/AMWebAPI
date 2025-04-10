@@ -73,6 +73,26 @@ namespace AMWebAPI.Controllers
 
         [HttpGet]
         [AllowAnonymous]
+        public async Task<IActionResult> LogOut()
+        {
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddMinutes(-1)
+            };
+
+            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), string.Empty, cookieOptions);
+            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), string.Empty, cookieOptions);
+            Response.Cookies.Delete(SessionClaimEnum.JWToken.ToString(), cookieOptions);
+            Response.Cookies.Delete(SessionClaimEnum.RefreshToken.ToString(), cookieOptions);
+
+            return StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success), true);
+        }
+
+        [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> Ping()
         {
             var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
