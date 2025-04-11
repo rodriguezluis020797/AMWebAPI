@@ -6,6 +6,7 @@ using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.IdentityServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using static AMWebAPI.Services.IdentityServices.IdentityService;
 
 namespace AMWebAPI.Controllers
 {
@@ -30,6 +31,7 @@ namespace AMWebAPI.Controllers
         {
             _logger.LogInfo("+");
             var response = new UserDTO();
+            var loginAsyncResponse = new LogInAsyncResponse();
             var jwToken = string.Empty;
             var refreshToken = string.Empty;
             try
@@ -43,7 +45,9 @@ namespace AMWebAPI.Controllers
                 };
                 fingerprint.Validate();
 
-                response = _identityService.LogIn(dto, fingerprint, out jwToken, out refreshToken);
+                loginAsyncResponse = await _identityService.LogInAsync(dto, fingerprint);
+
+                response = loginAsyncResponse.userDTO;
             }
             catch (ArgumentException)
             {
@@ -60,7 +64,7 @@ namespace AMWebAPI.Controllers
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
+                Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!)),
             };
 
             Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwToken, cookieOptions);
@@ -116,7 +120,7 @@ namespace AMWebAPI.Controllers
                     if (IdentityTool.IsTheJWTExpired(jwToken))
                     {
 
-                        newJWT = _identityService.RefreshJWToken(jwToken, refreshToken, fingerprint);
+                        newJWT = await _identityService.RefreshJWToken(jwToken, refreshToken, fingerprint);
 
                         var cookieOptions = new CookieOptions
                         {
@@ -156,30 +160,30 @@ namespace AMWebAPI.Controllers
 
             try
             {
-                if (!IdentityTool.IsValidPassword(dto.Password))
-                {
-                    response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.BadPassword), null);
-                    return response;
-                }
-
                 jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
 
                 if (!string.IsNullOrEmpty(jwToken))
                 {
-                    dtoResponse = _identityService.UpdatePassword(dto, jwToken);
+                    // Ensure this call is awaited before moving to the next operation
+                    dtoResponse = await _identityService.UpdatePasswordAsync(dto, jwToken);
+
                     response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown), dtoResponse);
                 }
                 else
                 {
                     throw new Exception(nameof(jwToken));
                 }
-
+            }
+            catch (ArgumentException e)
+            {
+                dtoResponse = new UserDTO();
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.BadPassword), dtoResponse);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
                 dtoResponse = new UserDTO();
-                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown), dtoResponse);
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.ServerError), dtoResponse);
             }
 
             return response;

@@ -26,10 +26,11 @@ namespace AMWebAPI
 
 
             builder.Services
-                .AddAuthentication(options => {
-                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            })
+                .AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+                })
                 .AddJwtBearer(options =>
                 {
                     options.TokenValidationParameters = new TokenValidationParameters
@@ -76,18 +77,18 @@ namespace AMWebAPI
             });
 
             #region Core Services
-            builder.Services.AddSingleton<ICommunicationService, CommunicationService>();
-            builder.Services.AddSingleton<ISystemStatusService, SystemStatusService>();
-            builder.Services.AddSingleton<IUserService, UserService>();
+            builder.Services.AddScoped<ICommunicationService, CommunicationService>();
+            builder.Services.AddScoped<ISystemStatusService, SystemStatusService>();
+            builder.Services.AddScoped<IUserService, UserService>();
             #endregion
 
             #region Data Services
-            builder.Services.AddDbContext<AMCoreData>(options => options.UseSqlServer(config.GetConnectionString("CoreConnectionString")), ServiceLifetime.Singleton);
-            builder.Services.AddDbContext<AMIdentityData>(options => options.UseSqlServer(config.GetConnectionString("IdentityConnectionString")), ServiceLifetime.Singleton);
+            builder.Services.AddDbContext<AMCoreData>(options => options.UseSqlServer(config.GetConnectionString("CoreConnectionString")), ServiceLifetime.Scoped);
+            builder.Services.AddDbContext<AMIdentityData>(options => options.UseSqlServer(config.GetConnectionString("IdentityConnectionString")), ServiceLifetime.Scoped);
             #endregion
 
             #region Identity Services
-            builder.Services.AddSingleton<IIdentityService, IdentityService>();
+            builder.Services.AddScoped<IIdentityService, IdentityService>();
             #endregion
 
             switch (builder.Environment.EnvironmentName)

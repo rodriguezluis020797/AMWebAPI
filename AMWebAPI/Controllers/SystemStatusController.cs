@@ -32,7 +32,7 @@ namespace AMWebAPI.Controllers
             {
                 response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.SystemUnavailable));
             }
-            
+
             return response;
 
         }

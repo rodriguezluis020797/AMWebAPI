@@ -81,10 +81,9 @@ namespace AMTools
 
             return exp < DateTime.UtcNow;
         }
-
         public static bool IsValidPassword(string password)
         {
-            return Regex.IsMatch(password, @"^(?!.*[\'\""\\<>|; \t:/$^~`()!?]).*(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$");
+            return Regex.IsMatch(password, @"^(?!.*[\'\""\\<>|; \t:/$^~`()!?]).*(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[#%&_+]).{8,}$");
         }
     }
 }

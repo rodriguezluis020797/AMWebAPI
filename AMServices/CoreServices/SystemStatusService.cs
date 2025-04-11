@@ -65,7 +65,7 @@ namespace AMWebAPI.Services.CoreServices
             {
                 return _amCoreData.Database.CanConnect();
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 throw;
             }
