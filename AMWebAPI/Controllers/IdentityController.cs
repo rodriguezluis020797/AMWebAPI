@@ -32,8 +32,6 @@ namespace AMWebAPI.Controllers
             _logger.LogInfo("+");
             var response = new UserDTO();
             var loginAsyncResponse = new LogInAsyncResponse();
-            var jwToken = string.Empty;
-            var refreshToken = string.Empty;
             try
             {
                 var fingerprint = new FingerprintDTO()
@@ -67,9 +65,9 @@ namespace AMWebAPI.Controllers
                 Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!)),
             };
 
-            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwToken, cookieOptions);
+            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), loginAsyncResponse.jwToken, cookieOptions);
 
-            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, cookieOptions);
+            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), loginAsyncResponse.refreshToken, cookieOptions);
 
             _logger.LogInfo("-");
             return StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success), dto);
