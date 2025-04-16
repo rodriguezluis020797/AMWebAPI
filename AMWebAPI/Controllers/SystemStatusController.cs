@@ -22,15 +22,15 @@ namespace AMWebAPI.Controllers
         public async Task<IActionResult> FullSystemCheck()
         {
             var result = await _systemStatusService.IsFullSystemActive();
-            var response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown));
+            var response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown), false);
 
             if (result)
             {
-                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success));
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success), true);
             }
             else
             {
-                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.SystemUnavailable));
+                response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.SystemUnavailable), false);
             }
 
             return response;
