@@ -19,199 +19,139 @@ namespace AMWebAPI.Services.IdentityServices
 {
     public interface IIdentityService
     {
-        public Task<LogInAsyncResponse> LogInAsync(UserDTO userDTO, FingerprintDTO fingerprintDTO);
-        public Task<UserDTO> UpdatePasswordAsync(UserDTO dto, string token);
-        public Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
-        public ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey);
+        Task<LogInAsyncResponse> LogInAsync(UserDTO userDTO, FingerprintDTO fingerprintDTO);
+        Task<UserDTO> UpdatePasswordAsync(UserDTO dto, string token);
+        Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
+        ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey);
     }
+
     public class IdentityService : IIdentityService
     {
         private readonly IAMLogger _logger;
         private readonly AMCoreData _coreData;
         private readonly AMIdentityData _identityData;
         private readonly IConfiguration _configuration;
+
         public IdentityService(AMCoreData coreData, AMIdentityData identityData, IAMLogger logger, IConfiguration configuration)
         {
             _logger = logger;
             _coreData = coreData;
-            _configuration = configuration;
             _identityData = identityData;
+            _configuration = configuration;
         }
+
         public async Task<LogInAsyncResponse> LogInAsync(UserDTO userDTO, FingerprintDTO fingerprintDTO)
         {
-            var response = new LogInAsyncResponse();
-
-            var user = await _coreData.Users
-                .Where(x => x.EMail.Equals(userDTO.EMail))
-                .FirstOrDefaultAsync();
-
-            if (user == null)
-            {
-                throw new ArgumentException();
-            }
+            var user = await _coreData.Users.FirstOrDefaultAsync(x => x.EMail == userDTO.EMail);
+            if (user == null) throw new ArgumentException();
 
             var passwordModel = await _identityData.Passwords
                 .Where(x => x.UserId == user.UserId)
                 .OrderByDescending(x => x.CreateDate)
                 .FirstOrDefaultAsync();
-
-
-            if (passwordModel == null)
-            {
-                throw new Exception(nameof(passwordModel));
-            }
+            if (passwordModel == null) throw new Exception(nameof(passwordModel));
 
             var hashedPassword = IdentityTool.HashPassword(userDTO.Password, passwordModel.Salt);
+            if (hashedPassword != passwordModel.HashedPassword) throw new ArgumentException();
 
-            if (!hashedPassword.Equals(passwordModel.HashedPassword))
+            var session = new SessionModel
             {
-                throw new ArgumentException();
-            }
-            else
+                CreateDate = DateTime.UtcNow,
+                UserId = user.UserId
+            };
+            var sessionAction = new SessionActionModel
             {
-                var session = new SessionModel()
+                CreateDate = DateTime.UtcNow,
+                SessionAction = SessionActionEnum.LogIn
+            };
+            var refreshTokenModel = CreateRefreshTokenModel(user.UserId, fingerprintDTO);
+            CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
+
+            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+                await _coreData.Sessions.AddAsync(session);
+                await _coreData.SaveChangesAsync();
+
+                sessionAction.SessionId = session.SessionId;
+                await _coreData.SessionActions.AddAsync(sessionAction);
+                await _coreData.SaveChangesAsync();
+
+                var existingRefreshTokens = await _identityData.RefreshTokens
+                    .Where(x => x.UserId == user.UserId && x.DeleteDate == null)
+                    .ToListAsync();
+
+                foreach (var token in existingRefreshTokens)
                 {
-                    CreateDate = DateTime.UtcNow,
-                    SessionId = 0,
-                    UserId = user.UserId
-                };
-                var sessionAction = new SessionActionModel()
-                {
-                    CreateDate = DateTime.UtcNow,
-                    SessionId = session.SessionId,
-                    SessionAction = SessionActionEnum.LogIn,
-                    SessionActionId = 0
-                };
-                var refreshTokenModel = new RefreshTokenModel()
-                {
-                    CreateDate = DateTime.UtcNow,
-                    ExpiresDate = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)),
-                    RefreshTokenId = 0,
-                    Token = IdentityTool.GenerateRefreshToken(),
-                    UserId = user.UserId,
-                    DeleteDate = null,
-                    IPAddress = fingerprintDTO.IPAddress,
-                    Language = fingerprintDTO.Language,
-                    Platform = fingerprintDTO.Platform,
-                    UserAgent = fingerprintDTO.UserAgent
-                };
-
-                CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
-
-                response.refreshToken = encryptedRefreshToken;
-
-                using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    await _coreData.Sessions.AddAsync(session);
-                    await _coreData.SaveChangesAsync();
-
-                    sessionAction.SessionId = session.SessionId;
-                    await _coreData.SessionActions.AddAsync(sessionAction);
-                    await _coreData.SaveChangesAsync();
-
-                    var existingRefreshTokens = await _identityData.RefreshTokens
-                        .Where(x => x.UserId == user.UserId && x.DeleteDate == null)
-                        .ToListAsync();
-
-                    foreach (var existingRefreshToken in existingRefreshTokens)
-                    {
-                        existingRefreshToken.DeleteDate = DateTime.UtcNow;
-                        _identityData.RefreshTokens.Update(existingRefreshToken);
-                        await _identityData.SaveChangesAsync();
-                    }
-
-                    await _identityData.RefreshTokens.AddAsync(refreshTokenModel);
-                    await _identityData.SaveChangesAsync();
-
-                    scope.Complete();
+                    token.DeleteDate = DateTime.UtcNow;
+                    _identityData.RefreshTokens.Update(token);
                 }
+                await _identityData.SaveChangesAsync();
 
-                var claims = new[]
-                {
-                    new Claim(SessionClaimEnum.UserId.ToString(), user.UserId.ToString()),
-                    new Claim(SessionClaimEnum.SessionId.ToString(), session.SessionId.ToString()),
-                };
+                await _identityData.RefreshTokens.AddAsync(refreshTokenModel);
+                await _identityData.SaveChangesAsync();
 
-                response.jwToken = IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
-
-                _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}" +
-                  $"IP Address: {fingerprintDTO.IPAddress}" +
-                  $"UserAgent: {fingerprintDTO.UserAgent}" +
-                  $"Platform: {fingerprintDTO.Platform}" +
-                  $"Language: {fingerprintDTO.Language}");
-
-                userDTO.CreateNewRecordFromModel(user);
-                userDTO.IsTempPassword = passwordModel.Temporary;
-
-                response.userDTO = userDTO;
+                scope.Complete();
             }
 
-            return response;
+            var claims = new[]
+            {
+                new Claim(SessionClaimEnum.UserId.ToString(), user.UserId.ToString()),
+                new Claim(SessionClaimEnum.SessionId.ToString(), session.SessionId.ToString())
+            };
+
+            var jwt = IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
+
+            _logger.LogAudit($"User Id: {user.UserId}\nIP Address: {fingerprintDTO.IPAddress}UserAgent: {fingerprintDTO.UserAgent}Platform: {fingerprintDTO.Platform}Language: {fingerprintDTO.Language}");
+
+            userDTO.CreateNewRecordFromModel(user);
+            userDTO.IsTempPassword = passwordModel.Temporary;
+
+            return new LogInAsyncResponse
+            {
+                jwToken = jwt,
+                refreshToken = encryptedRefreshToken,
+                userDTO = userDTO
+            };
         }
 
         public async Task<UserDTO> UpdatePasswordAsync(UserDTO dto, string token)
         {
-            if (!IdentityTool.IsValidPassword(dto.Password))
-            {
-                throw new ArgumentException();
-            }
+            if (!IdentityTool.IsValidPassword(dto.Password)) throw new ArgumentException();
 
             var principal = GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
+            var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
 
-            var userId = principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value;
-            var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
+            var userModel = await _coreData.Users.FirstOrDefaultAsync(x => x.UserId == userId);
+            if (userModel == null) throw new Exception(nameof(userId));
 
-            var userModel = await _coreData.Users
-                .Where(x => x.UserId == Convert.ToInt64(userId))
-                .FirstOrDefaultAsync();
-
-            if (userModel == null)
-            {
-                throw new Exception(nameof(userId));
-            }
-
-            var passwordModelList = await _identityData.Passwords
+            var recentPasswords = await _identityData.Passwords
                 .Where(x => x.UserId == userModel.UserId)
                 .OrderByDescending(x => x.CreateDate)
                 .Take(5)
                 .ToListAsync();
 
-            if (!passwordModelList.Any())
-            {
-                throw new Exception(nameof(passwordModelList.Count));
-            }
+            if (!recentPasswords.Any()) throw new Exception(nameof(recentPasswords));
 
-            foreach (var password in passwordModelList)
+            foreach (var p in recentPasswords)
             {
-                if (password.HashedPassword.Equals(IdentityTool.HashPassword(dto.Password, password.Salt)))
-                {
+                if (p.HashedPassword == IdentityTool.HashPassword(dto.Password, p.Salt))
                     throw new ArgumentException();
-                }
             }
 
-            var passwordSalt = IdentityTool.GenerateSaltString();
-            var newPassword = new PasswordModel()
+            var salt = IdentityTool.GenerateSaltString();
+            var newPassword = new PasswordModel
             {
                 CreateDate = DateTime.UtcNow,
-                DeleteDate = null,
-                HashedPassword = IdentityTool.HashPassword(dto.Password, passwordSalt),
-                PasswordId = 0,
-                Salt = passwordSalt,
-                Temporary = false,
+                HashedPassword = IdentityTool.HashPassword(dto.Password, salt),
+                Salt = salt,
                 UserId = userModel.UserId
             };
-            var userComm = new UserCommunicationModel()
+            var userComm = new UserCommunicationModel
             {
-                AttemptOne = null,
-                UserId = userModel.UserId,
-                AttemptThree = null,
-                AttemptTwo = null,
-                CommunicationId = 0,
                 CreateDate = DateTime.UtcNow,
-                DeleteDate = null,
+                UserId = userModel.UserId,
                 Message = "Your password was recently changed. If you did not request this change please change your password immediately or contact customer service."
             };
-
 
             using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
@@ -230,21 +170,16 @@ namespace AMWebAPI.Services.IdentityServices
 
         public async Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO)
         {
-
             var principal = GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
-
             var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
             var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
             var refreshTokenModel = await _identityData.RefreshTokens
-                .Where(x => x.UserId == userId && DateTime.UtcNow < x.ExpiresDate && x.DeleteDate == null)
+                .Where(x => x.UserId == userId && x.DeleteDate == null && DateTime.UtcNow < x.ExpiresDate)
                 .OrderByDescending(x => x.CreateDate)
                 .FirstOrDefaultAsync();
 
-            if (refreshTokenModel == null)
-            {
-                throw new ArgumentException();
-            }
+            if (refreshTokenModel == null) throw new ArgumentException();
 
             var existingFingerprint = new FingerprintDTO
             {
@@ -254,17 +189,10 @@ namespace AMWebAPI.Services.IdentityServices
                 UserAgent = refreshTokenModel.UserAgent
             };
 
-            if (!IsFingerprintTrustworthy(existingFingerprint, fingerprintDTO))
-            {
-                throw new ArgumentException();
-            }
+            if (!IsFingerprintTrustworthy(existingFingerprint, fingerprintDTO)) throw new ArgumentException();
 
             CryptographyTool.Decrypt(refreshToken, out string decryptedToken);
-
-            if (!refreshTokenModel.Token.Equals(decryptedToken))//|| !refreshTokenModel.FingerPrint.Equals(ipAddress))
-            {
-                throw new ArgumentException();
-            }
+            if (refreshTokenModel.Token != decryptedToken) throw new ArgumentException();
 
             refreshTokenModel.ExpiresDate = refreshTokenModel.ExpiresDate.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!));
             _identityData.RefreshTokens.Update(refreshTokenModel);
@@ -273,88 +201,62 @@ namespace AMWebAPI.Services.IdentityServices
             var claims = new[]
             {
                 new Claim(SessionClaimEnum.UserId.ToString(), userId.ToString()),
-                new Claim(SessionClaimEnum.SessionId.ToString(), sessionId),
+                new Claim(SessionClaimEnum.SessionId.ToString(), sessionId)
             };
 
-            return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, "-1");// _configuration["Jwt:ExpiresInMinutes"]!);
-
+            return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, "-1");
         }
 
         public ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey)
         {
             var tokenHandler = new JwtSecurityTokenHandler();
-
-            // You can add validation parameters (optional)
             var validationParameters = new TokenValidationParameters
             {
-                ValidateIssuer = false, // if you don't need to validate issuer
-                ValidateAudience = false, // if you don't need to validate audience
-                ValidateLifetime = false, // Ensure token has not expired
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)), // Validate signing key
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = false,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
                 ClockSkew = TimeSpan.Zero
             };
 
             try
             {
-                // Decode and validate the token
-                var principal = tokenHandler.ValidateToken(token, validationParameters, out SecurityToken validatedToken);
-                return principal; // Returns the ClaimsPrincipal with the decoded claims
+                return tokenHandler.ValidateToken(token, validationParameters, out _);
             }
             catch (Exception ex)
             {
-                // Handle invalid or expired token
                 throw new UnauthorizedAccessException("Invalid or expired token", ex);
             }
         }
 
-        private bool IsFingerprintTrustworthy(FingerprintDTO databaseFingerprint, FingerprintDTO providedFingerpirnt)
+        private bool IsFingerprintTrustworthy(FingerprintDTO db, FingerprintDTO provided)
         {
-            var trustScore = 0;
-            var maxScore = 100;
-            var trustScoreThreshold = 80;
+            var score = 0;
+            if (db.IPAddress == provided.IPAddress) score += 25; else score -= 10;
+            if (db.Language == provided.Language) score += 25; else score -= 5;
+            if (db.Platform == provided.Platform) score += 25; else score -= 10;
+            if (db.UserAgent == provided.UserAgent) score += 25; else score -= 15;
 
-            if (databaseFingerprint.IPAddress == providedFingerpirnt.IPAddress)
-            {
-                trustScore += 25;
-            }
-            else
-            {
-                trustScore -= 10;
-            }
-            if (databaseFingerprint.Language == providedFingerpirnt.Language)
-            {
-                trustScore += 25;
-            }
-            else
-            {
-                trustScore -= 5;
-            }
-            if (databaseFingerprint.Platform == providedFingerpirnt.Platform)
-            {
-                trustScore += 25;
-            }
-            else
-            {
-                trustScore -= 10;
-            }
-            if (databaseFingerprint.UserAgent == providedFingerpirnt.UserAgent)
-            {
-                trustScore += 25;
-            }
-            else
-            {
-                trustScore -= 15;
-            }
-            trustScore = Math.Max(0, Math.Min(maxScore, trustScore));
-            return trustScore >= trustScoreThreshold;
+            return Math.Clamp(score, 0, 100) >= 80;
         }
+
+        private RefreshTokenModel CreateRefreshTokenModel(long userId, FingerprintDTO fp) => new()
+        {
+            CreateDate = DateTime.UtcNow,
+            ExpiresDate = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)),
+            Token = IdentityTool.GenerateRefreshToken(),
+            UserId = userId,
+            IPAddress = fp.IPAddress,
+            Language = fp.Language,
+            Platform = fp.Platform,
+            UserAgent = fp.UserAgent
+        };
 
         public class LogInAsyncResponse
         {
             public string jwToken { get; set; } = string.Empty;
             public string refreshToken { get; set; } = string.Empty;
-            public UserDTO userDTO { get; set; } = new UserDTO();
-
+            public UserDTO userDTO { get; set; } = new();
         }
     }
 }
