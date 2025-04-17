@@ -23,7 +23,7 @@ namespace AMWebAPI.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> CreateUser([FromBody] UserDTO dto)
+        public async Task<IActionResult> CreateUser([FromBody] ProvidderDTO dto)
         {
             _logger.LogInfo("+");
             try

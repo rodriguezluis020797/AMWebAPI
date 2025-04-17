@@ -12,8 +12,8 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface IUserService
     {
-        Task<UserDTO> CreateUser(UserDTO dto);
-        Task<UserDTO> GetUser(string jwToken);
+        Task<ProvidderDTO> CreateUser(ProvidderDTO dto);
+        Task<ProvidderDTO> GetUser(string jwToken);
     }
 
     public class UserService : IUserService
@@ -36,7 +36,7 @@ namespace AMWebAPI.Services.CoreServices
             _config = config;
         }
 
-        public async Task<UserDTO> CreateUser(UserDTO dto)
+        public async Task<ProvidderDTO> CreateUser(ProvidderDTO dto)
         {
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
@@ -50,30 +50,30 @@ namespace AMWebAPI.Services.CoreServices
                 return dto;
             }
 
-            var user = new UserModel();
+            var user = new ProviderModel();
             user.CreateNewRecordFromDTO(dto);
 
             await _db.Users.AddAsync(user);
             await _db.SaveChangesAsync();
 
-            await TrySendNewUserMessage(user.UserId);
+            await TrySendNewUserMessage(user.Provider);
 
-            _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}E-Mail: {user.EMail}");
+            _logger.LogAudit($"User Id: {user.Provider}{Environment.NewLine}E-Mail: {user.EMail}");
 
             dto.CreateNewRecordFromModel(user);
             return dto;
         }
 
-        public async Task<UserDTO> GetUser(string jwToken)
+        public async Task<ProvidderDTO> GetUser(string jwToken)
         {
             var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
-            var userId = Convert.ToInt64(claims.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
+            var userId = Convert.ToInt64(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Provider == userId);
             if (user == null)
                 throw new ArgumentException(nameof(userId));
 
-            var dto = new UserDTO();
+            var dto = new ProvidderDTO();
             dto.CreateNewRecordFromModel(user);
             return dto;
         }

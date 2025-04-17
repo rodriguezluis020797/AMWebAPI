@@ -36,7 +36,7 @@ namespace AMUserAcceptance
             identityOptionsBuilder.UseSqlServer(config.GetConnectionString("IdentityConnectionString"));
             DbContextOptions<AMIdentityData> identityOptions = identityOptionsBuilder.Options;
 
-            var users = new List<UserModel>();
+            var users = new List<ProviderModel>();
             var passwordModel = new PasswordModel();
             var userComm = new UserCommunicationModel();
             var salt = string.Empty;
@@ -63,12 +63,12 @@ namespace AMUserAcceptance
                     PasswordId = 0,
                     Salt = salt,
                     Temporary = true,
-                    UserId = user.UserId,
+                    UserId = user.Provider,
                 };
 
                 userComm = new UserCommunicationModel()
                 {
-                    UserId = user.UserId,
+                    UserId = user.Provider,
                     AttemptOne = null,
                     AttemptThree = null,
                     AttemptTwo = null,

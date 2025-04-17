@@ -92,13 +92,13 @@ namespace AMCommunication
                             if (result.Response.IsSuccessStatusCode)
                             {
                                 userComm.Sent = true;
-                                str = $"Sent user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId}";
+                                str = $"Sent user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.Provider}";
                                 logger.LogInfo(str);
                                 logger.LogAudit(str);
                             }
                             else
                             {
-                                str = $"Unable to send user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.UserId} - Reason: {result.Response.Body.ReadAsStringAsync()}";
+                                str = $"Unable to send user communication id {nameof(userComm.CommunicationId)} to {userComm.User.EMail} with user id {userComm.User.Provider} - Reason: {result.Response.Body.ReadAsStringAsync()}";
                                 logger.LogError(str);
                             }
 

@@ -14,26 +14,56 @@ namespace AMWebAPI.Services.DataServices
             _configuration = configuration;
         }
 
-        protected override void OnConfiguring(DbContextOptionsBuilder options)
-        {
-            options.UseSqlServer(
-                _configuration.GetConnectionString("CoreConnectionString"),
-                sqlOptions => sqlOptions.MigrationsAssembly("AMWebAPI")
-            );
+        protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+        { optionsBuilder.UseSqlServer(
+                    _configuration.GetConnectionString("CoreConnectionString"),
+                    sqlOptions => sqlOptions.MigrationsAssembly("AMWebAPI")
+                );
         }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            ConfigureSessionActionModel(modelBuilder);
-            ConfigureSessionModel(modelBuilder);
-            ConfigureUserCommunicationModel(modelBuilder);
+            ConfigureClientModel(modelBuilder);
             ConfigureUserModel(modelBuilder);
+            ConfigureUserCommunicationModel(modelBuilder);
+            ConfigureSessionModel(modelBuilder);
+            ConfigureSessionActionModel(modelBuilder);
         }
 
-        private static void ConfigureSessionActionModel(ModelBuilder modelBuilder)
+        private static void ConfigureClientModel(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<SessionActionModel>()
-                .HasKey(sa => sa.SessionActionId);
+            modelBuilder.Entity<ClientModel>()
+                .HasKey(x => x.ClientId);
+
+            modelBuilder.Entity<ProviderModel>()
+                .HasMany(u => u.Clients)
+                .WithOne(c => c.User)
+                .HasForeignKey(c => c.ClientId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+
+        private static void ConfigureUserModel(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ProviderModel>()
+                .HasKey(u => u.Provider);
+
+            modelBuilder.Entity<ProviderModel>()
+                .HasMany(u => u.Sessions)
+                .WithOne(s => s.User)
+                .HasForeignKey(s => s.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProviderModel>()
+                .HasMany(u => u.Communications)
+                .WithOne(c => c.User)
+                .HasForeignKey(c => c.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+
+        private static void ConfigureUserCommunicationModel(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<UserCommunicationModel>()
+                .HasKey(uc => uc.CommunicationId);
         }
 
         private static void ConfigureSessionModel(ModelBuilder modelBuilder)
@@ -48,33 +78,16 @@ namespace AMWebAPI.Services.DataServices
                 .OnDelete(DeleteBehavior.Cascade);
         }
 
-        private static void ConfigureUserCommunicationModel(ModelBuilder modelBuilder)
+        private static void ConfigureSessionActionModel(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<UserCommunicationModel>()
-                .HasKey(uc => uc.CommunicationId);
+            modelBuilder.Entity<SessionActionModel>()
+                .HasKey(sa => sa.SessionActionId);
         }
 
-        private static void ConfigureUserModel(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<UserModel>()
-                .HasKey(u => u.UserId);
-
-            modelBuilder.Entity<UserModel>()
-                .HasMany(u => u.Sessions)
-                .WithOne(s => s.User)
-                .HasForeignKey(s => s.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-
-            modelBuilder.Entity<UserModel>()
-                .HasMany(u => u.Communications)
-                .WithOne(c => c.User)
-                .HasForeignKey(c => c.UserId)
-                .OnDelete(DeleteBehavior.Cascade);
-        }
-
-        public DbSet<SessionActionModel> SessionActions { get; set; }
-        public DbSet<SessionModel> Sessions { get; set; }
-        public DbSet<UserCommunicationModel> UserCommunications { get; set; }
-        public DbSet<UserModel> Users { get; set; }
+        public DbSet<ClientModel> Clients { get; init; }
+        public DbSet<SessionActionModel> SessionActions { get; init; }
+        public DbSet<SessionModel> Sessions { get; init; }
+        public DbSet<UserCommunicationModel> UserCommunications { get; init; }
+        public DbSet<ProviderModel> Users { get; init; }
     }
 }

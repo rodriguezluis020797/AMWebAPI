@@ -13,7 +13,7 @@
     public enum SessionClaimEnum
     {
         Unknown = 0,
-        UserId,
+        ProviderId,
         SessionId,
         JWToken,
         RefreshToken
@@ -22,5 +22,6 @@
     {
         Unknown = 0,
         LogIn,
+        ChangePassword
     }
 }

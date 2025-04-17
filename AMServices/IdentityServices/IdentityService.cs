@@ -19,8 +19,8 @@ namespace AMWebAPI.Services.IdentityServices
 {
     public interface IIdentityService
     {
-        Task<LogInAsyncResponse> LogInAsync(UserDTO userDTO, FingerprintDTO fingerprintDTO);
-        Task<UserDTO> UpdatePasswordAsync(UserDTO dto, string token);
+        Task<LogInAsyncResponse> LogInAsync(ProvidderDTO userDTO, FingerprintDTO fingerprintDTO);
+        Task<ProvidderDTO> UpdatePasswordAsync(ProvidderDTO dto, string token);
         Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
     }
 
@@ -39,13 +39,13 @@ namespace AMWebAPI.Services.IdentityServices
             _configuration = configuration;
         }
 
-        public async Task<LogInAsyncResponse> LogInAsync(UserDTO userDTO, FingerprintDTO fingerprintDTO)
+        public async Task<LogInAsyncResponse> LogInAsync(ProvidderDTO userDTO, FingerprintDTO fingerprintDTO)
         {
             var user = await _coreData.Users.FirstOrDefaultAsync(x => x.EMail == userDTO.EMail);
             if (user == null) throw new ArgumentException();
 
             var passwordModel = await _identityData.Passwords
-                .Where(x => x.UserId == user.UserId)
+                .Where(x => x.UserId == user.Provider)
                 .OrderByDescending(x => x.CreateDate)
                 .FirstOrDefaultAsync();
             if (passwordModel == null) throw new Exception(nameof(passwordModel));
@@ -56,14 +56,14 @@ namespace AMWebAPI.Services.IdentityServices
             var session = new SessionModel
             {
                 CreateDate = DateTime.UtcNow,
-                UserId = user.UserId
+                UserId = user.Provider
             };
             var sessionAction = new SessionActionModel
             {
                 CreateDate = DateTime.UtcNow,
                 SessionAction = SessionActionEnum.LogIn
             };
-            var refreshTokenModel = CreateRefreshTokenModel(user.UserId, fingerprintDTO);
+            var refreshTokenModel = CreateRefreshTokenModel(user.Provider, fingerprintDTO);
             CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
 
             using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
@@ -76,7 +76,7 @@ namespace AMWebAPI.Services.IdentityServices
                 await _coreData.SaveChangesAsync();
 
                 var existingRefreshTokens = await _identityData.RefreshTokens
-                    .Where(x => x.UserId == user.UserId && x.DeleteDate == null)
+                    .Where(x => x.UserId == user.Provider && x.DeleteDate == null)
                     .ToListAsync();
 
                 foreach (var token in existingRefreshTokens)
@@ -92,15 +92,17 @@ namespace AMWebAPI.Services.IdentityServices
                 scope.Complete();
             }
 
+            _logger.LogAudit($"User Id: {user.Provider}");
+
             var claims = new[]
             {
-                new Claim(SessionClaimEnum.UserId.ToString(), user.UserId.ToString()),
+                new Claim(SessionClaimEnum.ProviderId.ToString(), user.Provider.ToString()),
                 new Claim(SessionClaimEnum.SessionId.ToString(), session.SessionId.ToString())
             };
 
             var jwt = IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
 
-            _logger.LogAudit($"User Id: {user.UserId}\nIP Address: {fingerprintDTO.IPAddress}UserAgent: {fingerprintDTO.UserAgent}Platform: {fingerprintDTO.Platform}Language: {fingerprintDTO.Language}");
+            _logger.LogAudit($"User Id: {user.Provider}\nIP Address: {fingerprintDTO.IPAddress}UserAgent: {fingerprintDTO.UserAgent}Platform: {fingerprintDTO.Platform}Language: {fingerprintDTO.Language}");
 
             userDTO.CreateNewRecordFromModel(user);
             userDTO.IsTempPassword = passwordModel.Temporary;
@@ -113,18 +115,19 @@ namespace AMWebAPI.Services.IdentityServices
             };
         }
 
-        public async Task<UserDTO> UpdatePasswordAsync(UserDTO dto, string token)
+        public async Task<ProvidderDTO> UpdatePasswordAsync(ProvidderDTO dto, string token)
         {
             if (!IdentityTool.IsValidPassword(dto.Password)) throw new ArgumentException();
 
             var principal = IdentityTool.GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
-            var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
+            var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+            var sessionId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value);
 
-            var userModel = await _coreData.Users.FirstOrDefaultAsync(x => x.UserId == userId);
+            var userModel = await _coreData.Users.FirstOrDefaultAsync(x => x.Provider == userId);
             if (userModel == null) throw new Exception(nameof(userId));
 
             var recentPasswords = await _identityData.Passwords
-                .Where(x => x.UserId == userModel.UserId)
+                .Where(x => x.UserId == userModel.Provider)
                 .OrderByDescending(x => x.CreateDate)
                 .Take(5)
                 .ToListAsync();
@@ -143,18 +146,28 @@ namespace AMWebAPI.Services.IdentityServices
                 CreateDate = DateTime.UtcNow,
                 HashedPassword = IdentityTool.HashPassword(dto.Password, salt),
                 Salt = salt,
-                UserId = userModel.UserId
+                UserId = userModel.Provider
             };
             var userComm = new UserCommunicationModel
             {
                 CreateDate = DateTime.UtcNow,
-                UserId = userModel.UserId,
+                UserId = userModel.Provider,
                 Message = "Your password was recently changed. If you did not request this change please change your password immediately or contact customer service."
+            };
+
+            var sessionAction = new SessionActionModel()
+            {
+                CreateDate = DateTime.UtcNow,
+                SessionAction = SessionActionEnum.ChangePassword,
+                SessionId = sessionId
             };
 
             using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
                 await _coreData.AddAsync(userComm);
+                await _coreData.SaveChangesAsync();
+
+                await _coreData.SessionActions.AddAsync(sessionAction);
                 await _coreData.SaveChangesAsync();
 
                 await _identityData.Passwords.AddAsync(newPassword);
@@ -164,13 +177,14 @@ namespace AMWebAPI.Services.IdentityServices
             }
 
             dto.CreateNewRecordFromModel(userModel);
+            _logger.LogAudit($"User Id: {userId}");
             return dto;
         }
 
         public async Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO)
         {
             var principal = IdentityTool.GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
-            var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
+            var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
             var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
             var refreshTokenModel = await _identityData.RefreshTokens
@@ -199,14 +213,12 @@ namespace AMWebAPI.Services.IdentityServices
 
             var claims = new[]
             {
-                new Claim(SessionClaimEnum.UserId.ToString(), userId.ToString()),
+                new Claim(SessionClaimEnum.ProviderId.ToString(), userId.ToString()),
                 new Claim(SessionClaimEnum.SessionId.ToString(), sessionId)
             };
 
             return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, "-1");
         }
-
-        
 
         private bool IsFingerprintTrustworthy(FingerprintDTO db, FingerprintDTO provided)
         {
@@ -235,7 +247,7 @@ namespace AMWebAPI.Services.IdentityServices
         {
             public string jwToken { get; set; } = string.Empty;
             public string refreshToken { get; set; } = string.Empty;
-            public UserDTO userDTO { get; set; } = new();
+            public ProvidderDTO userDTO { get; set; } = new();
         }
     }
 }

@@ -4,7 +4,7 @@ using AMTools.Tools;
 
 namespace AMWebAPI.Models.DTOModels
 {
-    public class UserDTO : BaseDTO
+    public class ProvidderDTO : BaseDTO
     {
         public string FirstName { get; set; } = string.Empty;
         public string? MiddleName { get; set; } = string.Empty;
@@ -13,7 +13,7 @@ namespace AMWebAPI.Models.DTOModels
         public string Password { get; set; } = string.Empty;
         public bool IsTempPassword { get; set; } = false;
 
-        public void CreateNewRecordFromModel(UserModel user)
+        public void CreateNewRecordFromModel(ProviderModel user)
         {
             base.ResetModel();
             FirstName = user.FirstName;

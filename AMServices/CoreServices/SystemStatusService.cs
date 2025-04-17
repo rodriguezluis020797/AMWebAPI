@@ -23,34 +23,26 @@ namespace AMWebAPI.Services.CoreServices
         {
             try
             {
-                var checkCoreDbTask = Task.Run(() => CheckCoreDbTask());
-                var checkIdentityDbTask = Task.Run(() => CheckIdentityDbTask());
+                var tasks = new List<(string Name, Task<bool> Task)>
+        {
+            ($"{nameof(CheckCoreDbTask)}", Task.Run(() => CheckCoreDbTask())),
+            ($"{nameof(CheckIdentityDbTask)}", Task.Run(() => CheckIdentityDbTask()))
+        };
 
-                var tasks = new List<Task<bool>>()
-                {
-                    checkCoreDbTask,
-                    checkIdentityDbTask
-                };
+                await Task.WhenAll(tasks.Select(t => t.Task));
 
-                var taskResults = await Task.WhenAll(tasks);
+                var allSuccessful = true;
 
-                if (taskResults.All(t => t))
+                foreach (var (name, task) in tasks)
                 {
-                    return true;
-                }
-                else
-                {
-                    var index = 0;
-                    foreach (var item in taskResults)
+                    if (!task.Result)
                     {
-                        if (!taskResults[index])
-                        {
-                            _logger.LogError($"Task with index {index} failed.");
-                        }
-                        index++;
+                        _logger.LogError($"Task '{name}' failed.");
+                        allSuccessful = false;
                     }
-                    return false;
                 }
+
+                return allSuccessful;
             }
             catch (Exception e)
             {

@@ -13,7 +13,7 @@ namespace AMWebAPI.Controllers
     [ApiController]
     [Route("api/[controller]/[action]")]
     [Authorize]
-    public class IdentityController : Controller
+    public class IdentityController : ControllerBase
     {
         private readonly IAMLogger _logger;
         private readonly IIdentityService _identityService;
@@ -28,33 +28,34 @@ namespace AMWebAPI.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> LogIn([FromBody] UserDTO dto)
+        public async Task<IActionResult> LogIn([FromBody] ProvidderDTO dto)
         {
             _logger.LogInfo("+");
-            var response = new UserDTO();
 
             try
             {
-                var fingerprint = ExtractFingerprintFromHeaders();
+                var fingerprint = ExtractFingerprint();
                 fingerprint.Validate();
 
                 var loginResult = await _identityService.LogInAsync(dto, fingerprint);
-                response = loginResult.userDTO;
-
                 SetAuthCookies(loginResult.jwToken, loginResult.refreshToken);
+
+                _logger.LogInfo("-");
+                return StatusCode((int)HttpStatusCodeEnum.Success, loginResult.userDTO);
             }
             catch (ArgumentException)
             {
                 return StatusCode((int)HttpStatusCodeEnum.BadCredentials, dto);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _logger.LogError(e.ToString());
-                return StatusCode((int)HttpStatusCodeEnum.ServerError);
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError, dto);
             }
-
-            _logger.LogInfo("-");
-            return StatusCode((int)HttpStatusCodeEnum.Success, dto);
+            finally
+            {
+                _logger.LogInfo("-");
+            }
         }
 
         [HttpGet]
@@ -69,92 +70,84 @@ namespace AMWebAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Ping()
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
-            var response = StatusCode((int)HttpStatusCodeEnum.Unknown);
-
             try
             {
-                var fingerprint = ExtractFingerprintFromHeaders();
+                var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                var refresh = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
+                var fingerprint = ExtractFingerprint();
+
                 fingerprint.Validate();
 
-                if (!string.IsNullOrEmpty(jwToken) || !string.IsNullOrEmpty(refreshToken))
+                if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refresh))
                 {
-                    if (IdentityTool.IsTheJWTExpired(jwToken))
+                    if (IdentityTool.IsTheJWTExpired(jwt))
                     {
-                        var newJWT = await _identityService.RefreshJWToken(jwToken, refreshToken, fingerprint);
-                        SetAuthCookies(newJWT, refreshToken);
+                        var newJwt = await _identityService.RefreshJWToken(jwt, refresh, fingerprint);
+                        SetAuthCookies(newJwt, refresh);
                     }
                 }
 
-                response = StatusCode((int)HttpStatusCodeEnum.Success);
+                return StatusCode((int)HttpStatusCodeEnum.Success);
             }
             catch (ArgumentException)
             {
-                response = StatusCode((int)HttpStatusCodeEnum.BadCredentials);
+                return StatusCode((int)HttpStatusCodeEnum.BadCredentials);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _logger.LogError(e.ToString());
-                response = StatusCode((int)HttpStatusCodeEnum.ServerError);
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
             }
-
-            return response;
         }
 
         [HttpPost]
-        public async Task<IActionResult> ResetPassword([FromBody] UserDTO dto)
+        public async Task<IActionResult> ResetPassword([FromBody] ProvidderDTO dto)
         {
             _logger.LogInfo("+");
-            var dtoResponse = new UserDTO();
-            var response = StatusCode((int)HttpStatusCodeEnum.Unknown, dtoResponse);
 
             try
             {
-                var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                if (string.IsNullOrWhiteSpace(jwt)) throw new Exception("JWT token missing.");
 
-                if (string.IsNullOrEmpty(jwToken))
-                    throw new Exception(nameof(jwToken));
-
-                dtoResponse = await _identityService.UpdatePasswordAsync(dto, jwToken);
-                response = StatusCode((int)HttpStatusCodeEnum.Unknown, dtoResponse);
+                var result = await _identityService.UpdatePasswordAsync(dto, jwt);
+                return StatusCode((int)HttpStatusCodeEnum.Success, result);
             }
             catch (ArgumentException)
             {
-                response = StatusCode((int)HttpStatusCodeEnum.BadPassword, new UserDTO());
+                return StatusCode((int)HttpStatusCodeEnum.BadPassword, new ProvidderDTO());
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _logger.LogError(e.ToString());
-                response = StatusCode((int)HttpStatusCodeEnum.ServerError, new UserDTO());
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError, new ProvidderDTO());
             }
-
-            return response;
+            finally
+            {
+                _logger.LogInfo("-");
+            }
         }
 
-        private FingerprintDTO ExtractFingerprintFromHeaders()
+        private FingerprintDTO ExtractFingerprint() => new()
         {
-            return new FingerprintDTO
-            {
-                IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-                Language = HttpContext.Request.Headers["X-Fingerprint-Language"].ToString(),
-                Platform = HttpContext.Request.Headers["X-Fingerprint-Platform"].ToString(),
-                UserAgent = HttpContext.Request.Headers["X-Fingerprint-UA"].ToString()
-            };
-        }
+            IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Language = Request.Headers["X-Fingerprint-Language"],
+            Platform = Request.Headers["X-Fingerprint-Platform"],
+            UserAgent = Request.Headers["X-Fingerprint-UA"]
+        };
 
         private void SetAuthCookies(string jwt, string refreshToken)
         {
-            var cookieOptions = new CookieOptions
+            var options = new CookieOptions
             {
                 HttpOnly = true,
                 Secure = true,
                 SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(Convert.ToInt32(_configuration["CookieSettings:CookieExperationDays"]!))
+                Expires = DateTime.UtcNow.AddDays(int.Parse(_configuration["CookieSettings:CookieExperationDays"]!))
             };
 
-            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwt, cookieOptions);
-            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, cookieOptions);
+            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwt, options);
+            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, options);
         }
 
         private void ExpireAuthCookies()
@@ -167,10 +160,13 @@ namespace AMWebAPI.Controllers
                 Expires = DateTime.UtcNow.AddMinutes(-1)
             };
 
-            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), string.Empty, expiredOptions);
-            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), string.Empty, expiredOptions);
-            Response.Cookies.Delete(SessionClaimEnum.JWToken.ToString(), expiredOptions);
-            Response.Cookies.Delete(SessionClaimEnum.RefreshToken.ToString(), expiredOptions);
+            var jwtKey = SessionClaimEnum.JWToken.ToString();
+            var refreshKey = SessionClaimEnum.RefreshToken.ToString();
+
+            Response.Cookies.Append(jwtKey, string.Empty, expiredOptions);
+            Response.Cookies.Append(refreshKey, string.Empty, expiredOptions);
+            Response.Cookies.Delete(jwtKey, expiredOptions);
+            Response.Cookies.Delete(refreshKey, expiredOptions);
         }
     }
 }

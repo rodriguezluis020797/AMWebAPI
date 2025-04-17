@@ -4,10 +4,10 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace AMData.Models.CoreModels
 {
-    [Table("User")]
-    public class UserModel
+    [Table("Provider")]
+    public class ProviderModel
     {
-        [Key] public long UserId { get; set; }
+        [Key] public long Provider { get; set; }
         public string FirstName { get; set; }
         public string? MiddleName { get; set; }
         public string LastName { get; set; }
@@ -18,8 +18,9 @@ namespace AMData.Models.CoreModels
         public DateTime? DeleteDate { get; set; }
         [NotMapped] public virtual List<SessionModel> Sessions { get; set; }
         [NotMapped] public virtual List<UserCommunicationModel> Communications { get; set; }
+        [NotMapped] public virtual List<ClientModel> Clients { get; set; }
 
-        public void CreateNewRecordFromDTO(UserDTO dto)
+        public void CreateNewRecordFromDTO(ProvidderDTO dto)
         {
             FirstName = dto.FirstName;
             MiddleName = dto.MiddleName;
