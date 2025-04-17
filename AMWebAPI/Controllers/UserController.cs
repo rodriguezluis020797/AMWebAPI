@@ -30,16 +30,16 @@ namespace AMWebAPI.Controllers
             var response = new UserDTO();
             try
             {
-                response = _userService.CreateUser(dto);
+                response = await _userService.CreateUser(dto);
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
-                response = new UserDTO();
-                response.ErrorMessage = "Server Error.";
+                _logger.LogInfo("-");
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
             }
             _logger.LogInfo("-");
-            return new ObjectResult(response);
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
 
 

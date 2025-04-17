@@ -12,7 +12,7 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface IUserService
     {
-        public UserDTO CreateUser(UserDTO dto);
+        public Task<UserDTO> CreateUser(UserDTO dto);
         public Task<UserDTO> GetUser(string jwToken);
     }
     public class UserService : IUserService
@@ -29,8 +29,9 @@ namespace AMWebAPI.Services.CoreServices
             _configuration = configuration;
         }
 
-        public UserDTO CreateUser(UserDTO dto)
+        public async Task<UserDTO> CreateUser(UserDTO dto)
         {
+            var response = new UserDTO();
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
             {
@@ -47,8 +48,8 @@ namespace AMWebAPI.Services.CoreServices
                 var user = new UserModel();
                 user.CreateNewRecordFromDTO(dto);
 
-                _amCoreData.Users.Add(user);
-                _amCoreData.SaveChanges();
+                await _amCoreData.Users.AddAsync(user);
+                await _amCoreData.SaveChangesAsync();
 
                 var message = _configuration["Messages:NewUserMessage"];
 
@@ -69,7 +70,6 @@ namespace AMWebAPI.Services.CoreServices
                 return dto;
             }
         }
-
 
         public async Task<UserDTO> GetUser(string jwToken)
         {
