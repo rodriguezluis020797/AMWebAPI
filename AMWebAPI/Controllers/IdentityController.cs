@@ -27,7 +27,7 @@ namespace AMWebAPI.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> LogIn([FromBody] ProvidderDTO dto)
+        public async Task<IActionResult> LogIn([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
 
@@ -100,7 +100,7 @@ namespace AMWebAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> ResetPassword([FromBody] ProvidderDTO dto)
+        public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
 
@@ -114,12 +114,12 @@ namespace AMWebAPI.Controllers
             }
             catch (ArgumentException)
             {
-                return StatusCode((int)HttpStatusCodeEnum.BadPassword, new ProvidderDTO());
+                return StatusCode((int)HttpStatusCodeEnum.BadPassword, new ProviderDTO());
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
-                return StatusCode((int)HttpStatusCodeEnum.ServerError, new ProvidderDTO());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError, new ProviderDTO());
             }
             finally
             {

@@ -16,8 +16,8 @@ namespace AMWebAPI.Services.IdentityServices
 {
     public interface IIdentityService
     {
-        Task<LogInAsyncResponse> LogInAsync(ProvidderDTO providerDto, FingerprintDTO fingerprintDTO);
-        Task<ProvidderDTO> UpdatePasswordAsync(ProvidderDTO dto, string token);
+        Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDTO);
+        Task<ProviderDTO> UpdatePasswordAsync(ProviderDTO dto, string token);
         Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
     }
 
@@ -36,7 +36,7 @@ namespace AMWebAPI.Services.IdentityServices
             _configuration = configuration;
         }
 
-        public async Task<LogInAsyncResponse> LogInAsync(ProvidderDTO providerDto, FingerprintDTO fingerprintDTO)
+        public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDTO)
         {
             var provider = await _coreData.Providers.FirstOrDefaultAsync(x => x.EMail == providerDto.EMail);
             if (provider == null) throw new ArgumentException();
@@ -112,7 +112,7 @@ namespace AMWebAPI.Services.IdentityServices
             };
         }
 
-        public async Task<ProvidderDTO> UpdatePasswordAsync(ProvidderDTO dto, string token)
+        public async Task<ProviderDTO> UpdatePasswordAsync(ProviderDTO dto, string token)
         {
             if (!IdentityTool.IsValidPassword(dto.Password)) throw new ArgumentException();
 
@@ -244,7 +244,7 @@ namespace AMWebAPI.Services.IdentityServices
         {
             public string jwToken { get; set; } = string.Empty;
             public string refreshToken { get; set; } = string.Empty;
-            public ProvidderDTO providerDTO { get; set; } = new();
+            public ProviderDTO providerDTO { get; set; } = new();
         }
     }
 }

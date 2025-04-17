@@ -4,7 +4,7 @@ using AMTools.Tools;
 
 namespace AMWebAPI.Models.DTOModels
 {
-    public class ProvidderDTO : BaseDTO
+    public class ProviderDTO : BaseDTO
     {
         public string FirstName { get; set; } = string.Empty;
         public string? MiddleName { get; set; } = string.Empty;

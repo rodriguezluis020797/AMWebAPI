@@ -23,7 +23,7 @@ namespace AMWebAPI.Controllers
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> CreateProvider([FromBody] ProvidderDTO dto)
+        public async Task<IActionResult> CreateProvider([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
             try

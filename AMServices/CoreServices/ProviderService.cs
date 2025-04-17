@@ -12,8 +12,8 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface IProviderService
     {
-        Task<ProvidderDTO> CreateProvider(ProvidderDTO dto);
-        Task<ProvidderDTO> GetProvider(string jwToken);
+        Task<ProviderDTO> CreateProvider(ProviderDTO dto);
+        Task<ProviderDTO> GetProvider(string jwToken);
     }
 
     public class ProviderService : IProviderService
@@ -36,7 +36,7 @@ namespace AMWebAPI.Services.CoreServices
             _config = config;
         }
 
-        public async Task<ProvidderDTO> CreateProvider(ProvidderDTO dto)
+        public async Task<ProviderDTO> CreateProvider(ProviderDTO dto)
         {
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
@@ -64,7 +64,7 @@ namespace AMWebAPI.Services.CoreServices
             return dto;
         }
 
-        public async Task<ProvidderDTO> GetProvider(string jwToken)
+        public async Task<ProviderDTO> GetProvider(string jwToken)
         {
             var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
             var providerId = Convert.ToInt64(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
@@ -73,7 +73,7 @@ namespace AMWebAPI.Services.CoreServices
             if (provider == null)
                 throw new ArgumentException(nameof(providerId));
 
-            var dto = new ProvidderDTO();
+            var dto = new ProviderDTO();
             dto.CreateNewRecordFromModel(provider);
             return dto;
         }

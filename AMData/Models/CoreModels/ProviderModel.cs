@@ -20,7 +20,7 @@ namespace AMData.Models.CoreModels
         [NotMapped] public virtual List<ProviderCommunicationModel> Communications { get; set; }
         [NotMapped] public virtual List<ClientModel> Clients { get; set; }
 
-        public void CreateNewRecordFromDTO(ProvidderDTO dto)
+        public void CreateNewRecordFromDTO(ProviderDTO dto)
         {
             FirstName = dto.FirstName;
             MiddleName = dto.MiddleName;

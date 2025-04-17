@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using AMData.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AMWebAPI.Controllers
@@ -6,11 +7,12 @@ namespace AMWebAPI.Controllers
     [ApiController]
     [Route("api/[controller]/[action]")]
     [Authorize]
-    public class ClientController : Controller
+    public class ClientController : ControllerBase
     {
-        public IActionResult Index()
+        [HttpGet]
+        public async Task<IActionResult> Index()
         {
-            return View();
+            return StatusCode((int)HttpStatusCodeEnum.Success);
         }
     }
 }
