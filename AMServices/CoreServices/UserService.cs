@@ -57,7 +57,7 @@ namespace AMWebAPI.Services.CoreServices
                 {
                     try
                     {
-                        _communicationService.AddUserCommunication(user.UserId, message);
+                        await _communicationService.AddUserCommunication(user.UserId, message);
                     }
                     catch
                     {

@@ -5,7 +5,7 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface ICommunicationService
     {
-        public void AddUserCommunication(long userId, string message);
+        public Task AddUserCommunication(long userId, string message);
     }
     public class CommunicationService : ICommunicationService
     {
@@ -15,7 +15,7 @@ namespace AMWebAPI.Services.CoreServices
             _coreData = coreData;
             _coreData = coreData;
         }
-        public void AddUserCommunication(long userId, string message)
+        public async Task AddUserCommunication(long userId, string message)
         {
             var utcTime = DateTime.UtcNow;
             var userComm = new UserCommunicationModel()
@@ -31,8 +31,8 @@ namespace AMWebAPI.Services.CoreServices
                 CreateDate = utcTime
             };
 
-            _coreData.UserCommunications.Add(userComm);
-            _coreData.SaveChanges();
+            await _coreData.UserCommunications.AddAsync(userComm);
+            await _coreData.SaveChangesAsync();
         }
     }
 }
