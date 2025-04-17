@@ -10,20 +10,20 @@ using Microsoft.Extensions.Configuration;
 
 namespace AMWebAPI.Services.CoreServices
 {
-    public interface IUserService
+    public interface IProviderService
     {
-        Task<ProvidderDTO> CreateUser(ProvidderDTO dto);
-        Task<ProvidderDTO> GetUser(string jwToken);
+        Task<ProvidderDTO> CreateProvider(ProvidderDTO dto);
+        Task<ProvidderDTO> GetProvider(string jwToken);
     }
 
-    public class UserService : IUserService
+    public class ProviderService : IProviderService
     {
         private readonly IAMLogger _logger;
         private readonly AMCoreData _db;
         private readonly ICommunicationService _communicationService;
         private readonly IConfiguration _config;
 
-        public UserService(
+        public ProviderService(
             IAMLogger logger,
             AMCoreData db,
             IIdentityService identityService, // NOTE: If unused, consider removing
@@ -36,57 +36,57 @@ namespace AMWebAPI.Services.CoreServices
             _config = config;
         }
 
-        public async Task<ProvidderDTO> CreateUser(ProvidderDTO dto)
+        public async Task<ProvidderDTO> CreateProvider(ProvidderDTO dto)
         {
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
                 return dto;
 
-            bool userExists = _db.Users.Any(x => x.EMail == dto.EMail);
-            if (userExists)
+            bool providerExists = _db.Providers.Any(x => x.EMail == dto.EMail);
+            if (providerExists)
             {
-                dto.ErrorMessage = $"User with given e-mail already exists.{Environment.NewLine}" +
+                dto.ErrorMessage = $"Provider with given e-mail already exists.{Environment.NewLine}" +
                                    $"Please wait to be given access.";
                 return dto;
             }
 
-            var user = new ProviderModel();
-            user.CreateNewRecordFromDTO(dto);
+            var provider = new ProviderModel();
+            provider.CreateNewRecordFromDTO(dto);
 
-            await _db.Users.AddAsync(user);
+            await _db.Providers.AddAsync(provider);
             await _db.SaveChangesAsync();
 
-            await TrySendNewUserMessage(user.Provider);
+            await TrySendNewProviderMessage(provider.ProviderId);
 
-            _logger.LogAudit($"User Id: {user.Provider}{Environment.NewLine}E-Mail: {user.EMail}");
+            _logger.LogAudit($"Provider Id: {provider.ProviderId}{Environment.NewLine}E-Mail: {provider.EMail}");
 
-            dto.CreateNewRecordFromModel(user);
+            dto.CreateNewRecordFromModel(provider);
             return dto;
         }
 
-        public async Task<ProvidderDTO> GetUser(string jwToken)
+        public async Task<ProvidderDTO> GetProvider(string jwToken)
         {
             var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
-            var userId = Convert.ToInt64(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+            var providerId = Convert.ToInt64(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
 
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Provider == userId);
-            if (user == null)
-                throw new ArgumentException(nameof(userId));
+            var provider = await _db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId);
+            if (provider == null)
+                throw new ArgumentException(nameof(providerId));
 
             var dto = new ProvidderDTO();
-            dto.CreateNewRecordFromModel(user);
+            dto.CreateNewRecordFromModel(provider);
             return dto;
         }
 
-        private async Task TrySendNewUserMessage(long userId)
+        private async Task TrySendNewProviderMessage(long providerId)
         {
-            var message = _config["Messages:NewUserMessage"];
+            var message = _config["Messages:NewProviderMessage"];
             if (string.IsNullOrWhiteSpace(message))
                 return;
 
             try
             {
-                await _communicationService.AddUserCommunication(userId, message);
+                await _communicationService.AddProviderCommunication(providerId, message);
             }
             catch
             {

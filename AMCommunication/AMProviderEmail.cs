@@ -3,9 +3,9 @@ using SendGrid;
 
 namespace AMCommunication
 {
-    public class AMUserEmail
+    public class AMProviderEmail
     {
-        public UserCommunicationModel Communication { get; set; } = new UserCommunicationModel();
+        public ProviderCommunicationModel Communication { get; set; } = new ProviderCommunicationModel();
         public Response Response { get; set; } = default!;
     }
 }

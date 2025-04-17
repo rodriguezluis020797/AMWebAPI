@@ -24,8 +24,8 @@ namespace AMWebAPI.Services.DataServices
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             ConfigureClientModel(modelBuilder);
-            ConfigureUserModel(modelBuilder);
-            ConfigureUserCommunicationModel(modelBuilder);
+            ConfigureProviderModel(modelBuilder);
+            ConfigureProviderCommunicationModel(modelBuilder);
             ConfigureSessionModel(modelBuilder);
             ConfigureSessionActionModel(modelBuilder);
         }
@@ -37,32 +37,32 @@ namespace AMWebAPI.Services.DataServices
 
             modelBuilder.Entity<ProviderModel>()
                 .HasMany(u => u.Clients)
-                .WithOne(c => c.User)
-                .HasForeignKey(c => c.ClientId)
+                .WithOne(c => c.Provider)
+                .HasForeignKey(c => c.ProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
 
-        private static void ConfigureUserModel(ModelBuilder modelBuilder)
+        private static void ConfigureProviderModel(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<ProviderModel>()
-                .HasKey(u => u.Provider);
+                .HasKey(u => u.ProviderId);
 
             modelBuilder.Entity<ProviderModel>()
                 .HasMany(u => u.Sessions)
-                .WithOne(s => s.User)
-                .HasForeignKey(s => s.UserId)
+                .WithOne(s => s.Provider)
+                .HasForeignKey(s => s.ProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
 
             modelBuilder.Entity<ProviderModel>()
                 .HasMany(u => u.Communications)
-                .WithOne(c => c.User)
-                .HasForeignKey(c => c.UserId)
+                .WithOne(c => c.Provider)
+                .HasForeignKey(c => c.ProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
 
-        private static void ConfigureUserCommunicationModel(ModelBuilder modelBuilder)
+        private static void ConfigureProviderCommunicationModel(ModelBuilder modelBuilder)
         {
-            modelBuilder.Entity<UserCommunicationModel>()
+            modelBuilder.Entity<ProviderCommunicationModel>()
                 .HasKey(uc => uc.CommunicationId);
         }
 
@@ -87,7 +87,7 @@ namespace AMWebAPI.Services.DataServices
         public DbSet<ClientModel> Clients { get; init; }
         public DbSet<SessionActionModel> SessionActions { get; init; }
         public DbSet<SessionModel> Sessions { get; init; }
-        public DbSet<UserCommunicationModel> UserCommunications { get; init; }
-        public DbSet<ProviderModel> Users { get; init; }
+        public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
+        public DbSet<ProviderModel> Providers { get; init; }
     }
 }

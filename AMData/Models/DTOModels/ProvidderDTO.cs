@@ -13,13 +13,13 @@ namespace AMWebAPI.Models.DTOModels
         public string Password { get; set; } = string.Empty;
         public bool IsTempPassword { get; set; } = false;
 
-        public void CreateNewRecordFromModel(ProviderModel user)
+        public void CreateNewRecordFromModel(ProviderModel provider)
         {
             base.ResetModel();
-            FirstName = user.FirstName;
-            MiddleName = user.MiddleName;
-            LastName = user.LastName;
-            EMail = user.EMail;
+            FirstName = provider.FirstName;
+            MiddleName = provider.MiddleName;
+            LastName = provider.LastName;
+            EMail = provider.EMail;
             Password = string.Empty;
             IsTempPassword = false;
         }

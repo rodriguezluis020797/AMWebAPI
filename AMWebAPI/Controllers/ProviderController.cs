@@ -10,25 +10,25 @@ namespace AMWebAPI.Controllers
     [ApiController]
     [Route("api/[controller]/[action]")]
     [Authorize]
-    public class UserController : ControllerBase
+    public class ProviderController : ControllerBase
     {
-        private readonly IUserService _userService;
+        private readonly IProviderService _providerService;
         private readonly IAMLogger _logger;
 
-        public UserController(IAMLogger logger, IUserService userService)
+        public ProviderController(IAMLogger logger, IProviderService providerService)
         {
             _logger = logger;
-            _userService = userService;
+            _providerService = providerService;
         }
 
         [HttpPost]
         [AllowAnonymous]
-        public async Task<IActionResult> CreateUser([FromBody] ProvidderDTO dto)
+        public async Task<IActionResult> CreateProvider([FromBody] ProvidderDTO dto)
         {
             _logger.LogInfo("+");
             try
             {
-                var result = await _userService.CreateUser(dto);
+                var result = await _providerService.CreateProvider(dto);
                 return StatusCode((int)HttpStatusCodeEnum.Success, result);
             }
             catch (Exception ex)
@@ -43,7 +43,7 @@ namespace AMWebAPI.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetUser()
+        public async Task<IActionResult> GetProvider()
         {
             _logger.LogInfo("+");
 
@@ -53,8 +53,8 @@ namespace AMWebAPI.Controllers
                 if (string.IsNullOrWhiteSpace(jwToken))
                     throw new Exception("JWT token missing from cookies.");
 
-                var user = await _userService.GetUser(jwToken);
-                return StatusCode((int)HttpStatusCodeEnum.Success, user);
+                var provider = await _providerService.GetProvider(jwToken);
+                return StatusCode((int)HttpStatusCodeEnum.Success, provider);
             }
             catch (Exception ex)
             {

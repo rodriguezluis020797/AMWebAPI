@@ -6,7 +6,6 @@ using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.IdentityServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using static AMWebAPI.Services.IdentityServices.IdentityService;
 
 namespace AMWebAPI.Controllers
 {
@@ -41,7 +40,7 @@ namespace AMWebAPI.Controllers
                 SetAuthCookies(loginResult.jwToken, loginResult.refreshToken);
 
                 _logger.LogInfo("-");
-                return StatusCode((int)HttpStatusCodeEnum.Success, loginResult.userDTO);
+                return StatusCode((int)HttpStatusCodeEnum.Success, loginResult.providerDTO);
             }
             catch (ArgumentException)
             {

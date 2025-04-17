@@ -5,7 +5,7 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface ICommunicationService
     {
-        public Task AddUserCommunication(long userId, string message);
+        public Task AddProviderCommunication(long providerId, string message);
     }
     public class CommunicationService : ICommunicationService
     {
@@ -15,12 +15,12 @@ namespace AMWebAPI.Services.CoreServices
             _coreData = coreData;
             _coreData = coreData;
         }
-        public async Task AddUserCommunication(long userId, string message)
+        public async Task AddProviderCommunication(long providerId, string message)
         {
             var utcTime = DateTime.UtcNow;
-            var userComm = new UserCommunicationModel()
+            var providerComm = new ProviderCommunicationModel()
             {
-                UserId = userId,
+                ProviderId = providerId,
                 AttemptOne = null,
                 AttemptThree = null,
                 AttemptTwo = null,
@@ -31,7 +31,7 @@ namespace AMWebAPI.Services.CoreServices
                 CreateDate = utcTime
             };
 
-            await _coreData.UserCommunications.AddAsync(userComm);
+            await _coreData.ProviderCommunications.AddAsync(providerComm);
             await _coreData.SaveChangesAsync();
         }
     }

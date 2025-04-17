@@ -7,7 +7,7 @@ namespace AMData.Models.CoreModels
     [Table("Provider")]
     public class ProviderModel
     {
-        [Key] public long Provider { get; set; }
+        [Key] public long ProviderId { get; set; }
         public string FirstName { get; set; }
         public string? MiddleName { get; set; }
         public string LastName { get; set; }
@@ -17,7 +17,7 @@ namespace AMData.Models.CoreModels
         public DateTime? UpdateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
         [NotMapped] public virtual List<SessionModel> Sessions { get; set; }
-        [NotMapped] public virtual List<UserCommunicationModel> Communications { get; set; }
+        [NotMapped] public virtual List<ProviderCommunicationModel> Communications { get; set; }
         [NotMapped] public virtual List<ClientModel> Clients { get; set; }
 
         public void CreateNewRecordFromDTO(ProvidderDTO dto)

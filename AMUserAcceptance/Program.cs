@@ -21,12 +21,12 @@ namespace AMUserAcceptance
             config.SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
-            await programInstance.SendUserCommunicationAsync(logger, config);
+            await programInstance.SendProviderCommunicationAsync(logger, config);
 
             logger.LogInfo("-");
         }
 
-        private async Task SendUserCommunicationAsync(AMDevLogger logger, ConfigurationManager config)
+        private async Task SendProviderCommunicationAsync(AMDevLogger logger, ConfigurationManager config)
         {
             var coreOptionsBuilder = new DbContextOptionsBuilder<AMCoreData>();
             coreOptionsBuilder.UseSqlServer(config.GetConnectionString("CoreConnectionString"));
@@ -36,22 +36,22 @@ namespace AMUserAcceptance
             identityOptionsBuilder.UseSqlServer(config.GetConnectionString("IdentityConnectionString"));
             DbContextOptions<AMIdentityData> identityOptions = identityOptionsBuilder.Options;
 
-            var users = new List<ProviderModel>();
+            var providers = new List<ProviderModel>();
             var passwordModel = new PasswordModel();
-            var userComm = new UserCommunicationModel();
+            var providerComm = new ProviderCommunicationModel();
             var salt = string.Empty;
             var password = string.Empty;
             var _coreData = new AMCoreData(coreOptions, config);
             var _identityData = new AMIdentityData(identityOptions, config);
 
-            users = _coreData.Users
-                .Where(x => x.AccessGranted == false && x.DeleteDate == null && x.EMail.Equals(config["AcceptedUser"]))
+            providers = _coreData.Providers
+                .Where(x => x.AccessGranted == false && x.DeleteDate == null && x.EMail.Equals(config["AcceptedProvider"]))
                 .OrderBy(x => x.CreateDate)
                 .Take(5)
                 .ToList();
 
 
-            foreach (var user in users)
+            foreach (var provider in providers)
             {
                 salt = IdentityTool.GenerateSaltString();
                 password = IdentityTool.GenerateRandomPassword();
@@ -63,12 +63,12 @@ namespace AMUserAcceptance
                     PasswordId = 0,
                     Salt = salt,
                     Temporary = true,
-                    UserId = user.Provider,
+                    ProviderId = provider.ProviderId,
                 };
 
-                userComm = new UserCommunicationModel()
+                providerComm = new ProviderCommunicationModel()
                 {
-                    UserId = user.Provider,
+                    ProviderId = provider.ProviderId,
                     AttemptOne = null,
                     AttemptThree = null,
                     AttemptTwo = null,
@@ -83,9 +83,9 @@ namespace AMUserAcceptance
 
                 using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {
-                    user.AccessGranted = true;
-                    _coreData.Users.Update(user);
-                    _coreData.UserCommunications.Add(userComm);
+                    provider.AccessGranted = true;
+                    _coreData.Providers.Update(provider);
+                    _coreData.ProviderCommunications.Add(providerComm);
                     _coreData.SaveChanges();
 
                     _identityData.Passwords.Add(passwordModel);
