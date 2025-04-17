@@ -1,8 +1,11 @@
-﻿using AMData.Models.CoreModels;
+﻿using AMData.Models;
+using AMData.Models.CoreModels;
+using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Services.IdentityServices;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace AMWebAPI.Services.CoreServices
@@ -10,8 +13,7 @@ namespace AMWebAPI.Services.CoreServices
     public interface IUserService
     {
         public UserDTO CreateUser(UserDTO dto);
-        public UserDTO GetUserById(string userId);
-        public UserDTO GetUserByEMail(string eMail);
+        public Task<UserDTO> GetUser(string jwToken);
     }
     public class UserService : IUserService
     {
@@ -68,37 +70,17 @@ namespace AMWebAPI.Services.CoreServices
             }
         }
 
-        public UserDTO GetUserByEMail(string eMail)
+
+        public async Task<UserDTO> GetUser(string jwToken)
         {
-            var dto = new UserDTO();
+            var response = new UserDTO();
+            var principal = IdentityTool.GetClaimsFromJwt(jwToken, _configuration["Jwt:Key"]!);
+            var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
+            var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
-            var user = _amCoreData.Users
-                .Where(x => x.EMail.Equals(eMail))
-                .FirstOrDefault();
-
-            if (user == null)
-            {
-                dto.ErrorMessage = "User Not Foound";
-                return dto;
-            }
-            else
-            {
-                dto.CreateNewRecordFromModel(user);
-            }
-            return dto;
-        }
-
-        public UserDTO GetUserById(string userId)
-        {
-            var dto = new UserDTO();
-
-            CryptographyTool.Decrypt(userId, out string decryptedId);
-
-            long.TryParse(decryptedId, out long result);
-
-            var user = _amCoreData.Users
-                .Where(x => x.UserId == result)
-                .FirstOrDefault();
+            var user = await _amCoreData.Users
+                .Where(x => x.UserId == userId)
+                .FirstOrDefaultAsync();
 
             if (user == null)
             {
@@ -106,8 +88,8 @@ namespace AMWebAPI.Services.CoreServices
             }
             else
             {
-                dto.CreateNewRecordFromModel(user);
-                return dto;
+                response.CreateNewRecordFromModel(user);
+                return response;
             }
         }
     }

@@ -1,4 +1,5 @@
-﻿using AMTools.Tools;
+﻿using AMData.Models;
+using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.CoreServices;
 using Microsoft.AspNetCore.Authorization;
@@ -43,42 +44,31 @@ namespace AMWebAPI.Controllers
 
 
         [HttpGet]
-        public async Task<IActionResult> GetUserById([FromQuery] string userId)
+        public async Task<IActionResult> GetUser()
         {
             _logger.LogInfo("+");
             var response = new UserDTO();
+
             try
             {
-                response = _userService.GetUserById(userId);
-            }
+                var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                if (jwToken == null)
+                {
+                    throw new Exception(nameof(jwToken));
+                }
 
-            catch (Exception e)
+                response = await _userService.GetUser(jwToken);
+
+            }
+            catch(Exception e)
             {
                 _logger.LogError(e.ToString());
-                response = new UserDTO();
-                response.ErrorMessage = "Server Error.";
+                _logger.LogInfo("-");
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
             }
-            _logger.LogInfo("-");
-            return new ObjectResult(response);
-        }
 
-        [HttpPost]
-        public async Task<IActionResult> GetUserByEMail([FromBody] UserDTO dto)
-        {
-            _logger.LogInfo("+");
-            var response = new UserDTO();
-            try
-            {
-                response = _userService.GetUserByEMail(dto.EMail);
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e.ToString());
-                response = new UserDTO();
-                response.ErrorMessage = "Server Error.";
-            }
             _logger.LogInfo("-");
-            return new ObjectResult(response);
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
     }
 }

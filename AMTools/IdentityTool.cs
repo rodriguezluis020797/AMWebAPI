@@ -73,6 +73,28 @@ namespace AMTools
             return tokenHandler.WriteToken(token);
         }
 
+        public static ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey)
+        {
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var validationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = false,
+                ValidateAudience = false,
+                ValidateLifetime = false,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
+                ClockSkew = TimeSpan.Zero
+            };
+
+            try
+            {
+                return tokenHandler.ValidateToken(token, validationParameters, out _);
+            }
+            catch (Exception ex)
+            {
+                throw new UnauthorizedAccessException("Invalid or expired token", ex);
+            }
+        }
+
         public static bool IsTheJWTExpired(string token)
         {
             var handler = new JwtSecurityTokenHandler();

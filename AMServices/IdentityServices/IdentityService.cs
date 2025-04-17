@@ -22,7 +22,6 @@ namespace AMWebAPI.Services.IdentityServices
         Task<LogInAsyncResponse> LogInAsync(UserDTO userDTO, FingerprintDTO fingerprintDTO);
         Task<UserDTO> UpdatePasswordAsync(UserDTO dto, string token);
         Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
-        ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey);
     }
 
     public class IdentityService : IIdentityService
@@ -118,7 +117,7 @@ namespace AMWebAPI.Services.IdentityServices
         {
             if (!IdentityTool.IsValidPassword(dto.Password)) throw new ArgumentException();
 
-            var principal = GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
+            var principal = IdentityTool.GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
             var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
 
             var userModel = await _coreData.Users.FirstOrDefaultAsync(x => x.UserId == userId);
@@ -170,7 +169,7 @@ namespace AMWebAPI.Services.IdentityServices
 
         public async Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO)
         {
-            var principal = GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
+            var principal = IdentityTool.GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
             var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
             var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
 
@@ -207,27 +206,7 @@ namespace AMWebAPI.Services.IdentityServices
             return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, "-1");
         }
 
-        public ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey)
-        {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var validationParameters = new TokenValidationParameters
-            {
-                ValidateIssuer = false,
-                ValidateAudience = false,
-                ValidateLifetime = false,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-                ClockSkew = TimeSpan.Zero
-            };
-
-            try
-            {
-                return tokenHandler.ValidateToken(token, validationParameters, out _);
-            }
-            catch (Exception ex)
-            {
-                throw new UnauthorizedAccessException("Invalid or expired token", ex);
-            }
-        }
+        
 
         private bool IsFingerprintTrustworthy(FingerprintDTO db, FingerprintDTO provided)
         {
