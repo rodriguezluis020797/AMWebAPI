@@ -12,84 +12,85 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface IUserService
     {
-        public Task<UserDTO> CreateUser(UserDTO dto);
-        public Task<UserDTO> GetUser(string jwToken);
+        Task<UserDTO> CreateUser(UserDTO dto);
+        Task<UserDTO> GetUser(string jwToken);
     }
+
     public class UserService : IUserService
     {
         private readonly IAMLogger _logger;
-        private readonly AMCoreData _amCoreData;
+        private readonly AMCoreData _db;
         private readonly ICommunicationService _communicationService;
-        private readonly IConfiguration _configuration;
-        public UserService(IAMLogger logger, AMCoreData amCoreData, IIdentityService identityService, ICommunicationService communicationService, IConfiguration configuration)
+        private readonly IConfiguration _config;
+
+        public UserService(
+            IAMLogger logger,
+            AMCoreData db,
+            IIdentityService identityService, // NOTE: If unused, consider removing
+            ICommunicationService communicationService,
+            IConfiguration config)
         {
             _logger = logger;
-            _amCoreData = amCoreData;
+            _db = db;
             _communicationService = communicationService;
-            _configuration = configuration;
+            _config = config;
         }
 
         public async Task<UserDTO> CreateUser(UserDTO dto)
         {
-            var response = new UserDTO();
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
-            {
                 return dto;
-            }
-            if (_amCoreData.Users.Any(x => x.EMail.Equals(dto.EMail)))
+
+            bool userExists = _db.Users.Any(x => x.EMail == dto.EMail);
+            if (userExists)
             {
                 dto.ErrorMessage = $"User with given e-mail already exists.{Environment.NewLine}" +
-                    $"Please wait to be given access.";
+                                   $"Please wait to be given access.";
                 return dto;
             }
-            else
-            {
-                var user = new UserModel();
-                user.CreateNewRecordFromDTO(dto);
 
-                await _amCoreData.Users.AddAsync(user);
-                await _amCoreData.SaveChangesAsync();
+            var user = new UserModel();
+            user.CreateNewRecordFromDTO(dto);
 
-                var message = _configuration["Messages:NewUserMessage"];
+            await _db.Users.AddAsync(user);
+            await _db.SaveChangesAsync();
 
-                if (!string.IsNullOrEmpty(message))
-                {
-                    try
-                    {
-                        await _communicationService.AddUserCommunication(user.UserId, message);
-                    }
-                    catch
-                    {
-                        //do nothing... same message that would be sent is the same as displayed in UI.
-                    }
-                }
-                _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}E-Mail: {user.EMail}");
+            await TrySendNewUserMessage(user.UserId);
 
-                dto.CreateNewRecordFromModel(user);
-                return dto;
-            }
+            _logger.LogAudit($"User Id: {user.UserId}{Environment.NewLine}E-Mail: {user.EMail}");
+
+            dto.CreateNewRecordFromModel(user);
+            return dto;
         }
 
         public async Task<UserDTO> GetUser(string jwToken)
         {
-            var response = new UserDTO();
-            var principal = IdentityTool.GetClaimsFromJwt(jwToken, _configuration["Jwt:Key"]!);
-            var userId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
-            var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
+            var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
+            var userId = Convert.ToInt64(claims.FindFirst(SessionClaimEnum.UserId.ToString())?.Value);
 
-            var user = await _amCoreData.Users
-                .Where(x => x.UserId == userId)
-                .FirstOrDefaultAsync();
-
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.UserId == userId);
             if (user == null)
-            {
                 throw new ArgumentException(nameof(userId));
-            }
-            else
+
+            var dto = new UserDTO();
+            dto.CreateNewRecordFromModel(user);
+            return dto;
+        }
+
+        private async Task TrySendNewUserMessage(long userId)
+        {
+            var message = _config["Messages:NewUserMessage"];
+            if (string.IsNullOrWhiteSpace(message))
+                return;
+
+            try
             {
-                response.CreateNewRecordFromModel(user);
-                return response;
+                await _communicationService.AddUserCommunication(userId, message);
+            }
+            catch
+            {
+                // Silent fail — UI will display message anyway
             }
         }
     }
