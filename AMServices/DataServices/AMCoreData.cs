@@ -9,49 +9,67 @@ namespace AMWebAPI.Services.DataServices
         private readonly IConfiguration _configuration;
 
         public AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration)
+            : base(options)
         {
             _configuration = configuration;
         }
+
         protected override void OnConfiguring(DbContextOptionsBuilder options)
         {
-            options.UseSqlServer(_configuration.GetConnectionString("CoreConnectionString"), b => b.MigrationsAssembly("AMWebAPI"));
+            options.UseSqlServer(
+                _configuration.GetConnectionString("CoreConnectionString"),
+                sqlOptions => sqlOptions.MigrationsAssembly("AMWebAPI")
+            );
         }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            #region Session Action
+            ConfigureSessionActionModel(modelBuilder);
+            ConfigureSessionModel(modelBuilder);
+            ConfigureUserCommunicationModel(modelBuilder);
+            ConfigureUserModel(modelBuilder);
+        }
+
+        private static void ConfigureSessionActionModel(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<SessionActionModel>()
-                .HasKey(x => x.SessionActionId);
-            #endregion
+                .HasKey(sa => sa.SessionActionId);
+        }
 
-            #region Session
+        private static void ConfigureSessionModel(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<SessionModel>()
-                .HasKey(x => x.SessionId);
+                .HasKey(s => s.SessionId);
+
             modelBuilder.Entity<SessionModel>()
-                .HasMany(u => u.SessionActions)
-                .WithOne(s => s.Session)
-                .HasForeignKey(s => s.SessionId)
+                .HasMany(s => s.SessionActions)
+                .WithOne(sa => sa.Session)
+                .HasForeignKey(sa => sa.SessionId)
                 .OnDelete(DeleteBehavior.Cascade);
-            #endregion
+        }
 
-            #region UserCommunication
+        private static void ConfigureUserCommunicationModel(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<UserCommunicationModel>()
-                .HasKey(x => x.CommunicationId);
-            #endregion
+                .HasKey(uc => uc.CommunicationId);
+        }
 
-            #region User
+        private static void ConfigureUserModel(ModelBuilder modelBuilder)
+        {
             modelBuilder.Entity<UserModel>()
-                .HasKey(x => x.UserId);
+                .HasKey(u => u.UserId);
+
             modelBuilder.Entity<UserModel>()
                 .HasMany(u => u.Sessions)
                 .WithOne(s => s.User)
                 .HasForeignKey(s => s.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
             modelBuilder.Entity<UserModel>()
                 .HasMany(u => u.Communications)
                 .WithOne(c => c.User)
                 .HasForeignKey(c => c.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
-            #endregion
         }
 
         public DbSet<SessionActionModel> SessionActions { get; set; }
