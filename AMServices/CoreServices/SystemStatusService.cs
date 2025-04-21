@@ -5,7 +5,7 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface ISystemStatusService
     {
-        public Task<bool> IsFullSystemActive();
+        Task<bool> IsFullSystemActive();
     }
 
     public class SystemStatusService : ISystemStatusService
@@ -13,65 +13,55 @@ namespace AMWebAPI.Services.CoreServices
         private readonly IAMLogger _logger;
         private readonly AMCoreData _amCoreData;
         private readonly AMIdentityData _amIdentityData;
+
         public SystemStatusService(IAMLogger logger, AMCoreData amCoreData, AMIdentityData amIdentityData)
         {
             _logger = logger;
             _amCoreData = amCoreData;
             _amIdentityData = amIdentityData;
         }
+
         public async Task<bool> IsFullSystemActive()
         {
             try
             {
-                var tasks = new List<(string Name, Task<bool> Task)>
-        {
-            ($"{nameof(CheckCoreDbTask)}", Task.Run(() => CheckCoreDbTask())),
-            ($"{nameof(CheckIdentityDbTask)}", Task.Run(() => CheckIdentityDbTask()))
-        };
+                var checks = new List<(string Name, Func<bool> Check)>
+                {
+                    (nameof(CheckCoreDb), CheckCoreDb),
+                    (nameof(CheckIdentityDb), CheckIdentityDb)
+                };
 
-                await Task.WhenAll(tasks.Select(t => t.Task));
+                var tasks = checks.Select(c => Task.Run(() => (c.Name, Success: c.Check()))).ToList();
+                var results = await Task.WhenAll(tasks);
 
                 var allSuccessful = true;
 
-                foreach (var (name, task) in tasks)
+                foreach (var (name, success) in results)
                 {
-                    if (!task.Result)
+                    if (!success)
                     {
-                        _logger.LogError($"Task '{name}' failed.");
+                        _logger.LogError($"System check '{name}' failed.");
                         allSuccessful = false;
                     }
                 }
 
                 return allSuccessful;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                _logger.LogError(e.ToString());
+                _logger.LogError($"System status check failed: {ex}");
                 return false;
             }
         }
 
-        private bool CheckCoreDbTask()
+        private bool CheckCoreDb()
         {
-            try
-            {
-                return _amCoreData.Database.CanConnect();
-            }
-            catch (Exception e)
-            {
-                throw;
-            }
+            return _amCoreData.Database.CanConnect();
         }
-        private bool CheckIdentityDbTask()
+
+        private bool CheckIdentityDb()
         {
-            try
-            {
-                return _amIdentityData.Database.CanConnect();
-            }
-            catch (Exception e)
-            {
-                throw;
-            }
+            return _amIdentityData.Database.CanConnect();
         }
     }
 }
