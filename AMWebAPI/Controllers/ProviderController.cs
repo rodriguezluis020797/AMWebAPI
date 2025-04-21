@@ -21,6 +21,31 @@ namespace AMWebAPI.Controllers
             _providerService = providerService;
         }
 
+        [HttpGet]
+        public async Task<IActionResult> GetProvider()
+        {
+            _logger.LogInfo("+");
+
+            try
+            {
+                var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                if (string.IsNullOrWhiteSpace(jwToken))
+                    throw new Exception("JWT token missing from cookies.");
+
+                var provider = await _providerService.GetProvider(jwToken);
+                return StatusCode((int)HttpStatusCodeEnum.Success, provider);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
+            }
+            finally
+            {
+                _logger.LogInfo("-");
+            }
+        }
+
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> CreateProvider([FromBody] ProviderDTO dto)
@@ -42,19 +67,18 @@ namespace AMWebAPI.Controllers
             }
         }
 
-        [HttpGet]
-        public async Task<IActionResult> GetProvider()
+        [HttpPost]
+        public async Task<IActionResult> UpdateProvider([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
-
             try
             {
-                var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-                if (string.IsNullOrWhiteSpace(jwToken))
-                    throw new Exception("JWT token missing from cookies.");
+                var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
 
-                var provider = await _providerService.GetProvider(jwToken);
-                return StatusCode((int)HttpStatusCodeEnum.Success, provider);
+
+                var response = await _providerService.UpdateProvider(dto, jwt);
+
+                return StatusCode((int)HttpStatusCodeEnum.Success);
             }
             catch (Exception ex)
             {

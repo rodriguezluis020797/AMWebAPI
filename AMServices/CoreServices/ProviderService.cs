@@ -12,8 +12,9 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface IProviderService
     {
-        Task<ProviderDTO> CreateProvider(ProviderDTO dto);
-        Task<ProviderDTO> GetProvider(string jwToken);
+        Task<ProviderDTO> CreateProviderAsync(ProviderDTO dto);
+        Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
+        Task<ProviderDTO> GetProviderAsync(string jwToken);
     }
 
     public class ProviderService : IProviderService
@@ -26,7 +27,6 @@ namespace AMWebAPI.Services.CoreServices
         public ProviderService(
             IAMLogger logger,
             AMCoreData db,
-            IIdentityService identityService, // NOTE: If unused, consider removing
             ICommunicationService communicationService,
             IConfiguration config)
         {
@@ -36,13 +36,13 @@ namespace AMWebAPI.Services.CoreServices
             _config = config;
         }
 
-        public async Task<ProviderDTO> CreateProvider(ProviderDTO dto)
+        public async Task<ProviderDTO> CreateProviderAsync(ProviderDTO dto)
         {
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
                 return dto;
 
-            bool providerExists = _db.Providers.Any(x => x.EMail == dto.EMail);
+            bool providerExists = await _db.Providers.AnyAsync(x => x.EMail == dto.EMail);
             if (providerExists)
             {
                 dto.ErrorMessage = $"Provider with given e-mail already exists.{Environment.NewLine}" +
@@ -56,7 +56,7 @@ namespace AMWebAPI.Services.CoreServices
             await _db.Providers.AddAsync(provider);
             await _db.SaveChangesAsync();
 
-            await TrySendNewProviderMessage(provider.ProviderId);
+            await TrySendNewProviderMessageAsync(provider.ProviderId);
 
             _logger.LogAudit($"Provider Id: {provider.ProviderId}{Environment.NewLine}E-Mail: {provider.EMail}");
 
@@ -64,10 +64,9 @@ namespace AMWebAPI.Services.CoreServices
             return dto;
         }
 
-        public async Task<ProviderDTO> GetProvider(string jwToken)
+        public async Task<ProviderDTO> GetProviderAsync(string jwToken)
         {
-            var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
-            var providerId = Convert.ToInt64(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+            var providerId = GetProviderIdFromJwt(jwToken);
 
             var provider = await _db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId);
             if (provider == null)
@@ -78,7 +77,36 @@ namespace AMWebAPI.Services.CoreServices
             return dto;
         }
 
-        private async Task TrySendNewProviderMessage(long providerId)
+        public async Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken)
+        {
+            dto.Validate();
+            if (!string.IsNullOrEmpty(dto.ErrorMessage))
+                return dto;
+
+            var providerId = GetProviderIdFromJwt(jwToken);
+
+            var provider = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId);
+            if (provider == null)
+                throw new ArgumentException(nameof(providerId));
+
+            provider.UpdateRecordFromDTO(dto);
+            await _db.SaveChangesAsync();
+
+            return dto;
+        }
+
+        private long GetProviderIdFromJwt(string jwToken)
+        {
+            var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
+            if (!long.TryParse(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value, out var providerId))
+            {
+                throw new ArgumentException("Invalid provider ID in JWT.");
+            }
+
+            return providerId;
+        }
+
+        private async Task TrySendNewProviderMessageAsync(long providerId)
         {
             var message = _config["Messages:NewProviderMessage"];
             if (string.IsNullOrWhiteSpace(message))

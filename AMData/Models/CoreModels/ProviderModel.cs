@@ -31,5 +31,15 @@ namespace AMData.Models.CoreModels
             DeleteDate = null;
             AccessGranted = false;
         }
+
+        public void UpdateRecordFromDTO(ProviderDTO dto)
+        {
+            FirstName = dto.FirstName;
+            MiddleName = dto.MiddleName;
+            LastName = dto.LastName;
+            UpdateDate = DateTime.UtcNow;
+            DeleteDate = null;
+            AccessGranted = true;
+        }
     }
 }
