@@ -87,7 +87,6 @@ namespace AMWebAPI
             });
 
             // Core Services
-            builder.Services.AddScoped<ICommunicationService, CommunicationService>();
             builder.Services.AddScoped<ISystemStatusService, SystemStatusService>();
             builder.Services.AddScoped<IProviderService, ProviderService>();
 

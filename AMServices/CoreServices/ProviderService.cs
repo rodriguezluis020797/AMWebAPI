@@ -7,6 +7,7 @@ using AMWebAPI.Services.DataServices;
 using AMWebAPI.Services.IdentityServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Transactions;
 
 namespace AMWebAPI.Services.CoreServices
 {
@@ -21,18 +22,15 @@ namespace AMWebAPI.Services.CoreServices
     {
         private readonly IAMLogger _logger;
         private readonly AMCoreData _db;
-        private readonly ICommunicationService _commService;
         private readonly IConfiguration _config;
 
         public ProviderService(
             IAMLogger logger,
             AMCoreData db,
-            ICommunicationService commService,
             IConfiguration config)
         {
             _logger = logger;
             _db = db;
-            _commService = commService;
             _config = config;
         }
 
@@ -51,10 +49,20 @@ namespace AMWebAPI.Services.CoreServices
             var provider = new ProviderModel();
             provider.CreateNewRecordFromDTO(dto);
 
+
+            using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
             await _db.Providers.AddAsync(provider);
             await _db.SaveChangesAsync();
 
-            await TrySendNewProviderMessageAsync(provider.ProviderId);
+            var providerComm = new ProviderCommunicationModel
+            {
+                CreateDate = DateTime.UtcNow,
+                ProviderId = provider.ProviderId,
+                Message = _config["Messages:NewProviderMessage"]
+            };
+            await _db.ProviderCommunications.AddAsync(providerComm);
+            await _db.SaveChangesAsync();
+            scope.Complete();
 
             _logger.LogAudit($"Provider Id: {provider.ProviderId}{Environment.NewLine}E-Mail: {provider.EMail}");
 
@@ -100,22 +108,6 @@ namespace AMWebAPI.Services.CoreServices
                 throw new ArgumentException("Invalid provider ID in JWT.");
 
             return providerId;
-        }
-
-        private async Task TrySendNewProviderMessageAsync(long providerId)
-        {
-            var message = _config["Messages:NewProviderMessage"];
-            if (string.IsNullOrWhiteSpace(message))
-                return;
-
-            try
-            {
-                await _commService.AddProviderCommunication(providerId, message);
-            }
-            catch
-            {
-                // Silent fail — UI will display message anyway
-            }
         }
     }
 }

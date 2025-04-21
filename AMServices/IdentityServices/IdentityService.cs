@@ -39,15 +39,14 @@ namespace AMWebAPI.Services.IdentityServices
         public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
         {
             var provider = await _coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
-                          ?? throw new ArgumentException("Invalid email.");
+                          ?? throw new ArgumentException(nameof(dto.EMail));
 
             var passwordModel = await _identityData.Passwords
                 .Where(x => x.ProviderId == provider.ProviderId)
                 .OrderByDescending(x => x.CreateDate)
-                .FirstOrDefaultAsync()
-                ?? throw new Exception(nameof(passwordModel));
+                .FirstOrDefaultAsync() ?? throw new Exception(nameof(provider.ProviderId));
 
-            var hashedPassword = IdentityTool.HashPassword(dto.Password, passwordModel.Salt);
+            var hashedPassword = IdentityTool.HashPassword(dto.CurrentPassword, passwordModel.Salt);
             if (!string.Equals(hashedPassword, passwordModel.HashedPassword))
                 throw new ArgumentException("Incorrect password.");
 
@@ -123,7 +122,7 @@ namespace AMWebAPI.Services.IdentityServices
 
         public async Task<ProviderDTO> UpdatePasswordAsync(ProviderDTO dto, string token)
         {
-            if (!IdentityTool.IsValidPassword(dto.Password))
+            if (!IdentityTool.IsValidPassword(dto.NewPassword))
                 throw new ArgumentException("Password does not meet complexity requirements.");
 
             var principal = IdentityTool.GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
@@ -143,27 +142,31 @@ namespace AMWebAPI.Services.IdentityServices
             if (!recentPasswords.Any())
                 throw new Exception("No recent passwords found.");
 
+            if (!dto.IsTempPassword)
+            {
+                var currentPassword = recentPasswords.First();
+                var currentSalt = currentPassword.Salt;
+
+                var givenCurrentPasswordHash = IdentityTool.HashPassword(dto.CurrentPassword, currentPassword.Salt);
+
+                if (!string.Equals(currentPassword.HashedPassword, givenCurrentPasswordHash))
+                    throw new ArgumentException("Current password does not match.");
+            }
+
             foreach (var password in recentPasswords)
             {
-                var hash = IdentityTool.HashPassword(dto.Password, password.Salt);
+                var hash = IdentityTool.HashPassword(dto.NewPassword, password.Salt);
                 if (string.Equals(hash, password.HashedPassword))
                     throw new ArgumentException("Password was recently used.");
             }
 
-            if (!dto.IsTempPassword)
-            {
-                var currentPassword = recentPasswords.First();
-                var currentHash = IdentityTool.HashPassword(dto.Password, currentPassword.Salt);
-
-                if (!string.Equals(currentHash, currentPassword.HashedPassword))
-                    throw new ArgumentException("Current password does not match.");
-            }
+            
 
             var salt = IdentityTool.GenerateSaltString();
             var newPassword = new PasswordModel
             {
                 CreateDate = DateTime.UtcNow,
-                HashedPassword = IdentityTool.HashPassword(dto.Password, salt),
+                HashedPassword = IdentityTool.HashPassword(dto.NewPassword, salt),
                 Salt = salt,
                 ProviderId = providerId
             };
@@ -183,7 +186,7 @@ namespace AMWebAPI.Services.IdentityServices
             };
 
             using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-            await _coreData.AddAsync(providerComm);
+            await _coreData.ProviderCommunications.AddAsync(providerComm);
             await _coreData.SaveChangesAsync();
 
             await _coreData.SessionActions.AddAsync(sessionAction);

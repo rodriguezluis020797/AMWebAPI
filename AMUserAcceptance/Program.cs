@@ -77,7 +77,6 @@ namespace AMUserAcceptance
                     DeleteDate = null,
                     Message = $"Good news! You can now use the system!{Environment.NewLine}" +
                     $"Temporary password: {password}",
-                    SendAfter = DateTime.UtcNow,
                     Sent = false
                 };
 

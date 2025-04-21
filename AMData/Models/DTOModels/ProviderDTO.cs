@@ -10,7 +10,8 @@ namespace AMWebAPI.Models.DTOModels
         public string? MiddleName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string EMail { get; set; } = string.Empty;
-        public string Password { get; set; } = string.Empty;
+        public string CurrentPassword {  get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
         public bool IsTempPassword { get; set; } = false;
 
         public void CreateNewRecordFromModel(ProviderModel provider)
@@ -20,7 +21,8 @@ namespace AMWebAPI.Models.DTOModels
             MiddleName = provider.MiddleName;
             LastName = provider.LastName;
             EMail = provider.EMail;
-            Password = string.Empty;
+            CurrentPassword = string.Empty;
+            NewPassword = string.Empty;
             IsTempPassword = false;
         }
         public void Validate()
