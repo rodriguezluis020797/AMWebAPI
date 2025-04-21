@@ -5,33 +5,31 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface ICommunicationService
     {
-        public Task AddProviderCommunication(long providerId, string message);
+        Task AddProviderCommunication(long providerId, string message);
     }
+
     public class CommunicationService : ICommunicationService
     {
         private readonly AMCoreData _coreData;
+
         public CommunicationService(AMCoreData coreData)
         {
             _coreData = coreData;
-            _coreData = coreData;
         }
+
         public async Task AddProviderCommunication(long providerId, string message)
         {
-            var utcTime = DateTime.UtcNow;
-            var providerComm = new ProviderCommunicationModel()
+            var now = DateTime.UtcNow;
+
+            var communication = new ProviderCommunicationModel
             {
                 ProviderId = providerId,
-                AttemptOne = null,
-                AttemptThree = null,
-                AttemptTwo = null,
-                CommunicationId = 0,
-                DeleteDate = null,
                 Message = message,
-                SendAfter = utcTime,
-                CreateDate = utcTime
+                SendAfter = now,
+                CreateDate = now
             };
 
-            await _coreData.ProviderCommunications.AddAsync(providerComm);
+            await _coreData.ProviderCommunications.AddAsync(communication);
             await _coreData.SaveChangesAsync();
         }
     }
