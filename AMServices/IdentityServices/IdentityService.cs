@@ -38,29 +38,31 @@ namespace AMWebAPI.Services.IdentityServices
 
         public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
         {
-            var provider = await _coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail);
-            if (provider == null) throw new ArgumentException();
+            var provider = await _coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
+                          ?? throw new ArgumentException("Invalid email.");
 
             var passwordModel = await _identityData.Passwords
                 .Where(x => x.ProviderId == provider.ProviderId)
                 .OrderByDescending(x => x.CreateDate)
-                .FirstOrDefaultAsync();
-            if (passwordModel == null) throw new Exception(nameof(passwordModel));
+                .FirstOrDefaultAsync()
+                ?? throw new Exception(nameof(passwordModel));
 
             var hashedPassword = IdentityTool.HashPassword(dto.Password, passwordModel.Salt);
-
-            if (!hashedPassword.Equals(passwordModel)) throw new ArgumentException();
+            if (!string.Equals(hashedPassword, passwordModel.HashedPassword))
+                throw new ArgumentException("Incorrect password.");
 
             var session = new SessionModel
             {
                 CreateDate = DateTime.UtcNow,
                 ProviderId = provider.ProviderId
             };
+
             var sessionAction = new SessionActionModel
             {
                 CreateDate = DateTime.UtcNow,
                 SessionAction = SessionActionEnum.LogIn
             };
+
             var refreshTokenModel = CreateRefreshTokenModel(provider.ProviderId, fingerprintDTO);
             CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
 
@@ -98,9 +100,15 @@ namespace AMWebAPI.Services.IdentityServices
                 new Claim(SessionClaimEnum.SessionId.ToString(), session.SessionId.ToString())
             };
 
-            var jwt = IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, _configuration["Jwt:ExpiresInMinutes"]!);
+            var jwt = IdentityTool.GenerateJWTToken(
+                claims,
+                _configuration["Jwt:Key"]!,
+                _configuration["Jwt:Issuer"]!,
+                _configuration["Jwt:Audience"]!,
+                _configuration["Jwt:ExpiresInMinutes"]!
+            );
 
-            _logger.LogAudit($"Provider Id: {provider.ProviderId}\nIP Address: {fingerprintDTO.IPAddress}UserAgent: {fingerprintDTO.UserAgent}Platform: {fingerprintDTO.Platform}Language: {fingerprintDTO.Language}");
+            _logger.LogAudit($"Provider Id: {provider.ProviderId}\nIP Address: {fingerprintDTO.IPAddress} UserAgent: {fingerprintDTO.UserAgent} Platform: {fingerprintDTO.Platform} Language: {fingerprintDTO.Language}");
 
             dto.CreateNewRecordFromModel(provider);
             dto.IsTempPassword = passwordModel.Temporary;
@@ -164,8 +172,7 @@ namespace AMWebAPI.Services.IdentityServices
             {
                 CreateDate = DateTime.UtcNow,
                 ProviderId = providerId,
-                Message = "Your password was recently changed. If you did not request this change, " +
-                "please change your password immediately or contact customer service."
+                Message = "Your password was recently changed. If you did not request this change, please change your password immediately or contact customer service."
             };
 
             var sessionAction = new SessionActionModel
@@ -202,9 +209,8 @@ namespace AMWebAPI.Services.IdentityServices
             var refreshTokenModel = await _identityData.RefreshTokens
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null && DateTime.UtcNow < x.ExpiresDate)
                 .OrderByDescending(x => x.CreateDate)
-                .FirstOrDefaultAsync();
-
-            if (refreshTokenModel == null) throw new ArgumentException();
+                .FirstOrDefaultAsync()
+                ?? throw new ArgumentException();
 
             var existingFingerprint = new FingerprintDTO
             {
@@ -214,10 +220,12 @@ namespace AMWebAPI.Services.IdentityServices
                 UserAgent = refreshTokenModel.UserAgent
             };
 
-            if (!IsFingerprintTrustworthy(existingFingerprint, fingerprintDTO)) throw new ArgumentException();
+            if (!IsFingerprintTrustworthy(existingFingerprint, fingerprintDTO))
+                throw new ArgumentException();
 
             CryptographyTool.Decrypt(refreshToken, out string decryptedToken);
-            if (refreshTokenModel.Token != decryptedToken) throw new ArgumentException();
+            if (!string.Equals(refreshTokenModel.Token, decryptedToken))
+                throw new ArgumentException();
 
             refreshTokenModel.ExpiresDate = refreshTokenModel.ExpiresDate.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!));
             _identityData.RefreshTokens.Update(refreshTokenModel);
