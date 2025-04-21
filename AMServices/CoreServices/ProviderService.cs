@@ -21,18 +21,18 @@ namespace AMWebAPI.Services.CoreServices
     {
         private readonly IAMLogger _logger;
         private readonly AMCoreData _db;
-        private readonly ICommunicationService _communicationService;
+        private readonly ICommunicationService _commService;
         private readonly IConfiguration _config;
 
         public ProviderService(
             IAMLogger logger,
             AMCoreData db,
-            ICommunicationService communicationService,
+            ICommunicationService commService,
             IConfiguration config)
         {
             _logger = logger;
             _db = db;
-            _communicationService = communicationService;
+            _commService = commService;
             _config = config;
         }
 
@@ -42,11 +42,9 @@ namespace AMWebAPI.Services.CoreServices
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
                 return dto;
 
-            bool providerExists = await _db.Providers.AnyAsync(x => x.EMail == dto.EMail);
-            if (providerExists)
+            if (await _db.Providers.AnyAsync(x => x.EMail == dto.EMail))
             {
-                dto.ErrorMessage = $"Provider with given e-mail already exists.{Environment.NewLine}" +
-                                   $"Please wait to be given access.";
+                dto.ErrorMessage = $"Provider with given e-mail already exists.{Environment.NewLine}Please wait to be given access.";
                 return dto;
             }
 
@@ -68,9 +66,9 @@ namespace AMWebAPI.Services.CoreServices
         {
             var providerId = GetProviderIdFromJwt(jwToken);
 
-            var provider = await _db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId);
-            if (provider == null)
-                throw new ArgumentException(nameof(providerId));
+            var provider = await _db.Providers
+                .FirstOrDefaultAsync(u => u.ProviderId == providerId)
+                ?? throw new ArgumentException(nameof(providerId));
 
             var dto = new ProviderDTO();
             dto.CreateNewRecordFromModel(provider);
@@ -85,9 +83,9 @@ namespace AMWebAPI.Services.CoreServices
 
             var providerId = GetProviderIdFromJwt(jwToken);
 
-            var provider = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId);
-            if (provider == null)
-                throw new ArgumentException(nameof(providerId));
+            var provider = await _db.Providers
+                .FirstOrDefaultAsync(x => x.ProviderId == providerId)
+                ?? throw new ArgumentException(nameof(providerId));
 
             provider.UpdateRecordFromDTO(dto);
             await _db.SaveChangesAsync();
@@ -99,9 +97,7 @@ namespace AMWebAPI.Services.CoreServices
         {
             var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
             if (!long.TryParse(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value, out var providerId))
-            {
                 throw new ArgumentException("Invalid provider ID in JWT.");
-            }
 
             return providerId;
         }
@@ -114,7 +110,7 @@ namespace AMWebAPI.Services.CoreServices
 
             try
             {
-                await _communicationService.AddProviderCommunication(providerId, message);
+                await _commService.AddProviderCommunication(providerId, message);
             }
             catch
             {
