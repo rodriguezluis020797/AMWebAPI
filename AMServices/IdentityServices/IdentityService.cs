@@ -36,9 +36,9 @@ namespace AMWebAPI.Services.IdentityServices
             _configuration = configuration;
         }
 
-        public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDTO)
+        public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
         {
-            var provider = await _coreData.Providers.FirstOrDefaultAsync(x => x.EMail == providerDto.EMail);
+            var provider = await _coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail);
             if (provider == null) throw new ArgumentException();
 
             var passwordModel = await _identityData.Passwords
@@ -47,8 +47,9 @@ namespace AMWebAPI.Services.IdentityServices
                 .FirstOrDefaultAsync();
             if (passwordModel == null) throw new Exception(nameof(passwordModel));
 
-            var hashedPassword = IdentityTool.HashPassword(providerDto.Password, passwordModel.Salt);
-            if (hashedPassword != passwordModel.HashedPassword) throw new ArgumentException();
+            var hashedPassword = IdentityTool.HashPassword(dto.Password, passwordModel.Salt);
+
+            if (!hashedPassword.Equals(passwordModel)) throw new ArgumentException();
 
             var session = new SessionModel
             {
@@ -101,40 +102,53 @@ namespace AMWebAPI.Services.IdentityServices
 
             _logger.LogAudit($"Provider Id: {provider.ProviderId}\nIP Address: {fingerprintDTO.IPAddress}UserAgent: {fingerprintDTO.UserAgent}Platform: {fingerprintDTO.Platform}Language: {fingerprintDTO.Language}");
 
-            providerDto.CreateNewRecordFromModel(provider);
-            providerDto.IsTempPassword = passwordModel.Temporary;
+            dto.CreateNewRecordFromModel(provider);
+            dto.IsTempPassword = passwordModel.Temporary;
 
             return new LogInAsyncResponse
             {
                 jwToken = jwt,
                 refreshToken = encryptedRefreshToken,
-                providerDTO = providerDto
+                providerDTO = dto
             };
         }
 
         public async Task<ProviderDTO> UpdatePasswordAsync(ProviderDTO dto, string token)
         {
-            if (!IdentityTool.IsValidPassword(dto.Password)) throw new ArgumentException();
+            if (!IdentityTool.IsValidPassword(dto.Password))
+                throw new ArgumentException("Password does not meet complexity requirements.");
 
             var principal = IdentityTool.GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
             var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
             var sessionId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value);
 
-            var providerModel = await _coreData.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId);
-            if (providerModel == null) throw new Exception(nameof(providerId));
+            var providerModel = await _coreData.Providers
+                .FirstOrDefaultAsync(x => x.ProviderId == providerId)
+                ?? throw new Exception($"Provider not found for ID: {providerId}");
 
             var recentPasswords = await _identityData.Passwords
-                .Where(x => x.ProviderId == providerModel.ProviderId)
+                .Where(x => x.ProviderId == providerId)
                 .OrderByDescending(x => x.CreateDate)
                 .Take(5)
                 .ToListAsync();
 
-            if (!recentPasswords.Any()) throw new Exception(nameof(recentPasswords));
+            if (!recentPasswords.Any())
+                throw new Exception("No recent passwords found.");
 
-            foreach (var p in recentPasswords)
+            foreach (var password in recentPasswords)
             {
-                if (p.HashedPassword == IdentityTool.HashPassword(dto.Password, p.Salt))
-                    throw new ArgumentException();
+                var hash = IdentityTool.HashPassword(dto.Password, password.Salt);
+                if (string.Equals(hash, password.HashedPassword))
+                    throw new ArgumentException("Password was recently used.");
+            }
+
+            if (!dto.IsTempPassword)
+            {
+                var currentPassword = recentPasswords.First();
+                var currentHash = IdentityTool.HashPassword(dto.Password, currentPassword.Salt);
+
+                if (!string.Equals(currentHash, currentPassword.HashedPassword))
+                    throw new ArgumentException("Current password does not match.");
             }
 
             var salt = IdentityTool.GenerateSaltString();
@@ -143,38 +157,39 @@ namespace AMWebAPI.Services.IdentityServices
                 CreateDate = DateTime.UtcNow,
                 HashedPassword = IdentityTool.HashPassword(dto.Password, salt),
                 Salt = salt,
-                ProviderId = providerModel.ProviderId
+                ProviderId = providerId
             };
+
             var providerComm = new ProviderCommunicationModel
             {
                 CreateDate = DateTime.UtcNow,
-                ProviderId = providerModel.ProviderId,
-                Message = "Your password was recently changed. If you did not request this change please change your password immediately or contact customer service."
+                ProviderId = providerId,
+                Message = "Your password was recently changed. If you did not request this change, " +
+                "please change your password immediately or contact customer service."
             };
 
-            var sessionAction = new SessionActionModel()
+            var sessionAction = new SessionActionModel
             {
                 CreateDate = DateTime.UtcNow,
                 SessionAction = SessionActionEnum.ChangePassword,
                 SessionId = sessionId
             };
 
-            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-            {
-                await _coreData.AddAsync(providerComm);
-                await _coreData.SaveChangesAsync();
+            using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+            await _coreData.AddAsync(providerComm);
+            await _coreData.SaveChangesAsync();
 
-                await _coreData.SessionActions.AddAsync(sessionAction);
-                await _coreData.SaveChangesAsync();
+            await _coreData.SessionActions.AddAsync(sessionAction);
+            await _coreData.SaveChangesAsync();
 
-                await _identityData.Passwords.AddAsync(newPassword);
-                await _identityData.SaveChangesAsync();
+            await _identityData.Passwords.AddAsync(newPassword);
+            await _identityData.SaveChangesAsync();
 
-                scope.Complete();
-            }
+            scope.Complete();
 
             dto.CreateNewRecordFromModel(providerModel);
             _logger.LogAudit($"Provider Id: {providerId}");
+
             return dto;
         }
 

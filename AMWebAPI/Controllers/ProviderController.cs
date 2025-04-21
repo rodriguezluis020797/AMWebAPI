@@ -32,7 +32,7 @@ namespace AMWebAPI.Controllers
                 if (string.IsNullOrWhiteSpace(jwToken))
                     throw new Exception("JWT token missing from cookies.");
 
-                var provider = await _providerService.GetProvider(jwToken);
+                var provider = await _providerService.GetProviderAsync(jwToken);
                 return StatusCode((int)HttpStatusCodeEnum.Success, provider);
             }
             catch (Exception ex)
@@ -53,7 +53,7 @@ namespace AMWebAPI.Controllers
             _logger.LogInfo("+");
             try
             {
-                var result = await _providerService.CreateProvider(dto);
+                var result = await _providerService.CreateProviderAsync(dto);
                 return StatusCode((int)HttpStatusCodeEnum.Success, result);
             }
             catch (Exception ex)
@@ -75,8 +75,7 @@ namespace AMWebAPI.Controllers
             {
                 var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
 
-
-                var response = await _providerService.UpdateProvider(dto, jwt);
+                var response = await _providerService.UpdateProviderAsync(dto, jwt);
 
                 return StatusCode((int)HttpStatusCodeEnum.Success);
             }
