@@ -84,10 +84,23 @@ namespace AMWebAPI.Services.DataServices
                 .HasKey(sa => sa.SessionActionId);
         }
 
+        private static void ConfigureUpdateProviderEMailRequestModel(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<UpdateProviderEMailRequestModel>()
+                .HasKey(x => x.UpdateProviderEMailRequestId);
+
+            modelBuilder.Entity<ProviderModel>()
+                .HasMany(u => u.UpdateProviderEMailRequests)
+                .WithOne(c => c.Provider)
+                .HasForeignKey(c => c.ProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+
         public DbSet<ClientModel> Clients { get; init; }
         public DbSet<SessionActionModel> SessionActions { get; init; }
         public DbSet<SessionModel> Sessions { get; init; }
         public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
         public DbSet<ProviderModel> Providers { get; init; }
+        public DbSet<UpdateProviderEMailRequestModel> UpdateProviderEMailRequests { get; init; }
     }
 }

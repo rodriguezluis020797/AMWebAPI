@@ -4,8 +4,9 @@
     {
         Unknown = 0,
         Success = 200,
+        LoggedIn = 201,
         BadCredentials = 400,
-        //401 used for unauthorized
+        Unauthorized = 401,
         BadPassword = 402,
         ServerError = 500,
         SystemUnavailable = 501

@@ -15,6 +15,7 @@ namespace AMWebAPI.Services.CoreServices
     {
         Task<ProviderDTO> CreateProviderAsync(ProviderDTO dto);
         Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
+        Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken);
         Task<ProviderDTO> GetProviderAsync(string jwToken);
     }
 
@@ -83,6 +84,38 @@ namespace AMWebAPI.Services.CoreServices
             return dto;
         }
 
+        public async Task<bool> UpdateEMailAsync(ProviderDTO dto, string jwToken)
+        {
+            var principal = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
+            var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+            var sessionId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value);
+
+            var provider = await _db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .FirstOrDefaultAsync();
+
+            var request = new UpdateProviderEMailRequestModel()
+            {
+                CreateDate = DateTime.UtcNow,
+                DeleteDate = null,
+                NewEMail = dto.EMail,
+                ProviderId = providerId,
+            };
+
+            var communication = new ProviderCommunicationModel()
+            {
+                AttemptOne = null,
+                AttemptThree = null,
+                AttemptTwo = null,
+                CreateDate = DateTime.UtcNow,
+                DeleteDate = null,
+                Message = $"There has been a request to change your E-Mail.{Environment.NewLine}" +
+                "If this was not you, please change your password as soon as possible."
+            };
+
+            return true;
+        }
+
         public async Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken)
         {
             dto.Validate();
@@ -108,6 +141,11 @@ namespace AMWebAPI.Services.CoreServices
                 throw new ArgumentException("Invalid provider ID in JWT.");
 
             return providerId;
+        }
+
+        Task<ProviderDTO> IProviderService.UpdateEMailAsync(ProviderDTO dto, string jwToken)
+        {
+            throw new NotImplementedException();
         }
     }
 }

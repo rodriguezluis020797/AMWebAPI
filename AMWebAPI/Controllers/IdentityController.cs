@@ -84,13 +84,13 @@ namespace AMWebAPI.Controllers
                         var newJwt = await _identityService.RefreshJWToken(jwt, refresh, fingerprint);
                         SetAuthCookies(newJwt, refresh);
                     }
+                    return StatusCode((int)HttpStatusCodeEnum.LoggedIn);
                 }
-
                 return StatusCode((int)HttpStatusCodeEnum.Success);
             }
             catch (ArgumentException)
             {
-                return StatusCode((int)HttpStatusCodeEnum.BadCredentials);
+                return StatusCode((int)HttpStatusCodeEnum.Unauthorized);
             }
             catch (Exception ex)
             {
