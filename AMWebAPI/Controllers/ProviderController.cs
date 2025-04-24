@@ -89,5 +89,33 @@ namespace AMWebAPI.Controllers
                 _logger.LogInfo("-");
             }
         }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateEMail([FromBody] ProviderDTO dto)
+        {
+            _logger.LogInfo("+");
+            var response = new ProviderDTO();
+            try
+            {
+                var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+
+                response = await _providerService.UpdateEMailAsync(dto, jwt);
+
+                return StatusCode((int) HttpStatusCodeEnum.Success, response);
+            }
+            catch (ArgumentException)
+            {
+                return StatusCode((int)HttpStatusCodeEnum.BadCredentials, response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+            }
+            finally
+            {
+                _logger.LogInfo("-");
+            }
+        }
     }
 }

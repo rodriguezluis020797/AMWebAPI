@@ -16,6 +16,7 @@ namespace AMWebAPI.Services.CoreServices
         Task<ProviderDTO> CreateProviderAsync(ProviderDTO dto);
         Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
         Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken);
+        Task<bool> ConfirmUpdateEMailAsync(string guid);
         Task<ProviderDTO> GetProviderAsync(string jwToken);
     }
 
@@ -33,6 +34,11 @@ namespace AMWebAPI.Services.CoreServices
             _logger = logger;
             _db = db;
             _config = config;
+        }
+
+        public Task<bool> ConfirmUpdateEMailAsync(string guid)
+        {
+            throw new NotImplementedException();
         }
 
         public async Task<ProviderDTO> CreateProviderAsync(ProviderDTO dto)
@@ -84,8 +90,16 @@ namespace AMWebAPI.Services.CoreServices
             return dto;
         }
 
-        public async Task<bool> UpdateEMailAsync(ProviderDTO dto, string jwToken)
+        public async Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken)
         {
+
+            if (await _db.Providers.AnyAsync(x => x.EMail == dto.EMail) || !ValidationTool.IsValidEmail(dto.EMail))
+            {
+                dto = new ProviderDTO();
+                dto.ErrorMessage = $"Provider with given e-mail already exists or e-mail is not in valid format.";
+                return dto;
+            }
+
             var principal = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
             var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
             var sessionId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value);
@@ -100,6 +114,7 @@ namespace AMWebAPI.Services.CoreServices
                 DeleteDate = null,
                 NewEMail = dto.EMail,
                 ProviderId = providerId,
+                QueryGuid = Guid.NewGuid().ToString()
             };
 
             var communication = new ProviderCommunicationModel()
@@ -110,10 +125,36 @@ namespace AMWebAPI.Services.CoreServices
                 CreateDate = DateTime.UtcNow,
                 DeleteDate = null,
                 Message = $"There has been a request to change your E-Mail.{Environment.NewLine}" +
-                "If this was not you, please change your password as soon as possible."
+                $"If this was not you, please change your password as soon as possible.{Environment.NewLine}" +
+                $"Otherwise, click the link below to approve the new E-Mail address." +
+                $"Link: {_config["Environement:AngularURI"]}/verify-email?guid={request.QueryGuid}&isNew={false.ToString()}" +
+                $"New E-Mail Address: {request.NewEMail}",
+                ProviderId = providerId,
+                Sent = false,
             };
 
-            return true;
+            using (var transaction = await _db.Database.BeginTransactionAsync())
+            {
+                var existingRequests = await _db.UpdateProviderEMailRequests
+                    .Where(x => x.ProviderId == providerId)
+                    .ToListAsync();
+
+                foreach (var existingRequest in existingRequests)
+                {
+                    existingRequest.DeleteDate = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+                }
+
+                await _db.UpdateProviderEMailRequests.AddAsync(request);
+                await _db.SaveChangesAsync();
+
+                await _db.ProviderCommunications.AddAsync(communication);
+                await _db.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+            }
+
+            return dto;
         }
 
         public async Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken)
@@ -141,11 +182,6 @@ namespace AMWebAPI.Services.CoreServices
                 throw new ArgumentException("Invalid provider ID in JWT.");
 
             return providerId;
-        }
-
-        Task<ProviderDTO> IProviderService.UpdateEMailAsync(ProviderDTO dto, string jwToken)
-        {
-            throw new NotImplementedException();
         }
     }
 }

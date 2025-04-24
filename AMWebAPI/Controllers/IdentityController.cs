@@ -25,6 +25,12 @@ namespace AMWebAPI.Controllers
             _configuration = configuration;
         }
 
+        [HttpGet]
+        public async Task<IActionResult> IsLoggedIn()
+        {
+            return StatusCode((int)HttpStatusCodeEnum.Success);
+        }
+
         [HttpPost]
         [AllowAnonymous]
         public async Task<IActionResult> LogIn([FromBody] ProviderDTO dto)

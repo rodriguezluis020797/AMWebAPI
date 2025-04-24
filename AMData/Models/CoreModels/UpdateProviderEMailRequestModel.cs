@@ -13,6 +13,7 @@ namespace AMData.Models.CoreModels
     {
         [Key] public long UpdateProviderEMailRequestId { get; set; }
         [ForeignKey("Provider")] public long ProviderId { get; set; }
+        public string QueryGuid { get; set; }
         public string NewEMail { get; set; }
         public DateTime CreateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
