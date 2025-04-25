@@ -29,17 +29,7 @@ namespace AMWebAPI.Controllers
                 var principal = IdentityTool.GetClaimsFromJwt(jwt, _configuration["Jwt:Key"]!);
 
                 var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
-                var clientModel = new ClientModel()
-                {
-                    ClientId = 1,
-                    CreateDate = DateTime.UtcNow,
-                    DeleteDate = null,
-                    FirstName = "Test",
-                    LastName = "Client",
-                    MiddleName = null,
-                    PhoneNumber = "1234567890",
-                    ProviderId = providerId
-                };
+                var clientModel = new ClientModel(providerId, "Lane", null, "Doe", "1234567890");
 
                 return StatusCode((int)HttpStatusCodeEnum.Success, clientModel);
             }

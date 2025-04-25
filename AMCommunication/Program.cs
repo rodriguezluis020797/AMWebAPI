@@ -1,5 +1,4 @@
-﻿using AMData.Models.CoreModels;
-using AMTools.Tools;
+﻿using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -61,10 +60,9 @@ namespace AMCommunication
 
                     results = await Task.WhenAll(tasks);
 
-                    var providerComm = new ProviderCommunicationModel();
                     foreach (var result in results)
                     {
-                        providerComm = _coreData.ProviderCommunications
+                        var providerComm = _coreData.ProviderCommunications
                                 .Where(x => x.CommunicationId == result.Communication.CommunicationId)
                                 .Include(x => x.Provider)
                                 .FirstOrDefault();

@@ -5,7 +5,6 @@ namespace AMData.Models.CoreModels
     [Table("Client")]
     public class ClientModel
     {
-        public ClientModel() { }
         public ClientModel(long providerId, string firstName, string? middleName, string lastName, string phoneNumber)
         {
             ProviderId = providerId;

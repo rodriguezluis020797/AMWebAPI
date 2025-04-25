@@ -46,9 +46,7 @@ namespace AMWebAPI.Services.CoreServices
                 return dto;
             }
 
-            var provider = new ProviderModel();
-            provider.CreateNewRecordFromDTO(dto);
-
+            var provider = new ProviderModel(0, dto.FirstName, dto.MiddleName, dto.LastName, dto.EMail);
 
             using (var trans = await _db.Database.BeginTransactionAsync())
             {
@@ -56,27 +54,16 @@ namespace AMWebAPI.Services.CoreServices
                 await _db.Providers.AddAsync(provider);
                 await _db.SaveChangesAsync();
 
-
-                var providerEMailUpdateReq = new UpdateProviderEMailRequestModel()
-                {
-                    CreateDate = DateTime.UtcNow,
-                    DeleteDate = null,
-                    NewEMail = dto.EMail,
-                    ProviderId = provider.ProviderId,
-                    QueryGuid = Guid.NewGuid().ToString(),
-                };
+                var providerEMailUpdateReq = new UpdateProviderEMailRequestModel(provider.ProviderId, dto.EMail);
 
                 await _db.UpdateProviderEMailRequests.AddAsync(providerEMailUpdateReq);
                 await _db.SaveChangesAsync();
 
-                var providerComm = new ProviderCommunicationModel
-                {
-                    CreateDate = DateTime.UtcNow,
-                    ProviderId = provider.ProviderId,
-                    Message = $"Thank you for joining AM Tech.!\n" +
+                var message = $"Thank you for joining AM Tech.!\n" +
                     $"Please verify your email by clicking the following link.\n" +
-                    $"{_config["Environement:AngularURI"]}/verify-email?guid={providerEMailUpdateReq.QueryGuid}&isNew={true.ToString()}"
-                };
+                    $"{_config["Environement:AngularURI"]}/verify-email?guid={providerEMailUpdateReq.QueryGuid}&isNew={true.ToString()}";
+
+                var providerComm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
                 await _db.ProviderCommunications.AddAsync(providerComm);
                 await _db.SaveChangesAsync();
@@ -124,30 +111,15 @@ namespace AMWebAPI.Services.CoreServices
                 .Where(x => x.ProviderId == providerId)
                 .FirstOrDefaultAsync();
 
-            var request = new UpdateProviderEMailRequestModel()
-            {
-                CreateDate = DateTime.UtcNow,
-                DeleteDate = null,
-                NewEMail = dto.EMail,
-                ProviderId = providerId,
-                QueryGuid = Guid.NewGuid().ToString()
-            };
+            var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
 
-            var communication = new ProviderCommunicationModel()
-            {
-                AttemptOne = null,
-                AttemptThree = null,
-                AttemptTwo = null,
-                CreateDate = DateTime.UtcNow,
-                DeleteDate = null,
-                Message = $"There has been a request to change your E-Mail.{Environment.NewLine}" +
+            var message = $"There has been a request to change your E-Mail.{Environment.NewLine}" +
                 $"If this was not you, please change your password as soon as possible.{Environment.NewLine}" +
                 $"Otherwise, click the link below to approve the new E-Mail address." +
                 $"Link: {_config["Environement:AngularURI"]}/verify-email?guid={request.QueryGuid}&isNew={false.ToString()}" +
-                $"New E-Mail Address: {request.NewEMail}",
-                ProviderId = providerId,
-                Sent = false,
-            };
+                $"New E-Mail Address: {request.NewEMail}";
+
+            var communication = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);
 
             using (var transaction = await _db.Database.BeginTransactionAsync())
             {

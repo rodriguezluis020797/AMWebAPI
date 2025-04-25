@@ -37,8 +37,6 @@ namespace AMUserAcceptance
             DbContextOptions<AMIdentityData> identityOptions = identityOptionsBuilder.Options;
 
             var providers = new List<ProviderModel>();
-            var passwordModel = new PasswordModel();
-            var providerComm = new ProviderCommunicationModel();
             var salt = string.Empty;
             var password = string.Empty;
             var _coreData = new AMCoreData(coreOptions, config);
@@ -55,30 +53,11 @@ namespace AMUserAcceptance
             {
                 salt = IdentityTool.GenerateSaltString();
                 password = IdentityTool.GenerateRandomPassword();
-                passwordModel = new PasswordModel()
-                {
-                    CreateDate = DateTime.UtcNow,
-                    DeleteDate = null,
-                    HashedPassword = IdentityTool.HashPassword(password, salt),
-                    PasswordId = 0,
-                    Salt = salt,
-                    Temporary = true,
-                    ProviderId = provider.ProviderId,
-                };
+                var passwordModel = new PasswordModel(provider.ProviderId, true, IdentityTool.HashPassword(password, salt), salt);
 
-                providerComm = new ProviderCommunicationModel()
-                {
-                    ProviderId = provider.ProviderId,
-                    AttemptOne = null,
-                    AttemptThree = null,
-                    AttemptTwo = null,
-                    CommunicationId = 0,
-                    CreateDate = DateTime.UtcNow,
-                    DeleteDate = null,
-                    Message = $"Good news! You can now use the system!{Environment.NewLine}" +
-                    $"Temporary password: {password}",
-                    Sent = false
-                };
+                var message = $"Good news! You can now use the system!{Environment.NewLine}" +
+                    $"Temporary password: {password}";
+                var providerComm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
                 using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
                 {

@@ -6,14 +6,12 @@ namespace AMData.Models.CoreModels
     [Table("SessionAction")]
     public class SessionActionModel
     {
-        public SessionActionModel() { }
         public SessionActionModel(long sessionId, SessionActionEnum sessionAction)
         {
             SessionId = sessionId;
             SessionAction = sessionAction;
             CreateDate = DateTime.UtcNow;
         }
-
         [Key] public long SessionActionId { get; set; }
         [ForeignKey("SessionModel")] public long SessionId { get; set; }
         public SessionActionEnum SessionAction { get; set; }

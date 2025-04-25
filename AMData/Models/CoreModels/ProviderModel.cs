@@ -7,7 +7,6 @@ namespace AMData.Models.CoreModels
     [Table("Provider")]
     public class ProviderModel
     {
-        public ProviderModel() { }
         public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail)
         {
             FirstName = firstName;
@@ -20,7 +19,6 @@ namespace AMData.Models.CoreModels
             UpdateDate = null;
             DeleteDate = null;
         }
-
         [Key] public long ProviderId { get; set; }
         public string FirstName { get; set; }
         public string? MiddleName { get; set; }
@@ -35,19 +33,6 @@ namespace AMData.Models.CoreModels
         [NotMapped] public virtual List<ProviderCommunicationModel> Communications { get; set; }
         [NotMapped] public virtual List<ClientModel> Clients { get; set; }
         [NotMapped] public virtual List<UpdateProviderEMailRequestModel> UpdateProviderEMailRequests { get; set; }
-
-        public void CreateNewRecordFromDTO(ProviderDTO dto)
-        {
-            FirstName = dto.FirstName;
-            MiddleName = dto.MiddleName;
-            LastName = dto.LastName;
-            EMail = dto.EMail;
-            EMailVerified = false;
-            CreateDate = DateTime.UtcNow;
-            UpdateDate = null;
-            DeleteDate = null;
-            AccessGranted = false;
-        }
 
         public void UpdateRecordFromDTO(ProviderDTO dto)
         {

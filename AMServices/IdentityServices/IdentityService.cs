@@ -52,19 +52,12 @@ namespace AMWebAPI.Services.IdentityServices
             if (!string.Equals(hashedPassword, passwordModel.HashedPassword))
                 throw new ArgumentException("Incorrect password.");
 
-            var session = new SessionModel
-            {
-                CreateDate = DateTime.UtcNow,
-                ProviderId = provider.ProviderId
-            };
+            var session = new SessionModel(provider.ProviderId);
 
-            var sessionAction = new SessionActionModel
-            {
-                CreateDate = DateTime.UtcNow,
-                SessionAction = SessionActionEnum.LogIn
-            };
+            var sessionAction = new SessionActionModel(0, SessionActionEnum.LogIn);
 
-            var refreshTokenModel = CreateRefreshTokenModel(provider.ProviderId, fingerprintDTO);
+            var refreshTokenModel = CreateRefreshTokenModel(provider.ProviderId, IdentityTool.GenerateRefreshToken(), fingerprintDTO);
+
             CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
 
             using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
@@ -165,39 +158,28 @@ namespace AMWebAPI.Services.IdentityServices
 
 
             var salt = IdentityTool.GenerateSaltString();
-            var newPassword = new PasswordModel
+
+            var newPassword = new PasswordModel(providerId, false, IdentityTool.HashPassword(dto.NewPassword, salt), salt);
+
+            var message = "Your password was recently changed. " +
+                "If you did not request this change, please change your password immediately or contact customer service.";
+            var providerComm = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);
+
+            var sessionAction = new SessionActionModel(0, SessionActionEnum.ChangePassword);
+
+            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
             {
-                CreateDate = DateTime.UtcNow,
-                HashedPassword = IdentityTool.HashPassword(dto.NewPassword, salt),
-                Salt = salt,
-                ProviderId = providerId
-            };
+                await _coreData.ProviderCommunications.AddAsync(providerComm);
+                await _coreData.SaveChangesAsync();
 
-            var providerComm = new ProviderCommunicationModel
-            {
-                CreateDate = DateTime.UtcNow,
-                ProviderId = providerId,
-                Message = "Your password was recently changed. If you did not request this change, please change your password immediately or contact customer service."
-            };
+                await _coreData.SessionActions.AddAsync(sessionAction);
+                await _coreData.SaveChangesAsync();
 
-            var sessionAction = new SessionActionModel
-            {
-                CreateDate = DateTime.UtcNow,
-                SessionAction = SessionActionEnum.ChangePassword,
-                SessionId = sessionId
-            };
+                await _identityData.Passwords.AddAsync(newPassword);
+                await _identityData.SaveChangesAsync();
 
-            using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-            await _coreData.ProviderCommunications.AddAsync(providerComm);
-            await _coreData.SaveChangesAsync();
-
-            await _coreData.SessionActions.AddAsync(sessionAction);
-            await _coreData.SaveChangesAsync();
-
-            await _identityData.Passwords.AddAsync(newPassword);
-            await _identityData.SaveChangesAsync();
-
-            scope.Complete();
+                scope.Complete();
+            }
 
             dto.CreateNewRecordFromModel(providerModel);
             _logger.LogAudit($"Provider Id: {providerId}");
@@ -286,28 +268,19 @@ namespace AMWebAPI.Services.IdentityServices
             }
         }
 
-        private bool IsFingerprintTrustworthy(FingerprintDTO db, FingerprintDTO provided)
+        private bool IsFingerprintTrustworthy(FingerprintDTO databaseFingerprint, FingerprintDTO providedFingerprint)
         {
             var score = 0;
-            if (db.IPAddress == provided.IPAddress) score += 25; else score -= 10;
-            if (db.Language == provided.Language) score += 25; else score -= 5;
-            if (db.Platform == provided.Platform) score += 25; else score -= 10;
-            if (db.UserAgent == provided.UserAgent) score += 25; else score -= 15;
+            if (databaseFingerprint.IPAddress == providedFingerprint.IPAddress) score += 25; else score -= 10;
+            if (databaseFingerprint.Language == providedFingerprint.Language) score += 25; else score -= 5;
+            if (databaseFingerprint.Platform == providedFingerprint.Platform) score += 25; else score -= 10;
+            if (databaseFingerprint.UserAgent == providedFingerprint.UserAgent) score += 25; else score -= 15;
 
             return Math.Clamp(score, 0, 100) >= 80;
         }
 
-        private RefreshTokenModel CreateRefreshTokenModel(long providerId, FingerprintDTO fp) => new()
-        {
-            CreateDate = DateTime.UtcNow,
-            ExpiresDate = DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)),
-            Token = IdentityTool.GenerateRefreshToken(),
-            ProviderId = providerId,
-            IPAddress = fp.IPAddress,
-            Language = fp.Language,
-            Platform = fp.Platform,
-            UserAgent = fp.UserAgent
-        };
+        private RefreshTokenModel CreateRefreshTokenModel(long providerId, string token, FingerprintDTO fingerprintDTO)
+            => new(providerId, token, fingerprintDTO.IPAddress, fingerprintDTO.UserAgent, fingerprintDTO.Platform, fingerprintDTO.Language, DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)));
 
         public class LogInAsyncResponse
         {

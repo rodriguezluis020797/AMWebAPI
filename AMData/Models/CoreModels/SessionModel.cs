@@ -6,13 +6,11 @@ namespace AMData.Models.CoreModels
     [Table("Session")]
     public class SessionModel
     {
-        public SessionModel() { }
         public SessionModel(long providerId)
         {
             ProviderId = providerId;
             CreateDate = DateTime.UtcNow;
         }
-
         [Key] public long SessionId { get; set; }
         [ForeignKey("Provider")] public long ProviderId { get; set; }
         public DateTime CreateDate { get; set; }

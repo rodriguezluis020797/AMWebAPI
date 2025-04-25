@@ -5,7 +5,7 @@ namespace AMUserAcceptance
 {
     public class AMProviderEmail
     {
-        public ProviderCommunicationModel Communication { get; set; } = new ProviderCommunicationModel();
+        public ProviderCommunicationModel Communication { get; set; } //might need to add an empty contructor
         public Response Response { get; set; } = default!;
     }
 }
