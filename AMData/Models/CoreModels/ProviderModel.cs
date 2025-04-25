@@ -1,4 +1,4 @@
-﻿using AMWebAPI.Models.DTOModels;
+﻿using AMData.Models.DTOModels;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 

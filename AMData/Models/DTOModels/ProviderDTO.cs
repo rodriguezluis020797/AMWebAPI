@@ -2,7 +2,7 @@
 using AMData.Models.DTOModels;
 using AMTools.Tools;
 
-namespace AMWebAPI.Models.DTOModels
+namespace AMData.Models.DTOModels
 {
     public class ProviderDTO : BaseDTO
     {

@@ -3,7 +3,6 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -13,17 +12,21 @@ namespace AMWebAPI.Services.CoreServices
     public interface IProviderService
     {
         Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
-        Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
-        Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken);
-        Task<ProviderDTO> VerifyUpdateEMailAsync(string guid);
         Task<ProviderDTO> GetProviderAsync(string jwToken);
+        Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken);
+        Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
+        Task<BaseDTO> VerifyUpdateEMailAsync(string guid);
     }
 
     public class ProviderService : IProviderService
     {
+        // ──────────────────────── Private Fields ────────────────────────
+
         private readonly IAMLogger _logger;
         private readonly AMCoreData _db;
         private readonly IConfiguration _config;
+
+        // ──────────────────────── Constructor ────────────────────────
 
         public ProviderService(
             IAMLogger logger,
@@ -34,6 +37,8 @@ namespace AMWebAPI.Services.CoreServices
             _db = db;
             _config = config;
         }
+
+        // ──────────────────────── Public Methods ────────────────────────
 
         public async Task<BaseDTO> CreateProviderAsync(ProviderDTO dto)
         {
@@ -48,8 +53,7 @@ namespace AMWebAPI.Services.CoreServices
 
             if (await _db.Providers.AnyAsync(x => x.EMail == dto.EMail))
             {
-                response.ErrorMessage = $"Provider with given e-mail already exists.\n" +
-                    $"Please wait to be given access.";
+                response.ErrorMessage = $"Provider with given e-mail already exists.\nPlease wait to be given access.";
                 return response;
             }
 
@@ -60,18 +64,15 @@ namespace AMWebAPI.Services.CoreServices
                 await _db.Providers.AddAsync(provider);
                 await _db.SaveChangesAsync();
 
-                var providerEMailUpdateReq = new UpdateProviderEMailRequestModel(provider.ProviderId, dto.EMail);
-                var message = $"Thank you for joining AM Tech!\n" +
-                    $"Please verify your email by clicking the following link:\n" +
-                    $"{_config["Environment:AngularURI"]}/verify-email?guid={providerEMailUpdateReq.QueryGuid}&isNew={true}";
+                var emailReq = new UpdateProviderEMailRequestModel(provider.ProviderId, dto.EMail);
+                var message = $"Thank you for joining AM Tech!\nPlease verify your email by clicking the following link:\n{_config["Environment:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&isNew=true";
 
-                var providerComm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
+                var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
-                var addProviderEMailUpdateReq = _db.UpdateProviderEMailRequests.AddAsync(providerEMailUpdateReq).AsTask();
-                var addProviderComm = _db.ProviderCommunications.AddAsync(providerComm).AsTask();
+                var addReqTask = _db.UpdateProviderEMailRequests.AddAsync(emailReq).AsTask();
+                var addCommTask = _db.ProviderCommunications.AddAsync(comm).AsTask();
 
-                await Task.WhenAll(addProviderEMailUpdateReq, addProviderComm);
-
+                await Task.WhenAll(addReqTask, addCommTask);
                 await _db.SaveChangesAsync();
                 await trans.CommitAsync();
             }
@@ -96,32 +97,24 @@ namespace AMWebAPI.Services.CoreServices
 
         public async Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken)
         {
-
             if (await _db.Providers.AnyAsync(x => x.EMail == dto.EMail) ||
-                await _db.UpdateProviderEMailRequests.AnyAsync(x => x.NewEMail.Equals(dto.EMail) &&
-                x.DeleteDate == null) ||
+                await _db.UpdateProviderEMailRequests.AnyAsync(x => x.NewEMail.Equals(dto.EMail) && x.DeleteDate == null) ||
                 !ValidationTool.IsValidEmail(dto.EMail))
             {
-                dto = new ProviderDTO();
-                dto.ErrorMessage = $"Provider with given e-mail already exists or e-mail is not in valid format.";
-                return dto;
+                return new ProviderDTO
+                {
+                    ErrorMessage = $"Provider with given e-mail already exists or e-mail is not in valid format."
+                };
             }
 
             var principal = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
             var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
             var sessionId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value);
 
-            var provider = await _db.Providers
-                .Where(x => x.ProviderId == providerId)
-                .FirstOrDefaultAsync();
+            var provider = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId);
 
             var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
-
-            var message = $"There has been a request to change your E-Mail.{Environment.NewLine}" +
-                $"If this was not you, please change your password as soon as possible.{Environment.NewLine}" +
-                $"Otherwise, click the link below to approve the new E-Mail address." +
-                $"Link: {_config["Environement:AngularURI"]}/verify-email?guid={request.QueryGuid}&isNew={false.ToString()}" +
-                $"New E-Mail Address: {request.NewEMail}";
+            var message = $"There has been a request to change your E-Mail.{Environment.NewLine}If this was not you, please change your password as soon as possible.{Environment.NewLine}Otherwise, click the link below to approve the new E-Mail address.Link: {_config["Environement:AngularURI"]}/verify-email?guid={request.QueryGuid}&isNew=falseNew E-Mail Address: {request.NewEMail}";
 
             var communication = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);
 
@@ -138,43 +131,12 @@ namespace AMWebAPI.Services.CoreServices
                 }
 
                 await _db.UpdateProviderEMailRequests.AddAsync(request);
-                await _db.SaveChangesAsync();
-
                 await _db.ProviderCommunications.AddAsync(communication);
                 await _db.SaveChangesAsync();
-
                 await transaction.CommitAsync();
             }
 
             return dto;
-        }
-
-        public async Task<ProviderDTO> VerifyUpdateEMailAsync(string guid)
-        {
-            var response = new ProviderDTO();
-            var request = await _db.UpdateProviderEMailRequests
-                .Where(x => x.QueryGuid.Equals(guid) && x.DeleteDate == null)
-                .FirstOrDefaultAsync();
-
-            var provider = await _db.Providers
-                .Where(x => x.ProviderId == request.ProviderId)
-                .FirstOrDefaultAsync();
-
-            var oldEmail = provider.EMail;
-
-            using (var trans = await _db.Database.BeginTransactionAsync())
-            {
-                provider.EMail = request.NewEMail;
-                provider.EMailVerified = true;
-                provider.UpdateDate = DateTime.UtcNow;
-                request.DeleteDate = DateTime.UtcNow;
-                _db.SaveChanges();
-
-                await trans.CommitAsync();
-            }
-
-            _logger.LogAudit($"Email Changed - Provider Id: {provider.ProviderId} Old Email: {oldEmail} - New Email: {request.NewEMail}");
-            return response;
         }
 
         public async Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken)
@@ -194,6 +156,36 @@ namespace AMWebAPI.Services.CoreServices
 
             return dto;
         }
+
+        public async Task<BaseDTO> VerifyUpdateEMailAsync(string guid)
+        {
+            var response = new BaseDTO();
+            var request = await _db.UpdateProviderEMailRequests
+                .Where(x => x.QueryGuid.Equals(guid) && x.DeleteDate == null)
+                .FirstOrDefaultAsync();
+
+            var provider = await _db.Providers
+                .Where(x => x.ProviderId == request.ProviderId)
+                .FirstOrDefaultAsync();
+
+            var oldEmail = provider.EMail;
+
+            using (var trans = await _db.Database.BeginTransactionAsync())
+            {
+                provider.EMail = request.NewEMail;
+                provider.EMailVerified = true;
+                provider.UpdateDate = DateTime.UtcNow;
+                request.DeleteDate = DateTime.UtcNow;
+
+                _db.SaveChanges();
+                await trans.CommitAsync();
+            }
+
+            _logger.LogAudit($"Email Changed - Provider Id: {provider.ProviderId} Old Email: {oldEmail} - New Email: {request.NewEMail}");
+            return response;
+        }
+
+        // ──────────────────────── Private Methods ────────────────────────
 
         private long GetProviderIdFromJwt(string jwToken)
         {

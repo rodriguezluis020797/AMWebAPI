@@ -1,6 +1,6 @@
 ﻿using AMData.Models;
+using AMData.Models.DTOModels;
 using AMTools.Tools;
-using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.CoreServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -124,7 +124,7 @@ namespace AMWebAPI.Controllers
         public async Task<IActionResult> VerifyUpdateEMail([FromQuery] string guid)
         {
             _logger.LogInfo("+");
-            var response = new ProviderDTO();
+            var response = new BaseDTO();
             try
             {
                 response = await _providerService.VerifyUpdateEMailAsync(guid);
