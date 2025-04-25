@@ -49,7 +49,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             var hashedPassword = IdentityTool.HashPassword(dto.CurrentPassword, passwordModel.Salt);
             if (!string.Equals(hashedPassword, passwordModel.HashedPassword))
-                throw new ArgumentException("Incorrect password.");
+                throw new ArgumentException();
 
             var session = new SessionModel(provider.ProviderId);
 
@@ -65,21 +65,18 @@ namespace AMWebAPI.Services.IdentityServices
                 await _coreData.SaveChangesAsync();
 
                 sessionAction.SessionId = session.SessionId;
+
                 await _coreData.SessionActions.AddAsync(sessionAction);
                 await _coreData.SaveChangesAsync();
 
-                var existingRefreshTokens = await _identityData.RefreshTokens
-                    .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
-                    .ToListAsync();
+                var deleteExistingTokens = _identityData.RefreshTokens
+                   .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
+                   .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-                foreach (var token in existingRefreshTokens)
-                {
-                    token.DeleteDate = DateTime.UtcNow;
-                    _identityData.RefreshTokens.Update(token);
-                }
-                await _identityData.SaveChangesAsync();
+                var addNewToken = _identityData.RefreshTokens.AddAsync(refreshTokenModel).AsTask();
 
-                await _identityData.RefreshTokens.AddAsync(refreshTokenModel);
+                await Task.WhenAll(deleteExistingTokens, addNewToken);
+
                 await _identityData.SaveChangesAsync();
 
                 scope.Complete();
@@ -103,14 +100,15 @@ namespace AMWebAPI.Services.IdentityServices
 
             _logger.LogAudit($"Provider Id: {provider.ProviderId}\nIP Address: {fingerprintDTO.IPAddress} UserAgent: {fingerprintDTO.UserAgent} Platform: {fingerprintDTO.Platform} Language: {fingerprintDTO.Language}");
 
-            dto.CreateNewRecordFromModel(provider);
-            dto.IsTempPassword = passwordModel.Temporary;
 
-            return new LogInAsyncResponse
+            return new LogInAsyncResponse()
             {
+                baseDTO = new BaseDTO()
+                {
+                    IsSpecialCase = passwordModel.Temporary
+                },
                 jwToken = jwt,
-                refreshToken = encryptedRefreshToken,
-                providerDTO = dto
+                refreshToken = refreshTokenModel.Token
             };
         }
 
@@ -285,7 +283,7 @@ namespace AMWebAPI.Services.IdentityServices
         {
             public string jwToken { get; set; } = string.Empty;
             public string refreshToken { get; set; } = string.Empty;
-            public ProviderDTO providerDTO { get; set; } = new();
+            public BaseDTO baseDTO { get; set; } = new();
         }
     }
 }

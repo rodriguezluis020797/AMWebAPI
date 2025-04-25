@@ -63,6 +63,7 @@ namespace AMWebAPI.Controllers
         public async Task<IActionResult> LogIn([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
+            var response = new BaseDTO();
 
             try
             {
@@ -70,19 +71,21 @@ namespace AMWebAPI.Controllers
                 fingerprint.Validate();
 
                 var loginResult = await _identityService.LogInAsync(dto, fingerprint);
+                response = loginResult.baseDTO;
                 SetAuthCookies(loginResult.jwToken, loginResult.refreshToken);
 
                 _logger.LogInfo("-");
-                return StatusCode((int)HttpStatusCodeEnum.Success, loginResult.providerDTO);
+                return StatusCode((int)HttpStatusCodeEnum.Success, response);
             }
             catch (ArgumentException)
             {
-                return StatusCode((int)HttpStatusCodeEnum.BadCredentials, dto);
+                response.ErrorMessage = "Invalid Credentials.";
+                return StatusCode((int)HttpStatusCodeEnum.BadCredentials, response);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
-                return StatusCode((int)HttpStatusCodeEnum.ServerError, dto);
+                return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
             }
             finally
             {

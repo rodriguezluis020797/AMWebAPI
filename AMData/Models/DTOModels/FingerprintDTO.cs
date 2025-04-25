@@ -8,22 +8,10 @@
         public string Language { get; set; }
         public void Validate()
         {
-            if (string.IsNullOrEmpty(IPAddress))
-            {
-                IPAddress = string.Empty;
-            }
-            if (string.IsNullOrEmpty(UserAgent))
-            {
-                UserAgent = string.Empty;
-            }
-            if (string.IsNullOrEmpty(Platform))
-            {
-                Platform = string.Empty;
-            }
-            if (string.IsNullOrEmpty(Language))
-            {
-                Language = string.Empty;
-            }
+            IPAddress = string.IsNullOrWhiteSpace(IPAddress) ? string.Empty : IPAddress;
+            UserAgent = string.IsNullOrWhiteSpace(UserAgent) ? string.Empty : UserAgent;
+            Platform = string.IsNullOrWhiteSpace(Platform) ? string.Empty : Platform;
+            Language = string.IsNullOrWhiteSpace(Language) ? string.Empty : Language;
         }
     }
 }
