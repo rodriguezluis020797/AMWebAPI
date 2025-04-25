@@ -36,7 +36,6 @@ namespace AMWebAPI.Services.IdentityServices
             _identityData = identityData;
             _configuration = configuration;
         }
-
         public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
         {
             var provider = await _coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)

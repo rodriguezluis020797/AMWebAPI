@@ -80,7 +80,7 @@ namespace AMWebAPI.Controllers
             catch (ArgumentException)
             {
                 response.ErrorMessage = "Invalid Credentials.";
-                return StatusCode((int)HttpStatusCodeEnum.BadCredentials, response);
+                return StatusCode((int)HttpStatusCodeEnum.Success, response);
             }
             catch (Exception ex)
             {
