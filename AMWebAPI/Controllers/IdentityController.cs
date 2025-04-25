@@ -85,7 +85,7 @@ namespace AMWebAPI.Controllers
             catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
-                return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
             }
             finally
             {
@@ -176,23 +176,25 @@ namespace AMWebAPI.Controllers
         public async Task<IActionResult> UpdatePassword([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
+            var result = new BaseDTO();
 
             try
             {
                 var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
                 if (string.IsNullOrWhiteSpace(jwt)) throw new Exception("JWT token missing.");
 
-                var result = await _identityService.UpdatePasswordAsync(dto, jwt);
+                result = await _identityService.UpdatePasswordAsync(dto, jwt);
                 return StatusCode((int)HttpStatusCodeEnum.Success, result);
             }
             catch (ArgumentException)
             {
-                return StatusCode((int)HttpStatusCodeEnum.BadPassword, new ProviderDTO());
+                result.ErrorMessage = "Bad password";
+                return StatusCode((int)HttpStatusCodeEnum.Success, result);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex.ToString());
-                return StatusCode((int)HttpStatusCodeEnum.ServerError, new ProviderDTO());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
             }
             finally
             {

@@ -17,7 +17,7 @@ namespace AMWebAPI.Services.IdentityServices
     public interface IIdentityService
     {
         Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDTO);
-        Task<ProviderDTO> UpdatePasswordAsync(ProviderDTO dto, string token);
+        Task<BaseDTO> UpdatePasswordAsync(ProviderDTO dto, string token);
         Task ResetPasswordAsync(ProviderDTO dto);
         Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
     }
@@ -111,8 +111,10 @@ namespace AMWebAPI.Services.IdentityServices
             };
         }
 
-        public async Task<ProviderDTO> UpdatePasswordAsync(ProviderDTO dto, string token)
+        public async Task<BaseDTO> UpdatePasswordAsync(ProviderDTO dto, string token)
         {
+            var response = new BaseDTO();
+
             if (!IdentityTool.IsValidPassword(dto.NewPassword))
                 throw new ArgumentException("Password does not meet complexity requirements.");
 
@@ -124,18 +126,14 @@ namespace AMWebAPI.Services.IdentityServices
                 .FirstOrDefaultAsync(x => x.ProviderId == providerId)
                 ?? throw new Exception($"Provider not found for ID: {providerId}");
 
-            var recentPasswords = await _identityData.Passwords
-                .Where(x => x.ProviderId == providerId)
-                .OrderByDescending(x => x.CreateDate)
-                .Take(5)
-                .ToListAsync();
-
-            if (!recentPasswords.Any())
-                throw new Exception("No recent passwords found.");
 
             if (!dto.IsTempPassword)
             {
-                var currentPassword = recentPasswords.First();
+                var currentPassword = await _identityData.Passwords
+                    .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+                    .OrderByDescending(x => x.CreateDate)
+                    .FirstOrDefaultAsync();
+
                 var currentSalt = currentPassword.Salt;
 
                 var givenCurrentPasswordHash = IdentityTool.HashPassword(dto.CurrentPassword, currentPassword.Salt);
@@ -144,14 +142,16 @@ namespace AMWebAPI.Services.IdentityServices
                     throw new ArgumentException("Current password does not match.");
             }
 
+            var recentPasswords = await _identityData.Passwords
+                .Where(x => x.ProviderId == providerId)
+                .ToListAsync();
+
             foreach (var password in recentPasswords)
             {
                 var hash = IdentityTool.HashPassword(dto.NewPassword, password.Salt);
                 if (string.Equals(hash, password.HashedPassword))
                     throw new ArgumentException("Password was recently used.");
             }
-
-
 
             var salt = IdentityTool.GenerateSaltString();
 
@@ -161,26 +161,53 @@ namespace AMWebAPI.Services.IdentityServices
                 "If you did not request this change, please change your password immediately or contact customer service.";
             var providerComm = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);
 
-            var sessionAction = new SessionActionModel(0, SessionActionEnum.ChangePassword);
+            var sessionAction = new SessionActionModel(sessionId, SessionActionEnum.ChangePassword);
 
-            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            var maxRetries = 3;
+            var retryDelay = TimeSpan.FromSeconds(2);
+            var attempt = 0;
+
+            while (true)
             {
-                await _coreData.ProviderCommunications.AddAsync(providerComm);
-                await _coreData.SaveChangesAsync();
+                try
+                {
+                    using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+                    {
+                        await _identityData.Passwords
+                            .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+                            .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-                await _coreData.SessionActions.AddAsync(sessionAction);
-                await _coreData.SaveChangesAsync();
+                        await _coreData.ProviderCommunications.AddAsync(providerComm);
+                        await _coreData.SessionActions.AddAsync(sessionAction);
+                        await _coreData.SaveChangesAsync();
 
-                await _identityData.Passwords.AddAsync(newPassword);
-                await _identityData.SaveChangesAsync();
+                        await _identityData.Passwords.AddAsync(newPassword);
+                        await _identityData.SaveChangesAsync();
 
-                scope.Complete();
+                        scope.Complete();
+                    }
+
+                    _logger.LogInfo("All database changes completed successfully.");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    attempt++;
+                    _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
+                    if (attempt >= maxRetries)
+                    {
+                        _logger.LogError("All attempts failed. No data was committed.");
+                        throw;
+                    }
+
+                    await Task.Delay(retryDelay);
+                }
             }
 
-            dto.CreateNewRecordFromModel(providerModel);
             _logger.LogAudit($"Provider Id: {providerId}");
 
-            return dto;
+            return response;
         }
 
         public async Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO)
