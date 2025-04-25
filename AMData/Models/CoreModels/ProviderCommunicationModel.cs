@@ -9,7 +9,6 @@ namespace AMData.Models.CoreModels
         public ProviderCommunicationModel() { }
         public ProviderCommunicationModel(long providerId, string message, DateTime sendAfter)
         {
-            CommunicationId = 0;
             ProviderId = providerId;
             Message = message;
             SendAfter = sendAfter;
@@ -18,7 +17,7 @@ namespace AMData.Models.CoreModels
             AttemptTwo = null;
             AttemptThree = null;
             CreateDate = DateTime.UtcNow;
-            DeleteDate = DateTime.UtcNow;
+            DeleteDate = null;
         }
         [Key] public long CommunicationId { get; set; }
         [ForeignKey("Provider")] public long ProviderId { get; set; }

@@ -5,6 +5,18 @@ namespace AMData.Models.CoreModels
     [Table("Client")]
     public class ClientModel
     {
+        public ClientModel() { }
+        public ClientModel(long providerId, string firstName, string? middleName, string lastName, string phoneNumber)
+        {
+            ProviderId = providerId;
+            FirstName = firstName;
+            MiddleName = middleName;
+            LastName = lastName;
+            PhoneNumber = phoneNumber;
+            CreateDate = DateTime.UtcNow;
+            UpdateDate = null;
+            DeleteDate = null;
+        }
         public long ClientId { get; set; }
         [ForeignKey("Provider")] public long ProviderId { get; set; }
         public string FirstName { get; set; }

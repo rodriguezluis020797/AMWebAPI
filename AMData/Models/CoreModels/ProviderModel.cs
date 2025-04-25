@@ -7,6 +7,20 @@ namespace AMData.Models.CoreModels
     [Table("Provider")]
     public class ProviderModel
     {
+        public ProviderModel() { }
+        public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail)
+        {
+            FirstName = firstName;
+            MiddleName = middleName;
+            LastName = lastName;
+            EMail = eMail;
+            EMailVerified = false;
+            AccessGranted = false;
+            CreateDate = DateTime.UtcNow;
+            UpdateDate = null;
+            DeleteDate = null;
+        }
+
         [Key] public long ProviderId { get; set; }
         public string FirstName { get; set; }
         public string? MiddleName { get; set; }

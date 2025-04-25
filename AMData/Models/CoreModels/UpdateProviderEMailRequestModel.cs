@@ -6,6 +6,16 @@ namespace AMData.Models.CoreModels
     [Table("UpdateProviderEMailRequest")]
     public class UpdateProviderEMailRequestModel
     {
+        public UpdateProviderEMailRequestModel() { }
+        public UpdateProviderEMailRequestModel(long providerId, string newEMail)
+        {
+            ProviderId = providerId;
+            QueryGuid = Guid.NewGuid().ToString();
+            NewEMail = newEMail;
+            CreateDate = DateTime.UtcNow;
+            DeleteDate = null;
+        }
+
         [Key] public long UpdateProviderEMailRequestId { get; set; }
         [ForeignKey("Provider")] public long ProviderId { get; set; }
         public string QueryGuid { get; set; }
