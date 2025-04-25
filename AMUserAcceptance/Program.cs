@@ -11,66 +11,79 @@ namespace AMUserAcceptance
 {
     internal class Program
     {
+        private AMCoreData _coreData = default!;
+        private AMIdentityData _identityData = default!;
+        private IConfigurationRoot _config = default!;
+        private AMDevLogger _logger = new();
+
         static async Task Main(string[] args)
         {
-            var logger = new AMDevLogger();
+            var program = new Program();
+            program._logger.LogInfo("+");
 
-            logger.LogInfo("+");
-            var programInstance = new Program();
-            var config = new ConfigurationManager();
-            config.SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+            program.LoadConfiguration();
+            program.InitializeDataContexts();
 
-            await programInstance.SendProviderCommunicationAsync(logger, config);
+            await program.GrantAccessAndNotifyProvidersAsync();
 
-            logger.LogInfo("-");
+            program._logger.LogInfo("-");
         }
 
-        private async Task SendProviderCommunicationAsync(AMDevLogger logger, ConfigurationManager config)
+        private void LoadConfiguration()
         {
-            var coreOptionsBuilder = new DbContextOptionsBuilder<AMCoreData>();
-            coreOptionsBuilder.UseSqlServer(config.GetConnectionString("CoreConnectionString"));
-            DbContextOptions<AMCoreData> coreOptions = coreOptionsBuilder.Options;
+            _config = new ConfigurationManager()
+                .SetBasePath(Directory.GetCurrentDirectory())
+                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                .Build();
+        }
 
-            var identityOptionsBuilder = new DbContextOptionsBuilder<AMIdentityData>();
-            identityOptionsBuilder.UseSqlServer(config.GetConnectionString("IdentityConnectionString"));
-            DbContextOptions<AMIdentityData> identityOptions = identityOptionsBuilder.Options;
+        private void InitializeDataContexts()
+        {
+            var coreOptions = new DbContextOptionsBuilder<AMCoreData>()
+                .UseSqlServer(_config.GetConnectionString("CoreConnectionString"))
+                .Options;
 
-            var providers = new List<ProviderModel>();
-            var salt = string.Empty;
-            var password = string.Empty;
-            var _coreData = new AMCoreData(coreOptions, config);
-            var _identityData = new AMIdentityData(identityOptions, config);
+            var identityOptions = new DbContextOptionsBuilder<AMIdentityData>()
+                .UseSqlServer(_config.GetConnectionString("IdentityConnectionString"))
+                .Options;
 
-            providers = _coreData.Providers
-                .Where(x => x.AccessGranted == false && x.DeleteDate == null && x.EMailVerified == true /*&& x.EMail.Equals(config["AcceptedProvider"])*/)
-                .OrderBy(x => x.CreateDate)
+            _coreData = new AMCoreData(coreOptions, _config);
+            _identityData = new AMIdentityData(identityOptions, _config);
+        }
+
+        private async Task GrantAccessAndNotifyProvidersAsync()
+        {
+            var providers = _coreData.Providers
+                .Where(p => !p.AccessGranted && p.DeleteDate == null && p.EMailVerified)
+                .OrderBy(p => p.CreateDate)
                 .Take(5)
                 .ToList();
 
-
             foreach (var provider in providers)
             {
-                salt = IdentityTool.GenerateSaltString();
-                password = IdentityTool.GenerateRandomPassword();
-                var passwordModel = new PasswordModel(provider.ProviderId, true, IdentityTool.HashPassword(password, salt), salt);
+                var salt = IdentityTool.GenerateSaltString();
+                var password = IdentityTool.GenerateRandomPassword();
+                var hashedPassword = IdentityTool.HashPassword(password, salt);
+
+                var passwordModel = new PasswordModel(provider.ProviderId, true, hashedPassword, salt);
 
                 var message = $"Good news! You can now use the system!{Environment.NewLine}" +
-                    $"Temporary password: {password}";
-                var providerComm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
+                              $"Temporary password: {password}";
+                var communication = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
-                using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
-                {
-                    provider.AccessGranted = true;
-                    _coreData.Providers.Update(provider);
-                    _coreData.ProviderCommunications.Add(providerComm);
-                    _coreData.SaveChanges();
+                using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
 
-                    _identityData.Passwords.Add(passwordModel);
-                    _identityData.SaveChanges();
+                provider.AccessGranted = true;
+                _coreData.Providers.Update(provider);
+                _coreData.ProviderCommunications.Add(communication);
+                _coreData.SaveChanges();
 
-                    scope.Complete();
-                }
+                _identityData.Passwords.Add(passwordModel);
+                _identityData.SaveChanges();
+
+                scope.Complete();
+
+                _logger.LogAudit($"Granted access to Provider Id: {provider.ProviderId} | Temp password sent.");
             }
         }
     }

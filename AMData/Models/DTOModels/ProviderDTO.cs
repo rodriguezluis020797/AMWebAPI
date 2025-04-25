@@ -1,5 +1,4 @@
 ﻿using AMData.Models.CoreModels;
-using AMData.Models.DTOModels;
 using AMTools.Tools;
 
 namespace AMData.Models.DTOModels
