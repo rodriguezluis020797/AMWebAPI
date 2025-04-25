@@ -6,6 +6,20 @@ namespace AMData.Models.CoreModels
     [Table("ProviderCommunication")]
     public class ProviderCommunicationModel
     {
+        public ProviderCommunicationModel() { }
+        public ProviderCommunicationModel(long providerId, string message, DateTime sendAfter)
+        {
+            CommunicationId = 0;
+            ProviderId = providerId;
+            Message = message;
+            SendAfter = sendAfter;
+            Sent = false;
+            AttemptOne = null;
+            AttemptTwo = null;
+            AttemptThree = null;
+            CreateDate = DateTime.UtcNow;
+            DeleteDate = DateTime.UtcNow;
+        }
         [Key] public long CommunicationId { get; set; }
         [ForeignKey("Provider")] public long ProviderId { get; set; }
         public string Message { get; set; }

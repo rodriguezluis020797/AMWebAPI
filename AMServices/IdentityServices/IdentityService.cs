@@ -14,10 +14,12 @@ using static AMWebAPI.Services.IdentityServices.IdentityService;
 
 namespace AMWebAPI.Services.IdentityServices
 {
+
     public interface IIdentityService
     {
         Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDTO);
         Task<ProviderDTO> UpdatePasswordAsync(ProviderDTO dto, string token);
+        Task ResetPasswordAsync(ProviderDTO dto);
         Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
     }
 
@@ -241,6 +243,47 @@ namespace AMWebAPI.Services.IdentityServices
             };
 
             return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, "-1");
+        }
+
+        public async Task ResetPasswordAsync(ProviderDTO dto)
+        {
+            var response = new ProviderDTO();
+
+            var provider = await _coreData.Providers
+                .Where(x => x.EMail.Equals(dto.EMail))
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (provider == null)
+            {
+                return;
+            }
+
+            var tempPasswordString = IdentityTool.GenerateRandomPassword();
+            var saltString = IdentityTool.GenerateSaltString();
+            var tempPasswordHashString = IdentityTool.HashPassword(tempPasswordString, saltString);
+
+            var message =
+                $"A password reset has been requested for your account.\n" +
+                $"If you did not request a password reset, please update your password as soon as possible.\n" +
+                $"Temporary password: {tempPasswordString}";
+
+            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            {
+
+                await _identityData.Passwords
+                .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
+                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+                await _identityData.SaveChangesAsync();
+
+                await _identityData.Passwords.AddAsync(new PasswordModel(provider.ProviderId, true, tempPasswordHashString, saltString));
+                await _identityData.SaveChangesAsync();
+
+                await _coreData.ProviderCommunications.AddAsync(new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue));
+                await _coreData.SaveChangesAsync();
+
+                scope.Complete();
+            }
         }
 
         private bool IsFingerprintTrustworthy(FingerprintDTO db, FingerprintDTO provided)

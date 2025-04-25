@@ -106,7 +106,7 @@ namespace AMWebAPI.Controllers
         }
 
         [HttpPost]
-        public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto)
+        public async Task<IActionResult> UpdatePassword([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
 
@@ -126,6 +126,28 @@ namespace AMWebAPI.Controllers
             {
                 _logger.LogError(ex.ToString());
                 return StatusCode((int)HttpStatusCodeEnum.ServerError, new ProviderDTO());
+            }
+            finally
+            {
+                _logger.LogInfo("-");
+            }
+        }
+        [AllowAnonymous]
+        [HttpPost]
+        public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto)
+        {
+            _logger.LogInfo("+");
+
+            try
+            {
+                await _identityService.ResetPasswordAsync(dto);
+
+                return StatusCode((int)HttpStatusCodeEnum.Success);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
             }
             finally
             {
