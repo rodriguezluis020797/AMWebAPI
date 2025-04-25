@@ -28,7 +28,7 @@ namespace AMWebAPI.Controllers
         [HttpGet]
         public async Task<IActionResult> IsLoggedIn()
         {
-            return StatusCode((int)HttpStatusCodeEnum.Success);
+            return StatusCode((int)HttpStatusCodeEnum.Success, true);
         }
 
         [HttpPost]

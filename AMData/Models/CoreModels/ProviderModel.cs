@@ -12,6 +12,7 @@ namespace AMData.Models.CoreModels
         public string? MiddleName { get; set; }
         public string LastName { get; set; }
         public string EMail { get; set; }
+        public bool EMailVerified { get; set; }
         public bool AccessGranted { get; set; }
         public DateTime CreateDate { get; set; }
         public DateTime? UpdateDate { get; set; }

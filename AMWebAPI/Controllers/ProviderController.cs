@@ -117,5 +117,28 @@ namespace AMWebAPI.Controllers
                 _logger.LogInfo("-");
             }
         }
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyUpdateEMail([FromQuery] string guid)
+        {
+            _logger.LogInfo("+");
+            var response = new ProviderDTO();
+            try
+            {
+                response = await _providerService.VerifyUpdateEMailAsync(guid);
+
+                return StatusCode((int)HttpStatusCodeEnum.Success, response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+            }
+            finally
+            {
+                _logger.LogInfo("-");
+            }
+        }
     }
 }

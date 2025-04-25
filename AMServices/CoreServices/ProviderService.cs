@@ -16,7 +16,7 @@ namespace AMWebAPI.Services.CoreServices
         Task<ProviderDTO> CreateProviderAsync(ProviderDTO dto);
         Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
         Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken);
-        Task<bool> ConfirmUpdateEMailAsync(string guid);
+        Task<ProviderDTO> VerifyUpdateEMailAsync(string guid);
         Task<ProviderDTO> GetProviderAsync(string jwToken);
     }
 
@@ -34,11 +34,6 @@ namespace AMWebAPI.Services.CoreServices
             _logger = logger;
             _db = db;
             _config = config;
-        }
-
-        public Task<bool> ConfirmUpdateEMailAsync(string guid)
-        {
-            throw new NotImplementedException();
         }
 
         public async Task<ProviderDTO> CreateProviderAsync(ProviderDTO dto)
@@ -93,7 +88,10 @@ namespace AMWebAPI.Services.CoreServices
         public async Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken)
         {
 
-            if (await _db.Providers.AnyAsync(x => x.EMail == dto.EMail) || !ValidationTool.IsValidEmail(dto.EMail))
+            if (await _db.Providers.AnyAsync(x => x.EMail == dto.EMail) ||
+                await _db.UpdateProviderEMailRequests.AnyAsync(x => x.NewEMail.Equals(dto.EMail) &&
+                x.DeleteDate == null) ||
+                !ValidationTool.IsValidEmail(dto.EMail))
             {
                 dto = new ProviderDTO();
                 dto.ErrorMessage = $"Provider with given e-mail already exists or e-mail is not in valid format.";
@@ -155,6 +153,34 @@ namespace AMWebAPI.Services.CoreServices
             }
 
             return dto;
+        }
+
+        public async Task<ProviderDTO> VerifyUpdateEMailAsync(string guid)
+        {
+            var response = new ProviderDTO();
+            var request = await _db.UpdateProviderEMailRequests
+                .Where(x => x.QueryGuid.Equals(guid) && x.DeleteDate == null)
+                .FirstOrDefaultAsync();
+
+            var provider = await _db.Providers
+                .Where(x => x.ProviderId == request.ProviderId)
+                .FirstOrDefaultAsync();
+
+            var oldEmail = provider.EMail;
+
+            using (var trans = await _db.Database.BeginTransactionAsync())
+            {
+                provider.EMail = request.NewEMail;
+                provider.EMailVerified = true;
+                provider.UpdateDate = DateTime.UtcNow;
+                request.DeleteDate = DateTime.UtcNow;
+                _db.SaveChanges();
+
+                await trans.CommitAsync();
+            }
+
+            _logger.LogAudit($"Email Changed - Provider Id: {provider.ProviderId} Old Email: {oldEmail} - New Email: {request.NewEMail}");
+            return response;
         }
 
         public async Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken)
