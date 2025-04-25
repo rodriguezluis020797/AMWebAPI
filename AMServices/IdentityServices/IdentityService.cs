@@ -160,7 +160,7 @@ namespace AMWebAPI.Services.IdentityServices
                     throw new ArgumentException("Password was recently used.");
             }
 
-            
+
 
             var salt = IdentityTool.GenerateSaltString();
             var newPassword = new PasswordModel

@@ -101,7 +101,7 @@ namespace AMWebAPI.Controllers
 
                 response = await _providerService.UpdateEMailAsync(dto, jwt);
 
-                return StatusCode((int) HttpStatusCodeEnum.Success, response);
+                return StatusCode((int)HttpStatusCodeEnum.Success, response);
             }
             catch (ArgumentException)
             {

@@ -28,6 +28,7 @@ namespace AMData.Models.CoreModels
             MiddleName = dto.MiddleName;
             LastName = dto.LastName;
             EMail = dto.EMail;
+            EMailVerified = false;
             CreateDate = DateTime.UtcNow;
             UpdateDate = null;
             DeleteDate = null;

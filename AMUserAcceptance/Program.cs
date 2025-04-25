@@ -45,7 +45,7 @@ namespace AMUserAcceptance
             var _identityData = new AMIdentityData(identityOptions, config);
 
             providers = _coreData.Providers
-                .Where(x => x.AccessGranted == false && x.DeleteDate == null && x.EMail.Equals(config["AcceptedProvider"]))
+                .Where(x => x.AccessGranted == false && x.DeleteDate == null && x.EMailVerified == true /*&& x.EMail.Equals(config["AcceptedProvider"])*/)
                 .OrderBy(x => x.CreateDate)
                 .Take(5)
                 .ToList();

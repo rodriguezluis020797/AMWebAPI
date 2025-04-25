@@ -15,7 +15,8 @@ namespace AMWebAPI.Services.DataServices
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-        { optionsBuilder.UseSqlServer(
+        {
+            optionsBuilder.UseSqlServer(
                     _configuration.GetConnectionString("CoreConnectionString"),
                     sqlOptions => sqlOptions.MigrationsAssembly("AMWebAPI")
                 );

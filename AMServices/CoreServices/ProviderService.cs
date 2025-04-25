@@ -4,10 +4,8 @@ using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Models.DTOModels;
 using AMWebAPI.Services.DataServices;
-using AMWebAPI.Services.IdentityServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using System.Transactions;
 
 namespace AMWebAPI.Services.CoreServices
 {
@@ -52,19 +50,39 @@ namespace AMWebAPI.Services.CoreServices
             provider.CreateNewRecordFromDTO(dto);
 
 
-            using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-            await _db.Providers.AddAsync(provider);
-            await _db.SaveChangesAsync();
-
-            var providerComm = new ProviderCommunicationModel
+            using (var trans = await _db.Database.BeginTransactionAsync())
             {
-                CreateDate = DateTime.UtcNow,
-                ProviderId = provider.ProviderId,
-                Message = _config["Messages:NewProviderMessage"]
-            };
-            await _db.ProviderCommunications.AddAsync(providerComm);
-            await _db.SaveChangesAsync();
-            scope.Complete();
+
+                await _db.Providers.AddAsync(provider);
+                await _db.SaveChangesAsync();
+
+
+                var providerEMailUpdateReq = new UpdateProviderEMailRequestModel()
+                {
+                    CreateDate = DateTime.UtcNow,
+                    DeleteDate = null,
+                    NewEMail = dto.EMail,
+                    ProviderId = provider.ProviderId,
+                    QueryGuid = Guid.NewGuid().ToString(),
+                };
+
+                await _db.UpdateProviderEMailRequests.AddAsync(providerEMailUpdateReq);
+                await _db.SaveChangesAsync();
+
+                var providerComm = new ProviderCommunicationModel
+                {
+                    CreateDate = DateTime.UtcNow,
+                    ProviderId = provider.ProviderId,
+                    Message = $"Thank you for joining AM Tech.!\n" +
+                    $"Please verify your email by clicking the following link.\n" +
+                    $"{_config["Environement:AngularURI"]}/verify-email?guid={providerEMailUpdateReq.QueryGuid}&isNew={true.ToString()}"
+                };
+
+                await _db.ProviderCommunications.AddAsync(providerComm);
+                await _db.SaveChangesAsync();
+
+                await trans.CommitAsync();
+            }
 
             _logger.LogAudit($"Provider Id: {provider.ProviderId}{Environment.NewLine}E-Mail: {provider.EMail}");
 

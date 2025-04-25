@@ -10,7 +10,7 @@ namespace AMWebAPI.Models.DTOModels
         public string? MiddleName { get; set; } = string.Empty;
         public string LastName { get; set; } = string.Empty;
         public string EMail { get; set; } = string.Empty;
-        public string CurrentPassword {  get; set; } = string.Empty;
+        public string CurrentPassword { get; set; } = string.Empty;
         public string NewPassword { get; set; } = string.Empty;
         public bool IsTempPassword { get; set; } = false;
 
