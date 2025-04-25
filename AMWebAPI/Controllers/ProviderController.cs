@@ -12,38 +12,13 @@ namespace AMWebAPI.Controllers
     [Authorize]
     public class ProviderController : ControllerBase
     {
-        private readonly IProviderService _providerService;
         private readonly IAMLogger _logger;
+        private readonly IProviderService _providerService;
 
         public ProviderController(IAMLogger logger, IProviderService providerService)
         {
             _logger = logger;
             _providerService = providerService;
-        }
-
-        [HttpGet]
-        public async Task<IActionResult> GetProvider()
-        {
-            _logger.LogInfo("+");
-
-            try
-            {
-                var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-                if (string.IsNullOrWhiteSpace(jwToken))
-                    throw new Exception("JWT token missing from cookies.");
-
-                var provider = await _providerService.GetProviderAsync(jwToken);
-                return StatusCode((int)HttpStatusCodeEnum.Success, provider);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.ToString());
-                return StatusCode((int)HttpStatusCodeEnum.ServerError);
-            }
-            finally
-            {
-                _logger.LogInfo("-");
-            }
         }
 
         [HttpPost]
@@ -67,17 +42,19 @@ namespace AMWebAPI.Controllers
             }
         }
 
-        [HttpPost]
-        public async Task<IActionResult> UpdateProvider([FromBody] ProviderDTO dto)
+        [HttpGet]
+        public async Task<IActionResult> GetProvider()
         {
             _logger.LogInfo("+");
+
             try
             {
-                var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                if (string.IsNullOrWhiteSpace(jwToken))
+                    throw new Exception("JWT token missing from cookies.");
 
-                var response = await _providerService.UpdateProviderAsync(dto, jwt);
-
-                return StatusCode((int)HttpStatusCodeEnum.Success);
+                var provider = await _providerService.GetProviderAsync(jwToken);
+                return StatusCode((int)HttpStatusCodeEnum.Success, provider);
             }
             catch (Exception ex)
             {
@@ -111,6 +88,29 @@ namespace AMWebAPI.Controllers
             {
                 _logger.LogError(ex.ToString());
                 return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+            }
+            finally
+            {
+                _logger.LogInfo("-");
+            }
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> UpdateProvider([FromBody] ProviderDTO dto)
+        {
+            _logger.LogInfo("+");
+            try
+            {
+                var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+
+                var response = await _providerService.UpdateProviderAsync(dto, jwt);
+
+                return StatusCode((int)HttpStatusCodeEnum.Success);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
             }
             finally
             {

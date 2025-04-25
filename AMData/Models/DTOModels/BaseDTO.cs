@@ -2,11 +2,11 @@
 {
     public class BaseDTO
     {
-        public string ErrorMessage { get; set; } = string.Empty;
+        public string? ErrorMessage { get; set; } = null;
 
         public void ResetModel()
         {
-            ErrorMessage = string.Empty;
+            ErrorMessage = null;
         }
     }
 }

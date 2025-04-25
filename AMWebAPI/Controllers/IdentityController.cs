@@ -14,9 +14,9 @@ namespace AMWebAPI.Controllers
     [Authorize]
     public class IdentityController : ControllerBase
     {
+        private readonly IConfiguration _configuration;
         private readonly IAMLogger _logger;
         private readonly IIdentityService _identityService;
-        private readonly IConfiguration _configuration;
 
         public IdentityController(IAMLogger logger, IIdentityService identityService, IConfiguration configuration)
         {
@@ -24,6 +24,34 @@ namespace AMWebAPI.Controllers
             _identityService = identityService;
             _configuration = configuration;
         }
+
+        [HttpGet]
+        private void ExpireAuthCookies()
+        {
+            var expiredOptions = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddMinutes(-1)
+            };
+
+            var jwtKey = SessionClaimEnum.JWToken.ToString();
+            var refreshKey = SessionClaimEnum.RefreshToken.ToString();
+
+            Response.Cookies.Append(jwtKey, string.Empty, expiredOptions);
+            Response.Cookies.Append(refreshKey, string.Empty, expiredOptions);
+            Response.Cookies.Delete(jwtKey, expiredOptions);
+            Response.Cookies.Delete(refreshKey, expiredOptions);
+        }
+
+        private FingerprintDTO ExtractFingerprint() => new()
+        {
+            IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
+            Language = Request.Headers["X-Fingerprint-Language"],
+            Platform = Request.Headers["X-Fingerprint-Platform"],
+            UserAgent = Request.Headers["X-Fingerprint-UA"]
+        };
 
         [HttpGet]
         public async Task<IActionResult> IsLoggedIn()
@@ -106,6 +134,43 @@ namespace AMWebAPI.Controllers
         }
 
         [HttpPost]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto)
+        {
+            _logger.LogInfo("+");
+
+            try
+            {
+                await _identityService.ResetPasswordAsync(dto);
+
+                return StatusCode((int)HttpStatusCodeEnum.Success);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
+            }
+            finally
+            {
+                _logger.LogInfo("-");
+            }
+        }
+
+        private void SetAuthCookies(string jwt, string refreshToken)
+        {
+            var options = new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,
+                SameSite = SameSiteMode.None,
+                Expires = DateTime.UtcNow.AddDays(int.Parse(_configuration["CookieSettings:CookieExperationDays"]!))
+            };
+
+            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwt, options);
+            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, options);
+        }
+
+        [HttpPost]
         public async Task<IActionResult> UpdatePassword([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
@@ -131,69 +196,6 @@ namespace AMWebAPI.Controllers
             {
                 _logger.LogInfo("-");
             }
-        }
-        [AllowAnonymous]
-        [HttpPost]
-        public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto)
-        {
-            _logger.LogInfo("+");
-
-            try
-            {
-                await _identityService.ResetPasswordAsync(dto);
-
-                return StatusCode((int)HttpStatusCodeEnum.Success);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.ToString());
-                return StatusCode((int)HttpStatusCodeEnum.ServerError);
-            }
-            finally
-            {
-                _logger.LogInfo("-");
-            }
-        }
-
-        private FingerprintDTO ExtractFingerprint() => new()
-        {
-            IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-            Language = Request.Headers["X-Fingerprint-Language"],
-            Platform = Request.Headers["X-Fingerprint-Platform"],
-            UserAgent = Request.Headers["X-Fingerprint-UA"]
-        };
-
-        private void SetAuthCookies(string jwt, string refreshToken)
-        {
-            var options = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddDays(int.Parse(_configuration["CookieSettings:CookieExperationDays"]!))
-            };
-
-            Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwt, options);
-            Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, options);
-        }
-
-        private void ExpireAuthCookies()
-        {
-            var expiredOptions = new CookieOptions
-            {
-                HttpOnly = true,
-                Secure = true,
-                SameSite = SameSiteMode.None,
-                Expires = DateTime.UtcNow.AddMinutes(-1)
-            };
-
-            var jwtKey = SessionClaimEnum.JWToken.ToString();
-            var refreshKey = SessionClaimEnum.RefreshToken.ToString();
-
-            Response.Cookies.Append(jwtKey, string.Empty, expiredOptions);
-            Response.Cookies.Append(refreshKey, string.Empty, expiredOptions);
-            Response.Cookies.Delete(jwtKey, expiredOptions);
-            Response.Cookies.Delete(refreshKey, expiredOptions);
         }
     }
 }
