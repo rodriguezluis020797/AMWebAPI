@@ -6,6 +6,7 @@ namespace AMData.Models.IdentityModels
     [Table("RefreshToken")]
     public class RefreshTokenModel
     {
+        public RefreshTokenModel() { }
         public RefreshTokenModel(long providerId, string token, string ipAddress, string userAgent, string platform, string language, DateTime expiresDate)
         {
 

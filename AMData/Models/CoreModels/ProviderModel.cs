@@ -7,6 +7,7 @@ namespace AMData.Models.CoreModels
     [Table("Provider")]
     public class ProviderModel
     {
+        public ProviderModel() { }
         public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail)
         {
             FirstName = firstName;
