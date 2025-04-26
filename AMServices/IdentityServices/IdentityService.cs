@@ -56,29 +56,53 @@ namespace AMWebAPI.Services.IdentityServices
 
             var refreshTokenModel = CreateRefreshTokenModel(provider.ProviderId, IdentityTool.GenerateRefreshToken(), fingerprintDTO);
 
-            CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
+            var maxRetries = 3;
+            var retryDelay = TimeSpan.FromSeconds(2);
+            var attempt = 0;
 
-            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            while (true)
             {
-                await _coreData.Sessions.AddAsync(session);
-                await _coreData.SaveChangesAsync();
+                try
+                {
+                    using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+                    {
+                        await _coreData.Sessions.AddAsync(session);
+                        await _coreData.SaveChangesAsync();
 
-                sessionAction.SessionId = session.SessionId;
+                        sessionAction.SessionId = session.SessionId;
 
-                await _coreData.SessionActions.AddAsync(sessionAction);
-                await _coreData.SaveChangesAsync();
+                        await _coreData.SessionActions.AddAsync(sessionAction);
+                        await _coreData.SaveChangesAsync();
 
-                var deleteExistingTokens = _identityData.RefreshTokens
-                   .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
-                   .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+                        var deleteExistingTokens = _identityData.RefreshTokens
+                           .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
+                           .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-                var addNewToken = _identityData.RefreshTokens.AddAsync(refreshTokenModel).AsTask();
+                        var addNewToken = _identityData.RefreshTokens.AddAsync(refreshTokenModel).AsTask();
 
-                await Task.WhenAll(deleteExistingTokens, addNewToken);
+                        await Task.WhenAll(deleteExistingTokens, addNewToken);
 
-                await _identityData.SaveChangesAsync();
+                        await _identityData.SaveChangesAsync();
 
-                scope.Complete();
+                        scope.Complete();
+                    }
+
+                    _logger.LogInfo("All database changes completed successfully.");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    attempt++;
+                    _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
+                    if (attempt >= maxRetries)
+                    {
+                        _logger.LogError("All attempts failed. No data was committed.");
+                        throw;
+                    }
+
+                    await Task.Delay(retryDelay);
+                }
             }
 
             _logger.LogAudit($"Provider Id: {provider.ProviderId}");
@@ -99,6 +123,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             _logger.LogAudit($"Provider Id: {provider.ProviderId}\nIP Address: {fingerprintDTO.IPAddress} UserAgent: {fingerprintDTO.UserAgent} Platform: {fingerprintDTO.Platform} Language: {fingerprintDTO.Language}");
 
+            CryptographyTool.Encrypt(refreshTokenModel.Token, out string encryptedRefreshToken);
 
             return new LogInAsyncResponse()
             {
@@ -107,13 +132,15 @@ namespace AMWebAPI.Services.IdentityServices
                     IsSpecialCase = passwordModel.Temporary
                 },
                 jwToken = jwt,
-                refreshToken = refreshTokenModel.Token
+                refreshToken = encryptedRefreshToken
             };
         }
 
         public async Task<BaseDTO> UpdatePasswordAsync(ProviderDTO dto, string token)
         {
             var response = new BaseDTO();
+
+            response.IsSpecialCase = dto.IsTempPassword;
 
             if (!IdentityTool.IsValidPassword(dto.NewPassword))
                 throw new ArgumentException("Password does not meet complexity requirements.");
@@ -218,7 +245,6 @@ namespace AMWebAPI.Services.IdentityServices
 
             var refreshTokenModel = await _identityData.RefreshTokens
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null && DateTime.UtcNow < x.ExpiresDate)
-                .OrderByDescending(x => x.CreateDate)
                 .FirstOrDefaultAsync()
                 ?? throw new ArgumentException();
 
@@ -234,6 +260,7 @@ namespace AMWebAPI.Services.IdentityServices
                 throw new ArgumentException();
 
             CryptographyTool.Decrypt(refreshToken, out string decryptedToken);
+
             if (!string.Equals(refreshTokenModel.Token, decryptedToken))
                 throw new ArgumentException();
 
@@ -273,21 +300,47 @@ namespace AMWebAPI.Services.IdentityServices
                 $"If you did not request a password reset, please update your password as soon as possible.\n" +
                 $"Temporary password: {tempPasswordString}";
 
-            using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+            var maxRetries = 3;
+            var retryDelay = TimeSpan.FromSeconds(2);
+            var attempt = 0;
+
+            while (true)
             {
+                try
+                {
+                    using (var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled))
+                    {
 
-                await _identityData.Passwords
-                .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
-                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
-                await _identityData.SaveChangesAsync();
+                        await _identityData.Passwords
+                        .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
+                        .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+                        await _identityData.SaveChangesAsync();
 
-                await _identityData.Passwords.AddAsync(new PasswordModel(provider.ProviderId, true, tempPasswordHashString, saltString));
-                await _identityData.SaveChangesAsync();
+                        await _identityData.Passwords.AddAsync(new PasswordModel(provider.ProviderId, true, tempPasswordHashString, saltString));
+                        await _identityData.SaveChangesAsync();
 
-                await _coreData.ProviderCommunications.AddAsync(new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue));
-                await _coreData.SaveChangesAsync();
+                        await _coreData.ProviderCommunications.AddAsync(new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue));
+                        await _coreData.SaveChangesAsync();
 
-                scope.Complete();
+                        scope.Complete();
+                    }
+
+                    _logger.LogInfo("All database changes completed successfully.");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    attempt++;
+                    _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
+                    if (attempt >= maxRetries)
+                    {
+                        _logger.LogError("All attempts failed. No data was committed.");
+                        throw;
+                    }
+
+                    await Task.Delay(retryDelay);
+                }
             }
         }
 
@@ -302,8 +355,8 @@ namespace AMWebAPI.Services.IdentityServices
             return Math.Clamp(score, 0, 100) >= 80;
         }
 
-        private RefreshTokenModel CreateRefreshTokenModel(long providerId, string token, FingerprintDTO fingerprintDTO)
-            => new(providerId, token, fingerprintDTO.IPAddress, fingerprintDTO.UserAgent, fingerprintDTO.Platform, fingerprintDTO.Language, DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)));
+        private RefreshTokenModel CreateRefreshTokenModel(long providerId, string encryptedToken, FingerprintDTO fingerprintDTO)
+            => new(providerId, encryptedToken, fingerprintDTO.IPAddress, fingerprintDTO.UserAgent, fingerprintDTO.Platform, fingerprintDTO.Language, DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)));
 
         public class LogInAsyncResponse
         {

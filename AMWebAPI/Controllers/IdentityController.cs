@@ -23,8 +23,6 @@ namespace AMWebAPI.Controllers
             _identityService = identityService;
             _configuration = configuration;
         }
-
-        [HttpGet]
         private void ExpireAuthCookies()
         {
             var expiredOptions = new CookieOptions
@@ -53,9 +51,39 @@ namespace AMWebAPI.Controllers
         };
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> IsLoggedIn()
         {
-            return StatusCode((int)HttpStatusCodeEnum.Success, true);
+            var fingerprint = ExtractFingerprint();
+
+            try
+            {
+                var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
+                fingerprint.Validate();
+
+                if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
+                {
+                    var newJwt = await _identityService.RefreshJWToken(jwt, refreshToken, fingerprint);
+                    SetAuthCookies(newJwt, refreshToken);
+                    return StatusCode((int)HttpStatusCodeEnum.LoggedIn);
+                }
+                else
+                {
+                    return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);
+                }
+            }
+            catch(ArgumentException ex)
+            {
+                _logger.LogError($"IP Address: {fingerprint.IPAddress} - {ex.ToString()}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+            }
+
+            ExpireAuthCookies();
+            return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);
         }
 
         [HttpPost]
@@ -105,27 +133,28 @@ namespace AMWebAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> Ping()
         {
+            var fingerprint = ExtractFingerprint();
+
             try
             {
                 var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-                var refresh = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
-                var fingerprint = ExtractFingerprint();
-
+                var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
                 fingerprint.Validate();
 
-                if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refresh))
+                if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
                 {
                     if (IdentityTool.IsTheJWTExpired(jwt))
                     {
-                        var newJwt = await _identityService.RefreshJWToken(jwt, refresh, fingerprint);
-                        SetAuthCookies(newJwt, refresh);
+                        var newJwt = await _identityService.RefreshJWToken(jwt, refreshToken, fingerprint);
+                        SetAuthCookies(newJwt, refreshToken);
                     }
-                    return StatusCode((int)HttpStatusCodeEnum.LoggedIn);
                 }
                 return StatusCode((int)HttpStatusCodeEnum.Success);
             }
-            catch (ArgumentException)
+            catch(ArgumentException ae)
             {
+                _logger.LogError($"IP Address: {fingerprint.IPAddress} - {ae.ToString()}");
+                ExpireAuthCookies();
                 return StatusCode((int)HttpStatusCodeEnum.Unauthorized);
             }
             catch (Exception ex)
@@ -188,7 +217,7 @@ namespace AMWebAPI.Controllers
             }
             catch (ArgumentException)
             {
-                result.ErrorMessage = "Bad password";
+                result.ErrorMessage = "Bad password or current password doesn't match";
                 return StatusCode((int)HttpStatusCodeEnum.Success, result);
             }
             catch (Exception ex)

@@ -1,11 +1,14 @@
 ﻿using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
+using AMData.Models.IdentityModels;
 using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using System.Data.SqlTypes;
+using System.Transactions;
 
 namespace AMWebAPI.Services.CoreServices
 {
@@ -59,22 +62,48 @@ namespace AMWebAPI.Services.CoreServices
 
             var provider = new ProviderModel(0, dto.FirstName, dto.MiddleName, dto.LastName, dto.EMail);
 
-            using (var trans = await _db.Database.BeginTransactionAsync())
+            var maxRetries = 3;
+            var retryDelay = TimeSpan.FromSeconds(2);
+            var attempt = 0;
+
+            while (true)
             {
-                await _db.Providers.AddAsync(provider);
-                await _db.SaveChangesAsync();
+                try
+                {
+                    using (var trans = await _db.Database.BeginTransactionAsync())
+                    {
+                        await _db.Providers.AddAsync(provider);
+                        await _db.SaveChangesAsync();
 
-                var emailReq = new UpdateProviderEMailRequestModel(provider.ProviderId, dto.EMail);
-                var message = $"Thank you for joining AM Tech!\nPlease verify your email by clicking the following link:\n{_config["Environment:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&isNew=true";
+                        var emailReq = new UpdateProviderEMailRequestModel(provider.ProviderId, dto.EMail);
+                        var message = $"Thank you for joining AM Tech!\nPlease verify your email by clicking the following link:\n{_config["Environment:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&isNew=true";
 
-                var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
+                        var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
-                var addReqTask = _db.UpdateProviderEMailRequests.AddAsync(emailReq).AsTask();
-                var addCommTask = _db.ProviderCommunications.AddAsync(comm).AsTask();
+                        var addReqTask = _db.UpdateProviderEMailRequests.AddAsync(emailReq).AsTask();
+                        var addCommTask = _db.ProviderCommunications.AddAsync(comm).AsTask();
 
-                await Task.WhenAll(addReqTask, addCommTask);
-                await _db.SaveChangesAsync();
-                await trans.CommitAsync();
+                        await Task.WhenAll(addReqTask, addCommTask);
+                        await _db.SaveChangesAsync();
+                        await trans.CommitAsync();
+                    }
+
+                    _logger.LogInfo("All database changes completed successfully.");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    attempt++;
+                    _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
+                    if (attempt >= maxRetries)
+                    {
+                        _logger.LogError("All attempts failed. No data was committed.");
+                        throw;
+                    }
+
+                    await Task.Delay(retryDelay);
+                }
             }
 
             _logger.LogAudit($"Provider Id: {provider.ProviderId} - E-Mail: {provider.EMail}");
@@ -118,22 +147,42 @@ namespace AMWebAPI.Services.CoreServices
 
             var communication = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);
 
-            using (var transaction = await _db.Database.BeginTransactionAsync())
+            var maxRetries = 3;
+            var retryDelay = TimeSpan.FromSeconds(2);
+            var attempt = 0;
+
+            while (true)
             {
-                var existingRequests = await _db.UpdateProviderEMailRequests
-                    .Where(x => x.ProviderId == providerId)
-                    .ToListAsync();
-
-                foreach (var existingRequest in existingRequests)
+                try
                 {
-                    existingRequest.DeleteDate = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                    using (var transaction = await _db.Database.BeginTransactionAsync())
+                    {
+                        await _db.UpdateProviderEMailRequests
+                        .Where(x => x.ProviderId == providerId)
+                        .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-                await _db.UpdateProviderEMailRequests.AddAsync(request);
-                await _db.ProviderCommunications.AddAsync(communication);
-                await _db.SaveChangesAsync();
-                await transaction.CommitAsync();
+                        await _db.UpdateProviderEMailRequests.AddAsync(request);
+                        await _db.ProviderCommunications.AddAsync(communication);
+                        await _db.SaveChangesAsync();
+                        await transaction.CommitAsync();
+                    }
+
+                    _logger.LogInfo("All database changes completed successfully.");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    attempt++;
+                    _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
+                    if (attempt >= maxRetries)
+                    {
+                        _logger.LogError("All attempts failed. No data was committed.");
+                        throw;
+                    }
+
+                    await Task.Delay(retryDelay);
+                }
             }
 
             return dto;
@@ -170,15 +219,41 @@ namespace AMWebAPI.Services.CoreServices
 
             var oldEmail = provider.EMail;
 
-            using (var trans = await _db.Database.BeginTransactionAsync())
-            {
-                provider.EMail = request.NewEMail;
-                provider.EMailVerified = true;
-                provider.UpdateDate = DateTime.UtcNow;
-                request.DeleteDate = DateTime.UtcNow;
+            var maxRetries = 3;
+            var retryDelay = TimeSpan.FromSeconds(2);
+            var attempt = 0;
 
-                _db.SaveChanges();
-                await trans.CommitAsync();
+            while (true)
+            {
+                try
+                {
+                    using (var trans = await _db.Database.BeginTransactionAsync())
+                    {
+                        provider.EMail = request.NewEMail;
+                        provider.EMailVerified = true;
+                        provider.UpdateDate = DateTime.UtcNow;
+                        request.DeleteDate = DateTime.UtcNow;
+
+                        _db.SaveChanges();
+                        await trans.CommitAsync();
+                    }
+
+                    _logger.LogInfo("All database changes completed successfully.");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    attempt++;
+                    _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
+                    if (attempt >= maxRetries)
+                    {
+                        _logger.LogError("All attempts failed. No data was committed.");
+                        throw;
+                    }
+
+                    await Task.Delay(retryDelay);
+                }
             }
 
             _logger.LogAudit($"Email Changed - Provider Id: {provider.ProviderId} Old Email: {oldEmail} - New Email: {request.NewEMail}");
