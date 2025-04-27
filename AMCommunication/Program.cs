@@ -66,7 +66,7 @@ namespace AMCommunication
 
         private static async Task<AMProviderEmail> SendEmailAsyncHelper(AMProviderEmail email)
         {
-            var subject = "Thank you for registering!";
+            var subject = "Attention Needed";
             var apiKey = _config["SendGrid:APIKey"];
             var client = new SendGridClient(apiKey);
 
