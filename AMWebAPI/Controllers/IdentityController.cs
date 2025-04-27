@@ -168,8 +168,6 @@ namespace AMWebAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto)
         {
-            _logger.LogInfo("+");
-
             try
             {
                 await _identityService.ResetPasswordAsync(dto);
@@ -180,10 +178,6 @@ namespace AMWebAPI.Controllers
             {
                 _logger.LogError(ex.ToString());
                 return StatusCode((int)HttpStatusCodeEnum.ServerError);
-            }
-            finally
-            {
-                _logger.LogInfo("-");
             }
         }
 

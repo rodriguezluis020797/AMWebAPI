@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using AMWebAPI.Services.IdentityServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 
@@ -92,9 +93,14 @@ namespace AMWebAPI
 
             // Data Services
             builder.Services.AddDbContext<AMCoreData>(options =>
-                options.UseSqlServer(config.GetConnectionString("CoreConnectionString")), ServiceLifetime.Scoped);
+                options.UseSqlServer(config.GetConnectionString("CoreConnectionString"))
+                       .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.CommandExecuting)),
+                ServiceLifetime.Scoped);
+
             builder.Services.AddDbContext<AMIdentityData>(options =>
-                options.UseSqlServer(config.GetConnectionString("IdentityConnectionString")), ServiceLifetime.Scoped);
+                options.UseSqlServer(config.GetConnectionString("IdentityConnectionString"))
+                       .ConfigureWarnings(warnings => warnings.Ignore(RelationalEventId.CommandExecuting)),
+                ServiceLifetime.Scoped);
 
             // Identity Services
             builder.Services.AddScoped<IIdentityService, IdentityService>();
@@ -102,6 +108,12 @@ namespace AMWebAPI
 
         private static void ConfigureEnvironmentLogging(WebApplicationBuilder builder)
         {
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole();
+            builder.Logging.SetMinimumLevel(LogLevel.Warning);
+
+            builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.None);
+
             switch (builder.Environment.EnvironmentName)
             {
                 case "Development":

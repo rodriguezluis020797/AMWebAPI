@@ -18,7 +18,7 @@ namespace AMWebAPI.Services.IdentityServices
     {
         Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDTO);
         Task<BaseDTO> UpdatePasswordAsync(ProviderDTO dto, string token);
-        Task ResetPasswordAsync(ProviderDTO dto);
+        Task<BaseDTO> ResetPasswordAsync(ProviderDTO dto);
         Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
     }
 
@@ -277,9 +277,9 @@ namespace AMWebAPI.Services.IdentityServices
             return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!, _configuration["Jwt:Audience"]!, "-1");
         }
 
-        public async Task ResetPasswordAsync(ProviderDTO dto)
+        public async Task<BaseDTO> ResetPasswordAsync(ProviderDTO dto)
         {
-            var response = new ProviderDTO();
+            var response = new BaseDTO();
 
             var provider = await _coreData.Providers
                 .Where(x => x.EMail.Equals(dto.EMail))
@@ -288,7 +288,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             if (provider == null)
             {
-                return;
+               return response;
             }
 
             var tempPasswordString = IdentityTool.GenerateRandomPassword();
@@ -342,6 +342,7 @@ namespace AMWebAPI.Services.IdentityServices
                     await Task.Delay(retryDelay);
                 }
             }
+            return response;
         }
 
         private bool IsFingerprintTrustworthy(FingerprintDTO databaseFingerprint, FingerprintDTO providedFingerprint)
