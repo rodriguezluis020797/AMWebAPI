@@ -106,7 +106,7 @@ namespace AMWebAPI.Controllers
 
                 var response = await _providerService.UpdateProviderAsync(dto, jwt);
 
-                return StatusCode((int)HttpStatusCodeEnum.Success);
+                return StatusCode((int)HttpStatusCodeEnum.Success, response);
             }
             catch (Exception ex)
             {

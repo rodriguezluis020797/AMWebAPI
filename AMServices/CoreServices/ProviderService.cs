@@ -1,14 +1,11 @@
 ﻿using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
-using AMData.Models.IdentityModels;
 using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
-using System.Data.SqlTypes;
-using System.Transactions;
 
 namespace AMWebAPI.Services.CoreServices
 {
@@ -16,8 +13,9 @@ namespace AMWebAPI.Services.CoreServices
     {
         Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
         Task<ProviderDTO> GetProviderAsync(string jwToken);
+        Task<List<StateCodeEnum>> GetStateCodes(CountryCodeEnum countryCode);
         Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken);
-        Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
+        Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
         Task<BaseDTO> VerifyUpdateEMailAsync(string guid);
     }
 
@@ -60,7 +58,7 @@ namespace AMWebAPI.Services.CoreServices
                 return response;
             }
 
-            var provider = new ProviderModel(0, dto.FirstName, dto.MiddleName, dto.LastName, dto.EMail);
+            var provider = new ProviderModel(long.MinValue, dto.FirstName, dto.MiddleName, dto.LastName, dto.EMail, CountryCodeEnum.Select, StateCodeEnum.Select, TimeZoneCodeEnum.Select);
 
             var maxRetries = 3;
             var retryDelay = TimeSpan.FromSeconds(2);
@@ -109,6 +107,110 @@ namespace AMWebAPI.Services.CoreServices
             _logger.LogAudit($"Provider Id: {provider.ProviderId} - E-Mail: {provider.EMail}");
 
             return response;
+        }
+
+        public async Task<List<StateCodeEnum>> GetStateCodes(CountryCodeEnum countryCode)
+        {
+            var states = new List<StateCodeEnum>();
+            states.Add(StateCodeEnum.Select);
+
+            switch (countryCode)
+            {
+                case CountryCodeEnum.United_States:
+                    states.Add(StateCodeEnum.Alabama);
+                    states.Add(StateCodeEnum.Alaska);
+                    states.Add(StateCodeEnum.Arizona);
+                    states.Add(StateCodeEnum.Arkansas);
+                    states.Add(StateCodeEnum.California);
+                    states.Add(StateCodeEnum.Colorado);
+                    states.Add(StateCodeEnum.Connecticut);
+                    states.Add(StateCodeEnum.Delaware);
+                    states.Add(StateCodeEnum.District_of_Columbia);
+                    states.Add(StateCodeEnum.Florida);
+                    states.Add(StateCodeEnum.Georgia);
+                    states.Add(StateCodeEnum.Hawaii);
+                    states.Add(StateCodeEnum.Idaho);
+                    states.Add(StateCodeEnum.Illinois);
+                    states.Add(StateCodeEnum.Indiana);
+                    states.Add(StateCodeEnum.Iowa);
+                    states.Add(StateCodeEnum.Kansas);
+                    states.Add(StateCodeEnum.Kentucky);
+                    states.Add(StateCodeEnum.Louisiana);
+                    states.Add(StateCodeEnum.Maine);
+                    states.Add(StateCodeEnum.Maryland);
+                    states.Add(StateCodeEnum.Massachusetts);
+                    states.Add(StateCodeEnum.Michigan);
+                    states.Add(StateCodeEnum.Minnesota);
+                    states.Add(StateCodeEnum.Mississippi);
+                    states.Add(StateCodeEnum.Missouri);
+                    states.Add(StateCodeEnum.Montana);
+                    states.Add(StateCodeEnum.Nebraska);
+                    states.Add(StateCodeEnum.Nevada);
+                    states.Add(StateCodeEnum.New_Hampshire);
+                    states.Add(StateCodeEnum.New_Jersey);
+                    states.Add(StateCodeEnum.New_Mexico);
+                    states.Add(StateCodeEnum.New_York);
+                    states.Add(StateCodeEnum.North_Carolina);
+                    states.Add(StateCodeEnum.North_Dakota);
+                    states.Add(StateCodeEnum.Ohio);
+                    states.Add(StateCodeEnum.Oklahoma);
+                    states.Add(StateCodeEnum.Oregon);
+                    states.Add(StateCodeEnum.Pennsylvania);
+                    states.Add(StateCodeEnum.Rhode_Island);
+                    states.Add(StateCodeEnum.South_Carolina);
+                    states.Add(StateCodeEnum.South_Dakota);
+                    states.Add(StateCodeEnum.Tennessee);
+                    states.Add(StateCodeEnum.Texas);
+                    states.Add(StateCodeEnum.Utah);
+                    states.Add(StateCodeEnum.Vermont);
+                    states.Add(StateCodeEnum.Virginia);
+                    states.Add(StateCodeEnum.Washington);
+                    states.Add(StateCodeEnum.West_Virginia);
+                    states.Add(StateCodeEnum.Wisconsin);
+                    states.Add(StateCodeEnum.Wyoming);
+                    break;
+
+                case CountryCodeEnum.Mexico:
+                    states.Add(StateCodeEnum.Aguascalientes);
+                    states.Add(StateCodeEnum.Baja_California);
+                    states.Add(StateCodeEnum.Baja_California_Sur);
+                    states.Add(StateCodeEnum.Campeche);
+                    states.Add(StateCodeEnum.Chiapas);
+                    states.Add(StateCodeEnum.Chihuahua);
+                    states.Add(StateCodeEnum.Ciudad_de_México);
+                    states.Add(StateCodeEnum.Coahuila);
+                    states.Add(StateCodeEnum.Colima);
+                    states.Add(StateCodeEnum.Durango);
+                    states.Add(StateCodeEnum.Guanajuato);
+                    states.Add(StateCodeEnum.Guerrero);
+                    states.Add(StateCodeEnum.Hidalgo);
+                    states.Add(StateCodeEnum.Jalisco);
+                    states.Add(StateCodeEnum.México);
+                    states.Add(StateCodeEnum.Michoacán);
+                    states.Add(StateCodeEnum.Morelos);
+                    states.Add(StateCodeEnum.Nayarit);
+                    states.Add(StateCodeEnum.Nuevo_León);
+                    states.Add(StateCodeEnum.Oaxaca);
+                    states.Add(StateCodeEnum.Puebla);
+                    states.Add(StateCodeEnum.Querétaro);
+                    states.Add(StateCodeEnum.Quintana_Roo);
+                    states.Add(StateCodeEnum.San_Luis_Potosí);
+                    states.Add(StateCodeEnum.Sinaloa);
+                    states.Add(StateCodeEnum.Sonora);
+                    states.Add(StateCodeEnum.Tabasco);
+                    states.Add(StateCodeEnum.Tamaulipas);
+                    states.Add(StateCodeEnum.Tlaxcala);
+                    states.Add(StateCodeEnum.Veracruz);
+                    states.Add(StateCodeEnum.Yucatán);
+                    states.Add(StateCodeEnum.Zacatecas);
+                    break;
+
+                default:
+                    throw new ArgumentException(nameof(CountryCodeEnum));
+            }
+
+
+            return states;
         }
 
         public async Task<ProviderDTO> GetProviderAsync(string jwToken)
@@ -188,11 +290,15 @@ namespace AMWebAPI.Services.CoreServices
             return dto;
         }
 
-        public async Task<ProviderDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken)
+        public async Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken)
         {
+            var response = new BaseDTO();
             dto.Validate();
             if (!string.IsNullOrEmpty(dto.ErrorMessage))
-                return dto;
+            {
+                response.ErrorMessage = dto.ErrorMessage;
+                return response;
+            }
 
             var providerId = GetProviderIdFromJwt(jwToken);
 
@@ -203,7 +309,7 @@ namespace AMWebAPI.Services.CoreServices
             provider.UpdateRecordFromDTO(dto);
             await _db.SaveChangesAsync();
 
-            return dto;
+            return response;
         }
 
         public async Task<BaseDTO> VerifyUpdateEMailAsync(string guid)

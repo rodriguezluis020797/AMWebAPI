@@ -8,7 +8,7 @@ namespace AMData.Models.CoreModels
     public class ProviderModel
     {
         public ProviderModel() { }
-        public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail)
+        public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail, CountryCodeEnum countryCode, StateCodeEnum stateCode, TimeZoneCodeEnum timeZoneCode)
         {
             FirstName = firstName;
             MiddleName = middleName;
@@ -19,6 +19,10 @@ namespace AMData.Models.CoreModels
             CreateDate = DateTime.UtcNow;
             UpdateDate = null;
             DeleteDate = null;
+            CountryCode = countryCode;
+            StateCode = stateCode;
+            TimeZoneCode = timeZoneCode;
+            LastLogindate = null;
         }
         [Key] public long ProviderId { get; set; }
         public string FirstName { get; set; }
@@ -26,7 +30,11 @@ namespace AMData.Models.CoreModels
         public string LastName { get; set; }
         public string EMail { get; set; }
         public bool EMailVerified { get; set; }
+        public CountryCodeEnum CountryCode { get; set; }
+        public StateCodeEnum StateCode { get; set; }
+        public TimeZoneCodeEnum TimeZoneCode { get; set; }
         public bool AccessGranted { get; set; }
+        public DateTime? LastLogindate { get; set; }
         public DateTime CreateDate { get; set; }
         public DateTime? UpdateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
@@ -43,6 +51,9 @@ namespace AMData.Models.CoreModels
             UpdateDate = DateTime.UtcNow;
             DeleteDate = null;
             AccessGranted = true;
+            CountryCode = dto.CountryCode;
+            StateCode = dto.StateCode;
+            TimeZoneCode = dto.TimeZoneCode;
         }
     }
 }

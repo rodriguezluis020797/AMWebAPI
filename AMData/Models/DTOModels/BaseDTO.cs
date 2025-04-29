@@ -8,6 +8,7 @@
         public void ResetModel()
         {
             ErrorMessage = null;
+            IsSpecialCase = null;
         }
     }
 }

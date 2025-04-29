@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.Migrations
 {
     [DbContext(typeof(AMCoreData))]
-    partial class AMCoreDataModelSnapshot : ModelSnapshot
+    [Migration("20250427185411_MoodifyModels")]
+    partial class MoodifyModels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -148,10 +151,10 @@ namespace AMWebAPI.Migrations
                     b.Property<string>("MiddleName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("StateCode")
+                    b.Property<int>("State")
                         .HasColumnType("int");
 
-                    b.Property<int>("TimeZoneCode")
+                    b.Property<int>("TimeZone")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdateDate")

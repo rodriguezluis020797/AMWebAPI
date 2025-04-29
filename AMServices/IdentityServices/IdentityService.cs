@@ -288,7 +288,7 @@ namespace AMWebAPI.Services.IdentityServices
 
             if (provider == null)
             {
-               return response;
+                return response;
             }
 
             var tempPasswordString = IdentityTool.GenerateRandomPassword();

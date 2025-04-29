@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.Migrations
 {
     [DbContext(typeof(AMCoreData))]
-    partial class AMCoreDataModelSnapshot : ModelSnapshot
+    [Migration("20250427074131_UpdateProviderAddTimeZone")]
+    partial class UpdateProviderAddTimeZone
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -118,9 +121,6 @@ namespace AMWebAPI.Migrations
                     b.Property<bool>("AccessGranted")
                         .HasColumnType("bit");
 
-                    b.Property<int>("CountryCode")
-                        .HasColumnType("int");
-
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("datetime2");
 
@@ -138,9 +138,6 @@ namespace AMWebAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<DateTime?>("LastLogindate")
-                        .HasColumnType("datetime2");
-
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -148,10 +145,7 @@ namespace AMWebAPI.Migrations
                     b.Property<string>("MiddleName")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("StateCode")
-                        .HasColumnType("int");
-
-                    b.Property<int>("TimeZoneCode")
+                    b.Property<int>("TimeZone")
                         .HasColumnType("int");
 
                     b.Property<DateTime?>("UpdateDate")

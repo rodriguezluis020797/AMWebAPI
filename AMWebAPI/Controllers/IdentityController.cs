@@ -73,7 +73,7 @@ namespace AMWebAPI.Controllers
                     return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);
                 }
             }
-            catch(ArgumentException ex)
+            catch (ArgumentException ex)
             {
                 _logger.LogError($"IP Address: {fingerprint.IPAddress} - {ex.ToString()}");
             }
@@ -151,7 +151,7 @@ namespace AMWebAPI.Controllers
                 }
                 return StatusCode((int)HttpStatusCodeEnum.Success);
             }
-            catch(ArgumentException ae)
+            catch (ArgumentException ae)
             {
                 _logger.LogError($"IP Address: {fingerprint.IPAddress} - {ae.ToString()}");
                 ExpireAuthCookies();
