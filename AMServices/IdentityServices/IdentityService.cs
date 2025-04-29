@@ -127,9 +127,10 @@ namespace AMWebAPI.Services.IdentityServices
 
             return new LogInAsyncResponse()
             {
-                baseDTO = new BaseDTO()
+                providerDTO = new ProviderDTO()
                 {
-                    IsSpecialCase = passwordModel.Temporary
+                    IsSpecialCase = passwordModel.Temporary,
+                    HasCompletedSignUp = provider.CountryCode != CountryCodeEnum.Select && provider.StateCode != StateCodeEnum.Select && provider.TimeZoneCode != TimeZoneCodeEnum.Select
                 },
                 jwToken = jwt,
                 refreshToken = encryptedRefreshToken
@@ -363,7 +364,7 @@ namespace AMWebAPI.Services.IdentityServices
         {
             public string jwToken { get; set; } = string.Empty;
             public string refreshToken { get; set; } = string.Empty;
-            public BaseDTO baseDTO { get; set; } = new();
+            public ProviderDTO providerDTO { get; set; } = new();
         }
     }
 }

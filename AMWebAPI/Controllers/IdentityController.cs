@@ -91,7 +91,7 @@ namespace AMWebAPI.Controllers
         public async Task<IActionResult> LogIn([FromBody] ProviderDTO dto)
         {
             _logger.LogInfo("+");
-            var response = new BaseDTO();
+            var response = new ProviderDTO();
 
             try
             {
@@ -99,7 +99,8 @@ namespace AMWebAPI.Controllers
                 fingerprint.Validate();
 
                 var loginResult = await _identityService.LogInAsync(dto, fingerprint);
-                response = loginResult.baseDTO;
+                response = loginResult.providerDTO;
+                response.HasCompletedSignUp = false;
                 SetAuthCookies(loginResult.jwToken, loginResult.refreshToken);
 
                 _logger.LogInfo("-");

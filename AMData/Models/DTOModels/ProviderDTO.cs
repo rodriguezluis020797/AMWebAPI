@@ -12,6 +12,7 @@ namespace AMData.Models.DTOModels
         public CountryCodeEnum CountryCode { get; set; } = CountryCodeEnum.Select;
         public StateCodeEnum StateCode { get; set; } = StateCodeEnum.Select;
         public TimeZoneCodeEnum TimeZoneCode { get; set; } = TimeZoneCodeEnum.Select;
+        public bool HasCompletedSignUp { get; set; } = false;
         public bool HasLoggedIn { get; set; } = false;
         public string CurrentPassword { get; set; } = string.Empty;
         public string NewPassword { get; set; } = string.Empty;
@@ -32,6 +33,7 @@ namespace AMData.Models.DTOModels
             CurrentPassword = string.Empty;
             NewPassword = string.Empty;
             IsTempPassword = false;
+            HasCompletedSignUp = CountryCode != CountryCodeEnum.Select && StateCode != StateCodeEnum.Select && TimeZoneCode != TimeZoneCodeEnum.Select;
         }
         public void Validate()
         {

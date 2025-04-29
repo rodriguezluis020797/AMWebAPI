@@ -68,7 +68,8 @@ namespace AMUserAcceptance
                 var passwordModel = new PasswordModel(provider.ProviderId, true, hashedPassword, salt);
 
                 var message = $"Good news! You can now use the system!{Environment.NewLine}" +
-                              $"Temporary password: {password}";
+                    $"Please complete your profile to be able to schedule appointments and notifications." +
+                    $"Temporary password: {password}";
                 var communication = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
                 using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
