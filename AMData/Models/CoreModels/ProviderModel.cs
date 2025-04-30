@@ -42,6 +42,7 @@ namespace AMData.Models.CoreModels
         [NotMapped] public virtual List<ProviderCommunicationModel> Communications { get; set; }
         [NotMapped] public virtual List<ClientModel> Clients { get; set; }
         [NotMapped] public virtual List<UpdateProviderEMailRequestModel> UpdateProviderEMailRequests { get; set; }
+        [NotMapped] public virtual List<ServiceModel> Services { get; set; }
 
         public void UpdateRecordFromDTO(ProviderDTO dto)
         {

@@ -25,10 +25,12 @@ namespace AMWebAPI.Services.DataServices
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             ConfigureClientModel(modelBuilder);
-            ConfigureProviderModel(modelBuilder);
             ConfigureProviderCommunicationModel(modelBuilder);
-            ConfigureSessionModel(modelBuilder);
+            ConfigureProviderModel(modelBuilder);
+            ConfigureServiceModel(modelBuilder);
             ConfigureSessionActionModel(modelBuilder);
+            ConfigureSessionModel(modelBuilder);
+            ConfigureUpdateProviderEMailRequestModel(modelBuilder);
         }
 
         private static void ConfigureClientModel(ModelBuilder modelBuilder)
@@ -59,6 +61,24 @@ namespace AMWebAPI.Services.DataServices
                 .WithOne(c => c.Provider)
                 .HasForeignKey(c => c.ProviderId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProviderModel>()
+                .HasMany(u => u.Services)
+                .WithOne(c => c.Provider)
+                .HasForeignKey(c => c.ProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<ProviderModel>()
+                .HasMany(u => u.UpdateProviderEMailRequests)
+                .WithOne(c => c.Provider)
+                .HasForeignKey(c => c.ProviderId)
+                .OnDelete(DeleteBehavior.Cascade);
+        }
+
+        private static void ConfigureServiceModel(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<ServiceModel>()
+                    .HasKey(s => s.ServiceId);
         }
 
         private static void ConfigureProviderCommunicationModel(ModelBuilder modelBuilder)
@@ -89,19 +109,15 @@ namespace AMWebAPI.Services.DataServices
         {
             modelBuilder.Entity<UpdateProviderEMailRequestModel>()
                 .HasKey(x => x.UpdateProviderEMailRequestId);
-
-            modelBuilder.Entity<ProviderModel>()
-                .HasMany(u => u.UpdateProviderEMailRequests)
-                .WithOne(c => c.Provider)
-                .HasForeignKey(c => c.ProviderId)
-                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public DbSet<ClientModel> Clients { get; init; }
-        public DbSet<SessionActionModel> SessionActions { get; init; }
-        public DbSet<SessionModel> Sessions { get; init; }
+
         public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
         public DbSet<ProviderModel> Providers { get; init; }
+        public DbSet<ServiceModel> Services { get; init; }
+        public DbSet<SessionActionModel> SessionActions { get; init; }
+        public DbSet<SessionModel> Sessions { get; init; }
         public DbSet<UpdateProviderEMailRequestModel> UpdateProviderEMailRequests { get; init; }
     }
 }
