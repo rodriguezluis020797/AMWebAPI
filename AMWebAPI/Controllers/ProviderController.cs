@@ -55,7 +55,6 @@ namespace AMWebAPI.Controllers
                     throw new Exception("JWT token missing from cookies.");
 
                 var provider = await _providerService.GetProviderAsync(jwToken);
-                provider.HasCompletedSignUp = false;
                 return StatusCode((int)HttpStatusCodeEnum.Success, provider);
             }
             catch (Exception ex)
