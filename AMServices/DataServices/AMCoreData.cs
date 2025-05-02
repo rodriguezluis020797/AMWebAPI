@@ -79,6 +79,10 @@ namespace AMWebAPI.Services.DataServices
         {
             modelBuilder.Entity<ServiceModel>()
                     .HasKey(s => s.ServiceId);
+            
+            modelBuilder.Entity<ServiceModel>()
+                .Property(i => i.Price)
+                .HasColumnType("decimal(18,2)");
         }
 
         private static void ConfigureProviderCommunicationModel(ModelBuilder modelBuilder)

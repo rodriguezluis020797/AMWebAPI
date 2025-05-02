@@ -100,7 +100,6 @@ namespace AMWebAPI.Controllers
 
                 var loginResult = await _identityService.LogInAsync(dto, fingerprint);
                 response = loginResult.providerDTO;
-                response.HasCompletedSignUp = false;
                 SetAuthCookies(loginResult.jwToken, loginResult.refreshToken);
 
                 _logger.LogInfo("-");

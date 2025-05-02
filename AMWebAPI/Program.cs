@@ -90,6 +90,7 @@ namespace AMWebAPI
             // Core Services
             builder.Services.AddScoped<ISystemStatusService, SystemStatusService>();
             builder.Services.AddScoped<IProviderService, ProviderService>();
+            builder.Services.AddScoped<IServiceService, ServiceService>();
 
             // Data Services
             builder.Services.AddDbContext<AMCoreData>(options =>
