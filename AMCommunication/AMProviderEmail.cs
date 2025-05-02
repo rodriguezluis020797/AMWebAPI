@@ -1,11 +1,10 @@
 ﻿using AMData.Models.CoreModels;
 using SendGrid;
 
-namespace AMCommunication
+namespace AMCommunication;
+
+public class AMProviderEmail
 {
-    public class AMProviderEmail
-    {
-        public ProviderCommunicationModel Communication { get; set; }
-        public Response Response { get; set; } = default!;
-    }
+    public ProviderCommunicationModel Communication { get; set; }
+    public Response Response { get; set; } = default!;
 }

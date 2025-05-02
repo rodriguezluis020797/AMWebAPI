@@ -1,21 +1,21 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace AMData.Models.CoreModels
+namespace AMData.Models.CoreModels;
+
+[Table("SessionAction")]
+public class SessionActionModel
 {
-    [Table("SessionAction")]
-    public class SessionActionModel
+    public SessionActionModel(long sessionId, SessionActionEnum sessionAction)
     {
-        public SessionActionModel(long sessionId, SessionActionEnum sessionAction)
-        {
-            SessionId = sessionId;
-            SessionAction = sessionAction;
-            CreateDate = DateTime.UtcNow;
-        }
-        [Key] public long SessionActionId { get; set; }
-        [ForeignKey("SessionModel")] public long SessionId { get; set; }
-        public SessionActionEnum SessionAction { get; set; }
-        public DateTime CreateDate { get; set; }
-        [NotMapped] public virtual SessionModel Session { get; set; }
+        SessionId = sessionId;
+        SessionAction = sessionAction;
+        CreateDate = DateTime.UtcNow;
     }
+
+    [Key] public long SessionActionId { get; set; }
+    [ForeignKey("SessionModel")] public long SessionId { get; set; }
+    public SessionActionEnum SessionAction { get; set; }
+    public DateTime CreateDate { get; set; }
+    [NotMapped] public virtual SessionModel Session { get; set; }
 }

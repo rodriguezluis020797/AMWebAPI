@@ -7,125 +7,125 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace AMWebAPI.Services.CoreServices
+namespace AMWebAPI.Services.CoreServices;
+
+public interface IClientService
 {
-    public interface IClientService
+    Task<List<ClientDTO>> GetClients(string jwt);
+    Task<ClientDTO> CreateClient(ClientDTO client, string jwt);
+}
+
+public class ClientService : IClientService
+{
+    private readonly IConfiguration _config;
+    private readonly AMCoreData _db;
+    private readonly IAMLogger _logger;
+
+    public ClientService(
+        IAMLogger logger,
+        AMCoreData db,
+        IConfiguration config)
     {
-        Task<List<ClientDTO>> GetClients(string jwt);
-        Task<ClientDTO> CreateClient(ClientDTO client, string jwt);
+        _logger = logger;
+        _db = db;
+        _config = config;
     }
-    public class ClientService : IClientService
+
+    public async Task<List<ClientDTO>> GetClients(string jwt)
     {
-        private readonly IAMLogger _logger;
-        private readonly AMCoreData _db;
-        private readonly IConfiguration _config;
-        
-        public ClientService(
-            IAMLogger logger,
-            AMCoreData db,
-            IConfiguration config)
+        var response = new List<ClientDTO>();
+
+        var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
+        var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+
+        var clients = await _db.Clients
+            .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+            .ToListAsync();
+
+        var clientDTO = new ClientDTO();
+        foreach (var client in clients)
         {
-            _logger = logger;
-            _db = db;
-            _config = config;
+            clientDTO = new ClientDTO();
+            clientDTO.CreateRecordFromModel(client);
+            CryptographyTool.Encrypt(clientDTO.ClientId, out var encryptedId);
+            clientDTO.ClientId = encryptedId;
+            response.Add(clientDTO);
         }
 
-        public async Task<List<ClientDTO>> GetClients(string jwt)
+        return response;
+    }
+
+    public async Task<ClientDTO> CreateClient(ClientDTO dto, string jwt)
+    {
+        var response = new ClientDTO();
+
+        dto.Validate();
+
+        if (!string.IsNullOrEmpty(dto.ErrorMessage))
         {
-            var response = new List<ClientDTO>();
-            
-            var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
-            var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
-
-            var clients = await _db.Clients
-                .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
-                .ToListAsync();
-
-            var clientDTO = new ClientDTO();
-            foreach (var client in clients)
-            {
-                clientDTO = new ClientDTO();
-                clientDTO.CreateRecordFromModel(client);
-                CryptographyTool.Encrypt(clientDTO.ClientId, out var encryptedId);
-                clientDTO.ClientId = encryptedId;
-                response.Add(clientDTO);
-            }
-            
+            response.ErrorMessage = dto.ErrorMessage;
             return response;
         }
 
-        public async Task<ClientDTO> CreateClient(ClientDTO dto, string jwt)
+        if (await _db.Clients.AnyAsync(x => x.PhoneNumber == dto.PhoneNumber))
         {
-            var response = new ClientDTO();
-
-            dto.Validate();
-
-            if (!string.IsNullOrEmpty(dto.ErrorMessage))
-            {
-                response.ErrorMessage = dto.ErrorMessage;
-                return response;
-            }
-            
-            if (await _db.Clients.AnyAsync(x => x.PhoneNumber == dto.PhoneNumber))
-            {
-                response.ErrorMessage = "A client with the given phone number already exists.";
-                return response;
-            }
-
-            if (await _db.Clients.AnyAsync(x =>
-                    x.FirstName == dto.FirstName &&
-                    x.MiddleName == dto.MiddleName &&
-                    x.LastName == dto.LastName))
-            {
-                response.ErrorMessage = "A client with the same name already exists.";
-                return response;
-            }
-            var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
-            var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
-
-            var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
-            
-            var maxRetries = 3;
-            var retryDelay = TimeSpan.FromSeconds(2);
-            var attempt = 0;
-
-            while (true)
-            {
-                try
-                {
-                    using (var trans = await _db.Database.BeginTransactionAsync())
-                    {
-                        try
-                        {
-                            await _db.Clients.AddAsync(clientModel);
-                            // await _db.ClientCommunication.AddAsync(clientCommunicationModel);
-                            await _db.SaveChangesAsync();
-                            await trans.CommitAsync();
-                        }
-                        catch
-                        {
-                            await trans.RollbackAsync();
-                            throw new Exception();
-                        }
-                    }
-                    break;
-                }
-                catch (Exception ex)
-                {
-                    attempt++;
-                    _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
-
-                    if (attempt >= maxRetries)
-                    {
-                        _logger.LogError("All attempts failed. No data was committed.");
-                        throw;
-                    }
-
-                    await Task.Delay(retryDelay);
-                }
-            }
-            
+            response.ErrorMessage = "A client with the given phone number already exists.";
             return response;
         }
-    }   
+
+        if (await _db.Clients.AnyAsync(x =>
+                x.FirstName == dto.FirstName &&
+                x.MiddleName == dto.MiddleName &&
+                x.LastName == dto.LastName))
+        {
+            response.ErrorMessage = "A client with the same name already exists.";
+            return response;
+        }
+
+        var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
+        var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+
+        var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
+
+        var maxRetries = 3;
+        var retryDelay = TimeSpan.FromSeconds(2);
+        var attempt = 0;
+
+        while (true)
+            try
+            {
+                using (var trans = await _db.Database.BeginTransactionAsync())
+                {
+                    try
+                    {
+                        await _db.Clients.AddAsync(clientModel);
+                        // await _db.ClientCommunication.AddAsync(clientCommunicationModel);
+                        await _db.SaveChangesAsync();
+                        await trans.CommitAsync();
+                    }
+                    catch
+                    {
+                        await trans.RollbackAsync();
+                        throw new Exception();
+                    }
+                }
+
+                break;
+            }
+            catch (Exception ex)
+            {
+                attempt++;
+                _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
+                if (attempt >= maxRetries)
+                {
+                    _logger.LogError("All attempts failed. No data was committed.");
+                    throw;
+                }
+
+                await Task.Delay(retryDelay);
+            }
+
+        return response;
+    }
 }

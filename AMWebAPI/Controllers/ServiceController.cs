@@ -28,10 +28,7 @@ public class ServiceController : ControllerBase
         try
         {
             var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            if (string.IsNullOrWhiteSpace(jwToken))
-            {
-                throw new Exception("JWT token missing from cookies.");
-            }
+            if (string.IsNullOrWhiteSpace(jwToken)) throw new Exception("JWT token missing from cookies.");
             var result = await _serviceService.CreateServiceAsync(dto, jwToken);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
@@ -53,10 +50,7 @@ public class ServiceController : ControllerBase
         try
         {
             var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            if (string.IsNullOrWhiteSpace(jwToken))
-            {
-                throw new Exception("JWT token missing from cookies.");
-            }
+            if (string.IsNullOrWhiteSpace(jwToken)) throw new Exception("JWT token missing from cookies.");
             var result = await _serviceService.GetServicesAsync(jwToken);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
@@ -78,10 +72,7 @@ public class ServiceController : ControllerBase
         try
         {
             var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            if (string.IsNullOrWhiteSpace(jwToken))
-            {
-                throw new Exception("JWT token missing from cookies.");
-            }
+            if (string.IsNullOrWhiteSpace(jwToken)) throw new Exception("JWT token missing from cookies.");
             var result = await _serviceService.UpdateServiceAsync(dto, jwToken);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
@@ -103,10 +94,7 @@ public class ServiceController : ControllerBase
         try
         {
             var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            if (string.IsNullOrWhiteSpace(jwToken))
-            {
-                throw new Exception("JWT token missing from cookies.");
-            }
+            if (string.IsNullOrWhiteSpace(jwToken)) throw new Exception("JWT token missing from cookies.");
             var result = await _serviceService.DeleteServiceAsync(dto, jwToken);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Configuration;
 namespace AMWebAPI.Services.DataServices;
 
 /// <summary>
-/// Entity Framework Core context for Identity-related data.
+///     Entity Framework Core context for Identity-related data.
 /// </summary>
 public class AMIdentityData : DbContext
 {
@@ -18,13 +18,15 @@ public class AMIdentityData : DbContext
     }
 
     /// <summary>
-    /// Configures the database connection using the Identity connection string.
+    ///     Configures the database connection using the Identity connection string.
     /// </summary>
-    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder) =>
+    protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
+    {
         optionsBuilder.UseSqlServer(
             _configuration.GetConnectionString("IdentityConnectionString"),
             sql => sql.MigrationsAssembly("AMWebAPI")
         );
+    }
 
     #region DbSets
 

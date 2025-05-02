@@ -9,7 +9,7 @@ public class ServiceDTO : BaseDTO
     public string Name { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public decimal Price { get; set; } = decimal.Zero;
-    public bool AllowClientScheduling { get; set; } = false;
+    public bool AllowClientScheduling { get; set; }
 
     public void Validate()
     {
@@ -20,15 +20,11 @@ public class ServiceDTO : BaseDTO
             ErrorMessage = "Name is required";
             return;
         }
-        
+
         ValidationTool.ValidateName(Description, out var dOutput);
         Description = !string.IsNullOrEmpty(dOutput) ? dOutput : null;
 
-        if (Price <= decimal.Zero)
-        {
-            ErrorMessage = "Price must be greater than zero";
-            return;
-        }
+        if (Price <= decimal.Zero) ErrorMessage = "Price must be greater than zero";
     }
 
     public void AssignFromModel(ServiceModel model)

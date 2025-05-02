@@ -1,14 +1,13 @@
-﻿namespace AMData.Models.DTOModels
-{
-    public class BaseDTO
-    {
-        public string? ErrorMessage { get; set; } = null;
-        public bool? IsSpecialCase { get; set; } = null;
+﻿namespace AMData.Models.DTOModels;
 
-        public void ResetModel()
-        {
-            ErrorMessage = null;
-            IsSpecialCase = null;
-        }
+public class BaseDTO
+{
+    public string? ErrorMessage { get; set; }
+    public bool? IsSpecialCase { get; set; }
+
+    public void ResetModel()
+    {
+        ErrorMessage = null;
+        IsSpecialCase = null;
     }
 }
