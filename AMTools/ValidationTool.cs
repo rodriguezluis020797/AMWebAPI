@@ -44,5 +44,25 @@ namespace AMTools.Tools
                 return false;
             }
         }
+
+        public static void IsValidPhoneNumber(string input, out string output)
+        {
+            input = input?.Trim() ?? string.Empty;
+
+            // Accepts only 10-digit phone numbers (with optional formatting)
+            var phonePattern = @"^(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}$";
+
+            // Remove all non-digit characters before validation
+            var digitsOnly = Regex.Replace(input, @"\D", "");
+
+            if (Regex.IsMatch(input, phonePattern) && digitsOnly.Length == 10)
+            {
+                output = input;
+            }
+            else
+            {
+                output = string.Empty;
+            }
+        }
     }
 }
