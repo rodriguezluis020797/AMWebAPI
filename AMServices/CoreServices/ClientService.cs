@@ -11,6 +11,7 @@ namespace AMWebAPI.Services.CoreServices
 {
     public interface IClientService
     {
+        Task<List<ClientDTO>> GetClients(string jwt);
         Task<ClientDTO> CreateClient(ClientDTO client, string jwt);
     }
     public class ClientService : IClientService
@@ -28,7 +29,31 @@ namespace AMWebAPI.Services.CoreServices
             _db = db;
             _config = config;
         }
-        
+
+        public async Task<List<ClientDTO>> GetClients(string jwt)
+        {
+            var response = new List<ClientDTO>();
+            
+            var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
+            var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+
+            var clients = await _db.Clients
+                .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+                .ToListAsync();
+
+            var clientDTO = new ClientDTO();
+            foreach (var client in clients)
+            {
+                clientDTO = new ClientDTO();
+                clientDTO.CreateRecordFromModel(client);
+                CryptographyTool.Encrypt(clientDTO.ClientId, out var encryptedId);
+                clientDTO.ClientId = encryptedId;
+                response.Add(clientDTO);
+            }
+            
+            return response;
+        }
+
         public async Task<ClientDTO> CreateClient(ClientDTO dto, string jwt)
         {
             var response = new ClientDTO();
@@ -57,7 +82,6 @@ namespace AMWebAPI.Services.CoreServices
             }
             var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
             var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
-            var sessionId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value);
 
             var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
             
@@ -84,8 +108,6 @@ namespace AMWebAPI.Services.CoreServices
                             throw new Exception();
                         }
                     }
-
-                    _logger.LogInfo("All database changes completed successfully.");
                     break;
                 }
                 catch (Exception ex)

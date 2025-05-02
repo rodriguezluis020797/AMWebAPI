@@ -1,7 +1,9 @@
 ﻿using AMData.Models;
 using AMData.Models.CoreModels;
+using AMData.Models.DTOModels;
 using AMTools;
 using AMTools.Tools;
+using AMWebAPI.Services.CoreServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,24 +16,48 @@ namespace AMWebAPI.Controllers
     {
         private readonly IAMLogger _logger;
         private readonly IConfiguration _configuration;
-        public ClientController(IAMLogger logger, IConfiguration configuration)
+        private readonly IClientService _clientService;
+        public ClientController(IAMLogger logger, IConfiguration configuration, IClientService clientService)
         {
             _logger = logger;
             _configuration = configuration;
+            _clientService = clientService;
         }
-        [HttpGet]
+
+        [HttpPost]
         public async Task<IActionResult> GetClient()
         {
+            var response = new List<ClientDTO>();
             try
             {
                 var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                
+                response = await _clientService.GetClients(jwt);
 
-                var principal = IdentityTool.GetClaimsFromJwt(jwt, _configuration["Jwt:Key"]!);
+                return StatusCode((int)HttpStatusCodeEnum.Success, response);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e.ToString());
+                return StatusCode((int)HttpStatusCodeEnum.ServerError);
+            }
+            finally
+            {
+                _logger.LogInfo("-");
+            }
+        }
+        
+        [HttpPost]
+        public async Task<IActionResult> CreateClient([FromBody] ClientDTO dto)
+        {
+            var response = new ClientDTO();
+            try
+            {
+                var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+                
+                response = await _clientService.CreateClient(dto, jwt);
 
-                var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
-                var clientModel = new ClientModel(providerId, "Lane", null, "Doe", "1234567890");
-
-                return StatusCode((int)HttpStatusCodeEnum.Success, clientModel);
+                return StatusCode((int)HttpStatusCodeEnum.Success, response);
             }
             catch (Exception e)
             {

@@ -1,3 +1,4 @@
+using AMData.Models.CoreModels;
 using AMTools.Tools;
 
 namespace AMData.Models.DTOModels;
@@ -34,5 +35,14 @@ public class ClientDTO : BaseDTO
         PhoneNumber = pnOutput;
         ErrorMessage = string.IsNullOrEmpty(PhoneNumber) ? "Please enter valid 10 digit phone number." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
+    }
+
+    public void CreateRecordFromModel(ClientModel model)
+    {
+        ClientId = model.ClientId.ToString();
+        FirstName = model.FirstName;
+        MiddleName = model.MiddleName;
+        LastName = model.LastName;
+        PhoneNumber = model.PhoneNumber;
     }
 }
