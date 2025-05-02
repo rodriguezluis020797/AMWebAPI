@@ -88,6 +88,7 @@ public class Program
         builder.Services.AddScoped<ISystemStatusService, SystemStatusService>();
         builder.Services.AddScoped<IProviderService, ProviderService>();
         builder.Services.AddScoped<IServiceService, ServiceService>();
+        builder.Services.AddScoped<IClientService, ClientService>();
 
         // Data Services
         builder.Services.AddDbContext<AMCoreData>(options =>

@@ -11,8 +11,10 @@ namespace AMWebAPI.Services.CoreServices;
 
 public interface IClientService
 {
-    Task<List<ClientDTO>> GetClients(string jwt);
     Task<ClientDTO> CreateClient(ClientDTO client, string jwt);
+    Task<ClientDTO> DeleteClient(ClientDTO dto, string jwt);
+    Task<List<ClientDTO>> GetClients(string jwt);
+    Task<ClientDTO> UpdateClient(ClientDTO client, string jwt);
 }
 
 public class ClientService : IClientService
@@ -31,6 +33,28 @@ public class ClientService : IClientService
         _config = config;
     }
 
+    public async Task<ClientDTO> DeleteClient(ClientDTO dto, string jwt)
+    {
+        var response = new ClientDTO();
+
+        var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
+        var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+        
+        
+        CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
+        
+        var clientModel = await _db.Clients
+            .Where(x => x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId)
+            .FirstOrDefaultAsync();
+
+        clientModel.DeleteDate = DateTime.UtcNow;
+        _db.Clients.Update(clientModel);
+        
+        await _db.SaveChangesAsync();
+
+        return response;
+    }
+
     public async Task<List<ClientDTO>> GetClients(string jwt)
     {
         var response = new List<ClientDTO>();
@@ -40,6 +64,7 @@ public class ClientService : IClientService
 
         var clients = await _db.Clients
             .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+            .OrderBy(x => x.LastName)
             .ToListAsync();
 
         var clientDTO = new ClientDTO();
@@ -67,7 +92,7 @@ public class ClientService : IClientService
             return response;
         }
 
-        if (await _db.Clients.AnyAsync(x => x.PhoneNumber == dto.PhoneNumber))
+        if (await _db.Clients.AnyAsync(x => x.PhoneNumber == dto.PhoneNumber && x.DeleteDate == null))
         {
             response.ErrorMessage = "A client with the given phone number already exists.";
             return response;
@@ -76,7 +101,8 @@ public class ClientService : IClientService
         if (await _db.Clients.AnyAsync(x =>
                 x.FirstName == dto.FirstName &&
                 x.MiddleName == dto.MiddleName &&
-                x.LastName == dto.LastName))
+                x.LastName == dto.LastName &&
+                x.DeleteDate == null))
         {
             response.ErrorMessage = "A client with the same name already exists.";
             return response;
@@ -107,6 +133,88 @@ public class ClientService : IClientService
                     {
                         await trans.RollbackAsync();
                         throw new Exception();
+                    }
+                }
+
+                break;
+            }
+            catch (Exception ex)
+            {
+                attempt++;
+                _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
+                if (attempt >= maxRetries)
+                {
+                    _logger.LogError("All attempts failed. No data was committed.");
+                    throw;
+                }
+
+                await Task.Delay(retryDelay);
+            }
+
+        return response;
+    }
+
+    public async Task<ClientDTO> UpdateClient(ClientDTO dto, string jwt)
+    
+    {
+        var response = new ClientDTO();
+
+        dto.Validate();
+
+        if (!string.IsNullOrEmpty(dto.ErrorMessage))
+        {
+            response.ErrorMessage = dto.ErrorMessage;
+            return response;
+        }
+
+        if (await _db.Clients.AnyAsync(x => x.PhoneNumber == dto.PhoneNumber && x.DeleteDate != null))
+        {
+            response.ErrorMessage = "A client with the given phone number already exists.";
+            return response;
+        }
+
+        if (await _db.Clients.AnyAsync(x =>
+                x.FirstName == dto.FirstName &&
+                x.MiddleName == dto.MiddleName &&
+                x.LastName == dto.LastName &&
+                x.DeleteDate != null))
+        {
+            response.ErrorMessage = "A client with the same name already exists.";
+            return response;
+        }
+
+        var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
+        var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+
+        CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
+        
+        var clientModel = await _db.Clients
+            .Where(x => x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId)
+            .FirstOrDefaultAsync();
+        
+        clientModel.UpdateRecordFromDTO(dto);
+        
+        var maxRetries = 3;
+        var retryDelay = TimeSpan.FromSeconds(2);
+        var attempt = 0;
+
+        while (true)
+            try
+            {
+                using (var trans = await _db.Database.BeginTransactionAsync())
+                {
+                    try
+                    {
+                        _db.Clients.Update(clientModel);
+                        // await _db.ClientCommunication.AddAsync(clientCommunicationModel);
+                        await _db.SaveChangesAsync();
+                        await trans.CommitAsync();
+                    }
+                    catch (Exception e)
+                    {
+                        await trans.RollbackAsync();
+                        throw;
                     }
                 }
 

@@ -50,14 +50,12 @@ public static class ValidationTool
     {
         input = input?.Trim() ?? string.Empty;
 
-        // Accepts only 10-digit phone numbers (with optional formatting)
-        var phonePattern = @"^(?:\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}$";
-
-        // Remove all non-digit characters before validation
+        // Remove all non-numeric characters
         var digitsOnly = Regex.Replace(input, @"\D", "");
 
-        if (Regex.IsMatch(input, phonePattern) && digitsOnly.Length == 10)
-            output = input;
+        // Validate length
+        if (digitsOnly.Length == 10)
+            output = digitsOnly;
         else
             output = string.Empty;
     }

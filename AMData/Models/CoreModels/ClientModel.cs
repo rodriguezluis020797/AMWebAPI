@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using AMData.Models.DTOModels;
 
 namespace AMData.Models.CoreModels;
 
@@ -27,4 +28,13 @@ public class ClientModel
     public DateTime? UpdateDate { get; set; }
     public DateTime? DeleteDate { get; set; }
     [NotMapped] public virtual ProviderModel Provider { get; set; }
+
+    public void UpdateRecordFromDTO(ClientDTO dto)
+    {
+        FirstName = dto.FirstName;
+        MiddleName = dto.MiddleName;
+        LastName = dto.LastName;
+        PhoneNumber = dto.PhoneNumber;
+        UpdateDate = DateTime.UtcNow;
+    }
 }
