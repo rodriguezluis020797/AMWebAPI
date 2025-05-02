@@ -13,6 +13,7 @@ namespace AMWebAPI.Services.CoreServices
     {
         Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt);
         Task<List<ServiceDTO>> GetServicesAsync(string jwt);
+        Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt);
     }
     public class ServiceService : IServiceService
     {
@@ -69,6 +70,25 @@ namespace AMWebAPI.Services.CoreServices
             }
             
             return serviceList;
+        }
+
+        public async Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt)
+        {
+            var response = new ServiceDTO();
+            var providerId = GetProviderIdFromJwt(jwt);
+            CryptographyTool.Decrypt(dto.ServiceId, out var decryptedText);
+            var serviceId = long.Parse(decryptedText);
+
+            var serviceModel = await _db.Services
+                .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
+                .FirstOrDefaultAsync();
+            
+            serviceModel.DeleteDate = DateTime.UtcNow;
+            
+            _db.Update(serviceModel);
+            await _db.SaveChangesAsync();
+
+            return response;
         }
 
         private long GetProviderIdFromJwt(string jwToken)
