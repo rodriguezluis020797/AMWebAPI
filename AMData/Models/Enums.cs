@@ -134,3 +134,11 @@ public enum StateCodeEnum
     Yucatán, // Mexico
     Zacatecas // Mexico
 }
+
+public enum AppointmentStatusEnum
+{
+    Unknown = 0,
+    Scheduled,
+    Completed,
+    Cancelled,
+}
