@@ -14,6 +14,7 @@ namespace AMWebAPI.Services.CoreServices
         Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt);
         Task<List<ServiceDTO>> GetServicesAsync(string jwt);
         Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt);
+        Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dt, string jwt);
     }
     public class ServiceService : IServiceService
     {
@@ -62,7 +63,7 @@ namespace AMWebAPI.Services.CoreServices
             
             foreach (var serviceModel in serviceModels)
             {
-                serviceDto.AssignFromDTO(serviceModel);
+                serviceDto.AssignFromModel(serviceModel);
                 CryptographyTool.Encrypt(serviceDto.ServiceId, out var encryptedText);
                 serviceDto.ServiceId = encryptedText;
                 serviceList.Add(serviceDto);
@@ -84,6 +85,29 @@ namespace AMWebAPI.Services.CoreServices
                 .FirstOrDefaultAsync();
             
             serviceModel.DeleteDate = DateTime.UtcNow;
+            
+            _db.Update(serviceModel);
+            await _db.SaveChangesAsync();
+
+            return response;
+        }
+
+        public async Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt)
+        {
+            var response = new ServiceDTO();
+            dto.Validate();
+            if (!string.IsNullOrWhiteSpace(dto.ErrorMessage))
+            {
+                response.ErrorMessage = dto.ErrorMessage;
+                return dto;
+            }
+            var providerId = GetProviderIdFromJwt(jwt);
+            CryptographyTool.Decrypt(dto.ServiceId, out var decryptedText);
+            var serviceId = long.Parse(decryptedText);
+
+            var serviceModel = await _db.Services
+                .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
+                .FirstOrDefaultAsync();
             
             _db.Update(serviceModel);
             await _db.SaveChangesAsync();

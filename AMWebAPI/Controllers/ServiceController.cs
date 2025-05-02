@@ -72,6 +72,31 @@ public class ServiceController : ControllerBase
     }
 
     [HttpPost]
+    public async Task<ActionResult> UpdateService([FromBody] ServiceDTO dto)
+    {
+        _logger.LogInfo("+");
+        try
+        {
+            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            if (string.IsNullOrWhiteSpace(jwToken))
+            {
+                throw new Exception("JWT token missing from cookies.");
+            }
+            var result = await _serviceService.UpdateServiceAsync(dto, jwToken);
+            return StatusCode((int)HttpStatusCodeEnum.Success, result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            _logger.LogInfo("-");
+        }
+    }
+
+    [HttpPost]
     public async Task<ActionResult> DeleteService([FromBody] ServiceDTO dto)
     {
         _logger.LogInfo("+");

@@ -1,5 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using AMData.Models.DTOModels;
 
 namespace AMData.Models.CoreModels
 {
@@ -25,5 +26,13 @@ namespace AMData.Models.CoreModels
         public DateTime CreateDate { get; set; }
         public DateTime? DeleteDate { get; set; }
         [NotMapped] public virtual ProviderModel Provider { get; set; }
+
+        public void UpdateRecordFromDTO(ServiceDTO dto)
+        {
+            Name = dto.Name;
+            Description = dto.Description;
+            AllowClientScheduling = dto.AllowClientScheduling;
+            Price = dto.Price;
+        }
     }
 }

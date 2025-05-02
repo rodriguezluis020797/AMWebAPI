@@ -22,7 +22,7 @@ public class ServiceDTO : BaseDTO
         }
         
         ValidationTool.ValidateName(Description, out var dOutput);
-        Description = !string.IsNullOrEmpty(dOutput) ? nOutput : null;
+        Description = !string.IsNullOrEmpty(dOutput) ? dOutput : null;
 
         if (Price <= decimal.Zero)
         {
@@ -31,12 +31,12 @@ public class ServiceDTO : BaseDTO
         }
     }
 
-    public void AssignFromDTO(ServiceModel model)
+    public void AssignFromModel(ServiceModel model)
     {
         ServiceId = model.ServiceId.ToString();
         Name = model.Name;
         Description = model.Description;
         Price = model.Price;
-        AllowClientScheduling = model.AllowClientScheduling;
+        AllowClientScheduling = false; //model.AllowClientScheduling;
     }
 }
