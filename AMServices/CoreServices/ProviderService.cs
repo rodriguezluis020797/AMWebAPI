@@ -163,14 +163,23 @@ namespace AMWebAPI.Services.CoreServices
                 {
                     using (var transaction = await _db.Database.BeginTransactionAsync())
                     {
-                        await _db.UpdateProviderEMailRequests
-                        .Where(x => x.ProviderId == providerId)
-                        .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+                        try
+                        {
+                            await _db.UpdateProviderEMailRequests
+                                .Where(x => x.ProviderId == providerId)
+                                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-                        await _db.UpdateProviderEMailRequests.AddAsync(request);
-                        await _db.ProviderCommunications.AddAsync(communication);
-                        await _db.SaveChangesAsync();
-                        await transaction.CommitAsync();
+                            await _db.UpdateProviderEMailRequests.AddAsync(request);
+                            await _db.ProviderCommunications.AddAsync(communication);
+                            await _db.SaveChangesAsync();
+
+                            await transaction.CommitAsync();
+                        }
+                        catch
+                        {
+                            await transaction.RollbackAsync();
+                            throw;
+                        }
                     }
 
                     _logger.LogInfo("All database changes completed successfully.");
@@ -239,13 +248,21 @@ namespace AMWebAPI.Services.CoreServices
                 {
                     using (var trans = await _db.Database.BeginTransactionAsync())
                     {
-                        provider.EMail = request.NewEMail;
-                        provider.EMailVerified = true;
-                        provider.UpdateDate = DateTime.UtcNow;
-                        request.DeleteDate = DateTime.UtcNow;
+                        try
+                        {
+                            provider.EMail = request.NewEMail;
+                            provider.EMailVerified = true;
+                            provider.UpdateDate = DateTime.UtcNow;
+                            request.DeleteDate = DateTime.UtcNow;
 
-                        _db.SaveChanges();
-                        await trans.CommitAsync();
+                            await _db.SaveChangesAsync(); // Make sure to await SaveChangesAsync()
+                            await trans.CommitAsync();
+                        }
+                        catch
+                        {
+                            await trans.RollbackAsync();
+                            throw;
+                        }
                     }
 
                     _logger.LogInfo("All database changes completed successfully.");

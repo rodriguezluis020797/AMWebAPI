@@ -80,10 +80,6 @@ namespace AMWebAPI.Services.CoreServices
                         }
                         catch
                         {
-                            /*
-                             * TODO:
-                             * -Add this to other transactions.
-                             */
                             await trans.RollbackAsync();
                             throw new Exception();
                         }
