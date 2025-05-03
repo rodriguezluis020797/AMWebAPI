@@ -1,6 +1,3 @@
 @AMWebAPI_HostAddress = http://localhost:5080
 
-GET {{AMWebAPI_HostAddress}}/weatherforecast/
-Accept: application/json
-
 ###
