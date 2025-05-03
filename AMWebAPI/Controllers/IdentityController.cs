@@ -68,7 +68,7 @@ public class IdentityController : ControllerBase
 
             if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
             {
-                var newJwt = await _identityService.RefreshJWToken(jwt, refreshToken, fingerprint);
+                var newJwt = await _identityService.RefreshJWT(jwt, refreshToken, fingerprint);
                 SetAuthCookies(newJwt, refreshToken);
                 return StatusCode((int)HttpStatusCodeEnum.LoggedIn);
             }
@@ -146,7 +146,7 @@ public class IdentityController : ControllerBase
             if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
                 if (IdentityTool.IsTheJWTExpired(jwt))
                 {
-                    var newJwt = await _identityService.RefreshJWToken(jwt, refreshToken, fingerprint);
+                    var newJwt = await _identityService.RefreshJWT(jwt, refreshToken, fingerprint);
                     SetAuthCookies(newJwt, refreshToken);
                 }
 

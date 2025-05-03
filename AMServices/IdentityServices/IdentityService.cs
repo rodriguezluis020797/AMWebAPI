@@ -16,25 +16,25 @@ namespace AMWebAPI.Services.IdentityServices;
 public interface IIdentityService
 {
     Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDTO);
-    Task<BaseDTO> UpdatePasswordAsync(ProviderDTO dto, string token);
+    Task<BaseDTO> UpdatePasswordAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> ResetPasswordAsync(ProviderDTO dto);
-    Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO);
+    Task<string> RefreshJWT(string jwt, string refreshToken, FingerprintDTO fingerprintDTO);
 }
 
 public class IdentityService : IIdentityService
 {
-    private readonly IConfiguration _configuration;
     private readonly AMCoreData _coreData;
     private readonly AMIdentityData _identityData;
     private readonly IAMLogger _logger;
+    private readonly IConfiguration _config;
 
     public IdentityService(AMCoreData coreData, AMIdentityData identityData, IAMLogger logger,
-        IConfiguration configuration)
+        IConfiguration config)
     {
         _logger = logger;
         _coreData = coreData;
         _identityData = identityData;
-        _configuration = configuration;
+        _config = config;
     }
 
     public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
@@ -115,10 +115,10 @@ public class IdentityService : IIdentityService
 
         var jwt = IdentityTool.GenerateJWTToken(
             claims,
-            _configuration["Jwt:Key"]!,
-            _configuration["Jwt:Issuer"]!,
-            _configuration["Jwt:Audience"]!,
-            _configuration["Jwt:ExpiresInMinutes"]!
+            _config["Jwt:Key"]!,
+            _config["Jwt:Issuer"]!,
+            _config["Jwt:Audience"]!,
+            _config["Jwt:ExpiresInMinutes"]!
         );
 
         _logger.LogAudit(
@@ -140,7 +140,7 @@ public class IdentityService : IIdentityService
         };
     }
 
-    public async Task<BaseDTO> UpdatePasswordAsync(ProviderDTO dto, string token)
+    public async Task<BaseDTO> UpdatePasswordAsync(ProviderDTO dto, string jwt)
     {
         var response = new BaseDTO();
 
@@ -149,15 +149,11 @@ public class IdentityService : IIdentityService
         if (!IdentityTool.IsValidPassword(dto.NewPassword))
             throw new ArgumentException("Password does not meet complexity requirements.");
 
-        var principal = IdentityTool.GetClaimsFromJwt(token, _configuration["Jwt:Key"]!);
-        var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
-        var sessionId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value);
-
-        var providerModel = await _coreData.Providers
-                                .FirstOrDefaultAsync(x => x.ProviderId == providerId)
-                            ?? throw new Exception($"Provider not found for ID: {providerId}");
-
-
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        var sessionId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
+        
         if (!dto.IsTempPassword)
         {
             var currentPassword = await _identityData.Passwords
@@ -239,11 +235,12 @@ public class IdentityService : IIdentityService
         return response;
     }
 
-    public async Task<string> RefreshJWToken(string jwtToken, string refreshToken, FingerprintDTO fingerprintDTO)
+    public async Task<string> RefreshJWT(string jwt, string refreshToken, FingerprintDTO fingerprintDTO)
     {
-        var principal = IdentityTool.GetClaimsFromJwt(jwtToken, _configuration["Jwt:Key"]!);
-        var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
-        var sessionId = principal.FindFirst(SessionClaimEnum.SessionId.ToString())?.Value;
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        var sessionId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
 
         var refreshTokenModel = await _identityData.RefreshTokens
                                     .Where(x => x.ProviderId == providerId && x.DeleteDate == null &&
@@ -268,18 +265,18 @@ public class IdentityService : IIdentityService
             throw new ArgumentException();
 
         refreshTokenModel.ExpiresDate =
-            refreshTokenModel.ExpiresDate.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!));
+            refreshTokenModel.ExpiresDate.AddDays(int.Parse(_config["Jwt:RefreshTokenExpirationDays"]!));
         _identityData.RefreshTokens.Update(refreshTokenModel);
         await _identityData.SaveChangesAsync();
 
         var claims = new[]
         {
             new Claim(SessionClaimEnum.ProviderId.ToString(), providerId.ToString()),
-            new Claim(SessionClaimEnum.SessionId.ToString(), sessionId)
+            new Claim(SessionClaimEnum.SessionId.ToString(), sessionId.ToString())
         };
 
-        return IdentityTool.GenerateJWTToken(claims, _configuration["Jwt:Key"]!, _configuration["Jwt:Issuer"]!,
-            _configuration["Jwt:Audience"]!, "-1");
+        return IdentityTool.GenerateJWTToken(claims, _config["Jwt:Key"]!, _config["Jwt:Issuer"]!,
+            _config["Jwt:Audience"]!, "-1");
     }
 
     public async Task<BaseDTO> ResetPasswordAsync(ProviderDTO dto)
@@ -367,7 +364,7 @@ public class IdentityService : IIdentityService
     {
         return new RefreshTokenModel(providerId, encryptedToken, fingerprintDTO.IPAddress, fingerprintDTO.UserAgent,
             fingerprintDTO.Platform, fingerprintDTO.Language,
-            DateTime.UtcNow.AddDays(int.Parse(_configuration["Jwt:RefreshTokenExpirationDays"]!)));
+            DateTime.UtcNow.AddDays(int.Parse(_config["Jwt:RefreshTokenExpirationDays"]!)));
     }
 
     public class LogInAsyncResponse

@@ -12,7 +12,18 @@ public static class IdentityTool
     
     public static long GetJwtClaimById(string jwToken, string key, string claimValue)
     {
-        var claims = IdentityTool.GetClaimsFromJwt(jwToken, key);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var validationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateLifetime = false,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
+            ClockSkew = TimeSpan.Zero
+        };
+
+        var claims = tokenHandler.ValidateToken(jwToken, validationParameters, out _);
+
         if (!long.TryParse(claims.FindFirst(claimValue)?.Value, out var providerId))
             throw new ArgumentException("Invalid provider ID in JWT.");
 
@@ -83,29 +94,7 @@ public static class IdentityTool
 
         return tokenHandler.WriteToken(token);
     }
-
-    public static ClaimsPrincipal GetClaimsFromJwt(string token, string secretKey)
-    {
-        var tokenHandler = new JwtSecurityTokenHandler();
-        var validationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = false,
-            ValidateAudience = false,
-            ValidateLifetime = false,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey)),
-            ClockSkew = TimeSpan.Zero
-        };
-
-        try
-        {
-            return tokenHandler.ValidateToken(token, validationParameters, out _);
-        }
-        catch (Exception ex)
-        {
-            throw new UnauthorizedAccessException("Invalid or expired token", ex);
-        }
-    }
-
+    
     public static bool IsTheJWTExpired(string token)
     {
         var handler = new JwtSecurityTokenHandler();

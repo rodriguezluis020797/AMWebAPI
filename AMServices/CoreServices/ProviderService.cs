@@ -18,7 +18,7 @@ public interface IProviderService
 {
     Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
     Task<ProviderDTO> GetProviderAsync(string jwt);
-    Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken);
+    Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> VerifyUpdateEMailAsync(string guid);
 }
@@ -92,7 +92,7 @@ public class ProviderService : IProviderService
         return dto;
     }
 
-    public async Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken)
+    public async Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt)
     {
         if (!ValidationTool.IsValidEmail(dto.EMail) ||
             await _db.Providers.AnyAsync(x => x.EMail == dto.EMail) ||
@@ -100,9 +100,9 @@ public class ProviderService : IProviderService
         {
             return new ProviderDTO { ErrorMessage = "Provider with given e-mail already exists or e-mail is not in valid format." };
         }
-
-        var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
-        var providerId = Convert.ToInt64(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
+        
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
         var provider = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId);
 
         var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
