@@ -32,7 +32,8 @@ public class AppointmentService : IAppointmentService
 
     public async Task<List<AppointmentDTO>> GetAllAppointmentsAsync(string jwt)
     {
-        var providerId = GetProviderIdFromJwt(jwt);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var appointmentModels = await _db.Appointments
             .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
@@ -43,7 +44,9 @@ public class AppointmentService : IAppointmentService
 
     public async Task<AppointmentDTO> UpdateAppointmentAsync(AppointmentDTO dto, string jwt)
     {
-        var providerId = GetProviderIdFromJwt(jwt);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
 
         dto.Validate();
@@ -77,7 +80,9 @@ public class AppointmentService : IAppointmentService
 
     public async Task<AppointmentDTO> DeleteAppointmentAsync(AppointmentDTO dto, string jwt)
     {
-        var providerId = GetProviderIdFromJwt(jwt);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
 
         var appointmentModel = await _db.Appointments
@@ -100,7 +105,8 @@ public class AppointmentService : IAppointmentService
 
     public async Task<AppointmentDTO> CreateAppointmentAsync(AppointmentDTO dto, string jwt)
     {
-        var providerId = GetProviderIdFromJwt(jwt);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage))
@@ -154,15 +160,6 @@ public class AppointmentService : IAppointmentService
         dto.ClientId = encryptedClientId;
 
         return dto;
-    }
-
-    private long GetProviderIdFromJwt(string jwToken)
-    {
-        var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
-        if (!long.TryParse(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value, out var providerId))
-            throw new ArgumentException("Invalid provider ID in JWT.");
-
-        return providerId;
     }
 
     private async Task ExecuteWithRetryAsync(Func<Task> action)

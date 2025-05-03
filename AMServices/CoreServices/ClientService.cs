@@ -43,7 +43,9 @@ public class ClientService : IClientService
             return response;
         }
 
-        var providerId = GetProviderId(jwt);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
         var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
 
         await ExecuteWithRetry(async () =>
@@ -68,7 +70,9 @@ public class ClientService : IClientService
             return response;
         }
 
-        var providerId = GetProviderId(jwt);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
         var clientModel = await _db.Clients.FirstOrDefaultAsync(x => x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId);
@@ -87,7 +91,9 @@ public class ClientService : IClientService
     {
         var response = new ClientDTO();
 
-        var providerId = GetProviderId(jwt);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
         var clientModel = await _db.Clients.FirstOrDefaultAsync(x => x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId);
@@ -104,7 +110,8 @@ public class ClientService : IClientService
 
     public async Task<List<ClientDTO>> GetClients(string jwt)
     {
-        var providerId = GetProviderId(jwt);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var clients = await _db.Clients
             .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
@@ -133,14 +140,6 @@ public class ClientService : IClientService
         await Task.WhenAll(phoneExists, nameExists);
 
         return phoneExists.Result || nameExists.Result;
-    }
-
-    private long GetProviderId(string jwt)
-    {
-        var claims = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
-        if (!long.TryParse(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value, out var providerId))
-            throw new ArgumentException("Invalid provider ID in JWT.");
-        return providerId;
     }
 
     private async Task ExecuteWithRetry(Func<Task> action)

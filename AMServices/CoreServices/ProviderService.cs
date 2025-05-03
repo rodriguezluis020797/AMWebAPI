@@ -17,9 +17,9 @@ namespace AMServices.CoreServices;
 public interface IProviderService
 {
     Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
-    Task<ProviderDTO> GetProviderAsync(string jwToken);
+    Task<ProviderDTO> GetProviderAsync(string jwt);
     Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwToken);
-    Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken);
+    Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> VerifyUpdateEMailAsync(string guid);
 }
 public class ProviderService : IProviderService
@@ -77,9 +77,11 @@ public class ProviderService : IProviderService
         return response;
     }
 
-    public async Task<ProviderDTO> GetProviderAsync(string jwToken)
+    public async Task<ProviderDTO> GetProviderAsync(string jwt)
     {
-        var providerId = GetProviderIdFromJwt(jwToken);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
         var provider = await _db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
             ?? throw new ArgumentException(nameof(providerId));
 
@@ -126,7 +128,7 @@ public class ProviderService : IProviderService
         return dto;
     }
 
-    public async Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwToken)
+    public async Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt)
     {
         var response = new BaseDTO();
         dto.Validate();
@@ -136,7 +138,9 @@ public class ProviderService : IProviderService
             return response;
         }
 
-        var providerId = GetProviderIdFromJwt(jwToken);
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
         var provider = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId)
             ?? throw new ArgumentException(nameof(providerId));
 
@@ -177,15 +181,6 @@ public class ProviderService : IProviderService
     }
 
     // ──────────────────────── Private Methods ────────────────────────
-
-    private long GetProviderIdFromJwt(string jwToken)
-    {
-        var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
-        if (!long.TryParse(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value, out var providerId))
-            throw new ArgumentException("Invalid provider ID in JWT.");
-        return providerId;
-    }
-
     private async Task ExecuteWithRetryAsync(Func<Task> operation, int maxRetries = 3, int delaySeconds = 2)
     {
         for (int attempt = 1; attempt <= maxRetries; attempt++)

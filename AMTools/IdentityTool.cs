@@ -9,6 +9,16 @@ namespace AMTools;
 
 public static class IdentityTool
 {
+    
+    public static long GetJwtClaimById(string jwToken, string key, string claimValue)
+    {
+        var claims = IdentityTool.GetClaimsFromJwt(jwToken, key);
+        if (!long.TryParse(claims.FindFirst(claimValue)?.Value, out var providerId))
+            throw new ArgumentException("Invalid provider ID in JWT.");
+
+        return providerId;
+    }
+    
     public static string GenerateSaltString()
     {
         var salt = new byte[32];

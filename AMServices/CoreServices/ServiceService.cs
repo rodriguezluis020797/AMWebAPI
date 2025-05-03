@@ -43,7 +43,8 @@ namespace AMServices.CoreServices
                 return dto;
             }
 
-            var providerId = GetProviderIdFromJwt(jwt);
+            var providerId = IdentityTool
+                .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
             var serviceModel = new ServiceModel(
                 providerId,
@@ -62,7 +63,8 @@ namespace AMServices.CoreServices
         // ──────────────────────── Read ────────────────────────
         public async Task<List<ServiceDTO>> GetServicesAsync(string jwt)
         {
-            var providerId = GetProviderIdFromJwt(jwt);
+            var providerId = IdentityTool
+                .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
             var services = await _db.Services
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
@@ -92,7 +94,9 @@ namespace AMServices.CoreServices
                 return dto;
             }
 
-            var providerId = GetProviderIdFromJwt(jwt);
+            var providerId = IdentityTool
+                .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            
             CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
             var serviceId = long.Parse(decryptedId);
 
@@ -116,7 +120,9 @@ namespace AMServices.CoreServices
         // ──────────────────────── Delete ────────────────────────
         public async Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt)
         {
-            var providerId = GetProviderIdFromJwt(jwt);
+            var providerId = IdentityTool
+                .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            
             CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
             var serviceId = long.Parse(decryptedId);
 
@@ -135,16 +141,6 @@ namespace AMServices.CoreServices
             await _db.SaveChangesAsync();
 
             return dto;
-        }
-
-        // ──────────────────────── Helpers ────────────────────────
-        private long GetProviderIdFromJwt(string jwToken)
-        {
-            var claims = IdentityTool.GetClaimsFromJwt(jwToken, _config["Jwt:Key"]!);
-            if (!long.TryParse(claims.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value, out var providerId))
-                throw new ArgumentException("Invalid provider ID in JWT.");
-
-            return providerId;
         }
     }
 }
