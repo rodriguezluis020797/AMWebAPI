@@ -1,8 +1,8 @@
 ﻿using AMData.Models;
 using AMData.Models.DTOModels;
+using AMServices.IdentityServices;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Services.IdentityServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -101,8 +101,8 @@ public class IdentityController : ControllerBase
             fingerprint.Validate();
 
             var loginResult = await _identityService.LogInAsync(dto, fingerprint);
-            response = loginResult.providerDTO;
-            SetAuthCookies(loginResult.jwToken, loginResult.refreshToken);
+            response = loginResult.ProviderDto;
+            SetAuthCookies(loginResult.Jwt, loginResult.RefreshToken);
 
             _logger.LogInfo("-");
             return StatusCode((int)HttpStatusCodeEnum.Success, response);

@@ -1,8 +1,8 @@
 using System.Text;
 using AMServices.CoreServices;
+using AMServices.IdentityServices;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
-using AMWebAPI.Services.IdentityServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
