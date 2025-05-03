@@ -7,28 +7,13 @@ namespace AMWebAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]/[action]")]
-public class SystemStatusController : Controller
+public class SystemStatusController(ISystemStatusService systemStatusService) : Controller
 {
-    private readonly IAMLogger _logger;
-    private readonly ISystemStatusService _systemStatusService;
-
-    public SystemStatusController(IAMLogger logger, ISystemStatusService systemStatusService)
-    {
-        _logger = logger;
-        _systemStatusService = systemStatusService;
-    }
-
     [HttpGet]
     public async Task<IActionResult> FullSystemCheck()
     {
-        var result = await _systemStatusService.IsFullSystemActive();
-        var response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Unknown), false);
+        var result = await systemStatusService.IsFullSystemActive();
 
-        if (result)
-            response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.Success), true);
-        else
-            response = StatusCode(Convert.ToInt32(HttpStatusCodeEnum.SystemUnavailable), false);
-
-        return response;
+        return StatusCode(Convert.ToInt32(result ? HttpStatusCodeEnum.Success : HttpStatusCodeEnum.SystemUnavailable), result);
     }
 }
