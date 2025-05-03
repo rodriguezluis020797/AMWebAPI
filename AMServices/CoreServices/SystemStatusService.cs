@@ -1,7 +1,7 @@
 ﻿using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 
-namespace AMWebAPI.Services.CoreServices;
+namespace AMServices.CoreServices;
 
 public interface ISystemStatusService
 {

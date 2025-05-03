@@ -7,7 +7,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace AMWebAPI.Services.CoreServices;
+namespace AMServices.CoreServices;
 
 public interface IClientService
 {
@@ -39,17 +39,17 @@ public class ClientService : IClientService
 
         var principal = IdentityTool.GetClaimsFromJwt(jwt, _config["Jwt:Key"]!);
         var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
-        
-        
+
+
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
-        
+
         var clientModel = await _db.Clients
             .Where(x => x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId)
             .FirstOrDefaultAsync();
 
         clientModel.DeleteDate = DateTime.UtcNow;
         _db.Clients.Update(clientModel);
-        
+
         await _db.SaveChangesAsync();
 
         return response;
@@ -156,7 +156,7 @@ public class ClientService : IClientService
     }
 
     public async Task<ClientDTO> UpdateClient(ClientDTO dto, string jwt)
-    
+
     {
         var response = new ClientDTO();
 
@@ -188,13 +188,13 @@ public class ClientService : IClientService
         var providerId = Convert.ToInt64(principal.FindFirst(SessionClaimEnum.ProviderId.ToString())?.Value);
 
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
-        
+
         var clientModel = await _db.Clients
             .Where(x => x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId)
             .FirstOrDefaultAsync();
-        
+
         clientModel.UpdateRecordFromDTO(dto);
-        
+
         var maxRetries = 3;
         var retryDelay = TimeSpan.FromSeconds(2);
         var attempt = 0;

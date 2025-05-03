@@ -7,7 +7,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace AMWebAPI.Services.CoreServices;
+namespace AMServices.CoreServices;
 
 public interface IServiceService
 {

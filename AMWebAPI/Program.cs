@@ -1,6 +1,6 @@
 using System.Text;
+using AMServices.CoreServices;
 using AMTools.Tools;
-using AMWebAPI.Services.CoreServices;
 using AMWebAPI.Services.DataServices;
 using AMWebAPI.Services.IdentityServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -85,6 +85,7 @@ public class Program
         });
 
         // Core Services
+        builder.Services.AddScoped<IAppointmentService, AppointmentService>();
         builder.Services.AddScoped<ISystemStatusService, SystemStatusService>();
         builder.Services.AddScoped<IProviderService, ProviderService>();
         builder.Services.AddScoped<IServiceService, ServiceService>();

@@ -1,12 +1,45 @@
+using AMData.Models.CoreModels;
+
 namespace AMData.Models.DTOModels;
 
-public class AppointmentDTO
+public class AppointmentDTO : BaseDTO
 {
+    public string AppointmentId { get; set; } = string.Empty;
     public string ServiceId { get; set; } = string.Empty;
     public string ClientId { get; set; } = string.Empty;
-    public string ProviderId { get; set; } = string.Empty;
-    public DateTime StartDate { get; set; } = new DateTime();
-    public DateTime EndDate { get; set; } = new DateTime();
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
     public string Notes { get; set; } = string.Empty;
     public AppointmentStatusEnum Status { get; set; } = AppointmentStatusEnum.Unknown;
+
+    public void Validate()
+    {
+        StartDate = StartDate.ToUniversalTime();
+        EndDate = EndDate.ToUniversalTime();
+
+        if (StartDate < DateTime.UtcNow)
+        {
+            ErrorMessage = "Start date must be in the future.";
+            return;
+        }
+
+        if (EndDate < StartDate)
+        {
+            ErrorMessage = "End date must be after start date.";
+            return;
+        }
+
+        Notes = Notes.Trim();
+    }
+
+    public void CreateNewRecordFromModel(AppointmentModel model)
+    {
+        AppointmentId = model.AppointmentId.ToString();
+        ServiceId = model.ServiceId.ToString();
+        ClientId = model.ClientId.ToString();
+        StartDate = model.StartDate;
+        EndDate = model.EndDate;
+        Notes = model.Notes ?? string.Empty;
+        Status = AppointmentStatusEnum.Scheduled;
+    }
 }

@@ -140,5 +140,5 @@ public enum AppointmentStatusEnum
     Unknown = 0,
     Scheduled,
     Completed,
-    Cancelled,
+    Cancelled
 }

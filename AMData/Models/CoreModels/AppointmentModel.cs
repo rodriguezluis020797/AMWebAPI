@@ -1,19 +1,21 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using AMData.Models.DTOModels;
 
 namespace AMData.Models.CoreModels;
 
 [Table("Appointment")]
 public class AppointmentModel
 {
-    public AppointmentModel(long serviceId, long clientId, long providerId, DateTime startDate, DateTime endDate, string notes)
+    public AppointmentModel(long serviceId, long clientId, long providerId, DateTime startDate, DateTime endDate,
+        string notes)
     {
         ServiceId = serviceId;
         ClientId = clientId;
         ProviderId = providerId;
         StartDate = startDate;
         EndDate = endDate;
-        Notes = notes;
+        Notes = string.IsNullOrEmpty(notes) ? null : notes;
     }
 
     [Key] public long AppointmentId { get; set; }
@@ -29,4 +31,13 @@ public class AppointmentModel
     public DateTime? DeleteDate { get; set; }
     [NotMapped] public ClientModel Client { get; set; }
     [NotMapped] public ProviderModel Provider { get; set; }
+
+    public void UpdateRecrodFromDTO(AppointmentDTO dto)
+    {
+        StartDate = dto.StartDate;
+        EndDate = dto.EndDate;
+        Notes = string.IsNullOrEmpty(dto.Notes) ? null : dto.Notes;
+        Status = dto.Status;
+        UpdateDate = DateTime.UtcNow;
+    }
 }

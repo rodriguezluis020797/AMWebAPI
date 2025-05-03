@@ -1,7 +1,7 @@
 ﻿using AMData.Models;
 using AMData.Models.DTOModels;
+using AMServices.CoreServices;
 using AMTools.Tools;
-using AMWebAPI.Services.CoreServices;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

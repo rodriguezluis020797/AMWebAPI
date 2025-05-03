@@ -7,7 +7,9 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace AMWebAPI.Services.CoreServices;
+#pragma warning disable CS8602 // Dereference of a possibly null reference.
+
+namespace AMServices.CoreServices;
 
 public interface IProviderService
 {
@@ -21,13 +23,8 @@ public interface IProviderService
 public class ProviderService : IProviderService
 {
     private readonly IConfiguration _config;
-
     private readonly AMCoreData _db;
-    // ──────────────────────── Private Fields ────────────────────────
-
     private readonly IAMLogger _logger;
-
-    // ──────────────────────── Constructor ────────────────────────
 
     public ProviderService(
         IAMLogger logger,
@@ -123,8 +120,11 @@ public class ProviderService : IProviderService
         var providerId = GetProviderIdFromJwt(jwToken);
 
         var provider = await _db.Providers
-                           .FirstOrDefaultAsync(u => u.ProviderId == providerId)
+                           .Where(u => u.ProviderId == providerId)
+                           .FirstOrDefaultAsync()
                        ?? throw new ArgumentException(nameof(providerId));
+
+        if (provider.DeleteDate != null) provider.DeleteDate = null;
 
         var dto = new ProviderDTO();
         dto.CreateNewRecordFromModel(provider);

@@ -41,15 +41,13 @@ public class AMCoreData : DbContext
         ConfigureSessionActionModel(modelBuilder);
         ConfigureSessionModel(modelBuilder);
         ConfigureUpdateProviderEMailRequestModel(modelBuilder);
-        
+
         foreach (var foreignKey in modelBuilder.Model
                      .GetEntityTypes()
                      .SelectMany(e => e.GetForeignKeys()))
-        {
             foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
-        }
     }
-    
+
     private static void ConfigureAppointmentModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppointmentModel>()
@@ -96,7 +94,7 @@ public class AMCoreData : DbContext
             .WithOne(c => c.Provider)
             .HasForeignKey(c => c.ProviderId)
             .OnDelete(DeleteBehavior.NoAction);
-        
+
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.Appointments)
             .WithOne(c => c.Provider)
