@@ -14,8 +14,8 @@ public class AMCoreData : DbContext
         _configuration = configuration;
     }
 
+    public DbSet<AppointmentModel> Appointments { get; init; }
     public DbSet<ClientModel> Clients { get; init; }
-
     public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
     public DbSet<ProviderModel> Providers { get; init; }
     public DbSet<ServiceModel> Services { get; init; }
@@ -33,6 +33,7 @@ public class AMCoreData : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        ConfigureAppointmentModel(modelBuilder);
         ConfigureClientModel(modelBuilder);
         ConfigureProviderCommunicationModel(modelBuilder);
         ConfigureProviderModel(modelBuilder);
@@ -40,6 +41,19 @@ public class AMCoreData : DbContext
         ConfigureSessionActionModel(modelBuilder);
         ConfigureSessionModel(modelBuilder);
         ConfigureUpdateProviderEMailRequestModel(modelBuilder);
+        
+        foreach (var foreignKey in modelBuilder.Model
+                     .GetEntityTypes()
+                     .SelectMany(e => e.GetForeignKeys()))
+        {
+            foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
+        }
+    }
+    
+    private static void ConfigureAppointmentModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AppointmentModel>()
+            .HasKey(s => s.AppointmentId);
     }
 
     private static void ConfigureClientModel(ModelBuilder modelBuilder)
@@ -47,11 +61,11 @@ public class AMCoreData : DbContext
         modelBuilder.Entity<ClientModel>()
             .HasKey(x => x.ClientId);
 
-        modelBuilder.Entity<ProviderModel>()
-            .HasMany(u => u.Clients)
-            .WithOne(c => c.Provider)
-            .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ClientModel>()
+            .HasMany(u => u.Appointments)
+            .WithOne(c => c.Client)
+            .HasForeignKey(c => c.ClientId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 
     private static void ConfigureProviderModel(ModelBuilder modelBuilder)
@@ -63,25 +77,37 @@ public class AMCoreData : DbContext
             .HasMany(u => u.Sessions)
             .WithOne(s => s.Provider)
             .HasForeignKey(s => s.ProviderId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.Communications)
             .WithOne(c => c.Provider)
             .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.Services)
             .WithOne(c => c.Provider)
             .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
 
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.UpdateProviderEMailRequests)
             .WithOne(c => c.Provider)
             .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
+        
+        modelBuilder.Entity<ProviderModel>()
+            .HasMany(u => u.Appointments)
+            .WithOne(c => c.Provider)
+            .HasForeignKey(c => c.ProviderId)
+            .OnDelete(DeleteBehavior.NoAction);
+
+        modelBuilder.Entity<ProviderModel>()
+            .HasMany(u => u.Clients)
+            .WithOne(c => c.Provider)
+            .HasForeignKey(c => c.ProviderId)
+            .OnDelete(DeleteBehavior.NoAction);
     }
 
     private static void ConfigureServiceModel(ModelBuilder modelBuilder)
@@ -109,7 +135,7 @@ public class AMCoreData : DbContext
             .HasMany(s => s.SessionActions)
             .WithOne(sa => sa.Session)
             .HasForeignKey(sa => sa.SessionId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.NoAction);
     }
 
     private static void ConfigureSessionActionModel(ModelBuilder modelBuilder)

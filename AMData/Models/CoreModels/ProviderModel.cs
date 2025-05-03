@@ -43,6 +43,7 @@ public class ProviderModel
     public DateTime CreateDate { get; set; }
     public DateTime? UpdateDate { get; set; }
     public DateTime? DeleteDate { get; set; }
+    [NotMapped]public virtual List<AppointmentModel> Appointments { get; set; }
     [NotMapped] public virtual List<SessionModel> Sessions { get; set; }
     [NotMapped] public virtual List<ProviderCommunicationModel> Communications { get; set; }
     [NotMapped] public virtual List<ClientModel> Clients { get; set; }

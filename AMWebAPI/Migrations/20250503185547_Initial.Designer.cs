@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.Migrations
 {
     [DbContext(typeof(AMCoreData))]
-    [Migration("20250424201246_UpdateUpdateProviderEMailRequestModel")]
-    partial class UpdateUpdateProviderEMailRequestModel
+    [Migration("20250503185547_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,53 @@ namespace AMWebAPI.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
+
+            modelBuilder.Entity("AMData.Models.CoreModels.AppointmentModel", b =>
+                {
+                    b.Property<long>("AppointmentId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("AppointmentId"));
+
+                    b.Property<long>("ClientId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("CreateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeleteDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<long>("ProviderId")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("ServiceId")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdateDate")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("AppointmentId");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("ProviderId");
+
+                    b.ToTable("Appointment");
+                });
 
             modelBuilder.Entity("AMData.Models.CoreModels.ClientModel", b =>
                 {
@@ -121,6 +168,9 @@ namespace AMWebAPI.Migrations
                     b.Property<bool>("AccessGranted")
                         .HasColumnType("bit");
 
+                    b.Property<int>("CountryCode")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("datetime2");
 
@@ -131,9 +181,15 @@ namespace AMWebAPI.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("EMailVerified")
+                        .HasColumnType("bit");
+
                     b.Property<string>("FirstName")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("LastLogindate")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -142,12 +198,55 @@ namespace AMWebAPI.Migrations
                     b.Property<string>("MiddleName")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int>("StateCode")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TimeZoneCode")
+                        .HasColumnType("int");
+
                     b.Property<DateTime?>("UpdateDate")
                         .HasColumnType("datetime2");
 
                     b.HasKey("ProviderId");
 
                     b.ToTable("Provider");
+                });
+
+            modelBuilder.Entity("AMData.Models.CoreModels.ServiceModel", b =>
+                {
+                    b.Property<long>("ServiceId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ServiceId"));
+
+                    b.Property<bool>("AllowClientScheduling")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("CreateDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("DeleteDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<long>("ProviderId")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("ServiceId");
+
+                    b.HasIndex("ProviderId");
+
+                    b.ToTable("Service");
                 });
 
             modelBuilder.Entity("AMData.Models.CoreModels.SessionActionModel", b =>
@@ -222,7 +321,28 @@ namespace AMWebAPI.Migrations
 
                     b.HasKey("UpdateProviderEMailRequestId");
 
+                    b.HasIndex("ProviderId");
+
                     b.ToTable("UpdateProviderEMailRequest");
+                });
+
+            modelBuilder.Entity("AMData.Models.CoreModels.AppointmentModel", b =>
+                {
+                    b.HasOne("AMData.Models.CoreModels.ClientModel", "Client")
+                        .WithMany("Appointments")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
+                        .WithMany("Appointments")
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Provider");
                 });
 
             modelBuilder.Entity("AMData.Models.CoreModels.ClientModel", b =>
@@ -230,7 +350,7 @@ namespace AMWebAPI.Migrations
                     b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
                         .WithMany("Clients")
                         .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Provider");
@@ -241,7 +361,18 @@ namespace AMWebAPI.Migrations
                     b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
                         .WithMany("Communications")
                         .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("AMData.Models.CoreModels.ServiceModel", b =>
+                {
+                    b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
+                        .WithMany("Services")
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Provider");
@@ -252,7 +383,7 @@ namespace AMWebAPI.Migrations
                     b.HasOne("AMData.Models.CoreModels.SessionModel", "Session")
                         .WithMany("SessionActions")
                         .HasForeignKey("SessionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Session");
@@ -263,19 +394,41 @@ namespace AMWebAPI.Migrations
                     b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
                         .WithMany("Sessions")
                         .HasForeignKey("ProviderId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Provider");
                 });
 
+            modelBuilder.Entity("AMData.Models.CoreModels.UpdateProviderEMailRequestModel", b =>
+                {
+                    b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
+                        .WithMany("UpdateProviderEMailRequests")
+                        .HasForeignKey("ProviderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Provider");
+                });
+
+            modelBuilder.Entity("AMData.Models.CoreModels.ClientModel", b =>
+                {
+                    b.Navigation("Appointments");
+                });
+
             modelBuilder.Entity("AMData.Models.CoreModels.ProviderModel", b =>
                 {
+                    b.Navigation("Appointments");
+
                     b.Navigation("Clients");
 
                     b.Navigation("Communications");
 
+                    b.Navigation("Services");
+
                     b.Navigation("Sessions");
+
+                    b.Navigation("UpdateProviderEMailRequests");
                 });
 
             modelBuilder.Entity("AMData.Models.CoreModels.SessionModel", b =>
