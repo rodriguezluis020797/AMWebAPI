@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 
@@ -40,7 +41,7 @@ public class SystemStatusService(IAMLogger logger, AMCoreData coreData, AMIdenti
         return allSuccessful;
     }
     
-    private async Task ExecuteWithRetryAsync(Func<Task> action)
+    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();
         const int maxRetries = 3;
@@ -66,7 +67,7 @@ public class SystemStatusService(IAMLogger logger, AMCoreData coreData, AMIdenti
             finally
             {
                 stopwatch.Stop();
-                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+                logger.LogInfo($"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }

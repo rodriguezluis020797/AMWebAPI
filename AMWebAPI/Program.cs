@@ -27,6 +27,12 @@ public class Program
             dbContext.ReseedIdentitiesAsync().GetAwaiter().GetResult();
         }
         
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AMIdentityData>();
+            dbContext.ReseedIdentitiesAsync().GetAwaiter().GetResult();
+        }
+        
         ConfigureMiddleware(app);
 
         app.Run();

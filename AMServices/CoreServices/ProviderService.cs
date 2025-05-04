@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -68,11 +69,20 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
     {
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        var provider = new ProviderModel();
 
-        var provider = await db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
-                       ?? throw new ArgumentException(nameof(providerId));
-
-        provider.DeleteDate = null;
+        await ExecuteWithRetryAsync(async () =>
+        {
+            provider = await db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
+                           ?? throw new ArgumentException(nameof(providerId));
+            
+            if (provider.DeleteDate != null)
+            {
+                provider.DeleteDate = null;
+                db.Providers.Update(provider);
+                await db.SaveChangesAsync();
+            }
+        });
 
         var dto = new ProviderDTO();
         dto.CreateNewRecordFromModel(provider);
@@ -81,19 +91,34 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
 
     public async Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt)
     {
-        if (!ValidationTool.IsValidEmail(dto.EMail) ||
-            await db.Providers.AnyAsync(x => x.EMail == dto.EMail) ||
-            await db.UpdateProviderEMailRequests.AnyAsync(x => x.NewEMail == dto.EMail && x.DeleteDate == null))
-            return new ProviderDTO
-                { ErrorMessage = "Provider with given e-mail already exists or e-mail is not in valid format." };
+        var response = new ProviderDTO();
+        var existingProviderExists = false;
+        var existingeMailRequestExists = false;
+        await ExecuteWithRetryAsync(async () =>
+        {
+            existingProviderExists = await db.Providers
+                .Where(x => x.EMail == dto.EMail)
+                .AnyAsync();
+            
+            existingeMailRequestExists = await db.UpdateProviderEMailRequests
+                .Where(x => x.NewEMail == dto.EMail && x.DeleteDate == null)
+                .AnyAsync();
+        });
+        if (!ValidationTool.IsValidEmail(dto.EMail) || existingProviderExists || existingeMailRequestExists)
+        {
+            response.ErrorMessage = "Provider with given e-mail already exists or e-mail is not in valid format.";
+            return response;
+        }
+            
 
-        var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        var provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId);
+        var providerId = IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
         var message =
-            $"There has been a request to change your E-Mail.\nIf this was not you, please change your password.\nOtherwise, verify here: {config["Environement:AngularURI"]}/verify-email?guid={request.QueryGuid}&isNew=false\nNew E-Mail: {request.NewEMail}";
+            $"There has been a request to change your E-Mail.\n" +
+            $"If this was not you, please change your password.\n" +
+            $"Otherwise, verify here: {config["Environment:AngularURI"]}/verify-email?guid={request.QueryGuid}&isNew=false\n" +
+            $"New E-Mail: {request.NewEMail}";
 
         var communication = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);
 
@@ -111,7 +136,7 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
             await trans.CommitAsync();
         });
 
-        return dto;
+        return response;
     }
 
     public async Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt)
@@ -131,7 +156,10 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
                        ?? throw new ArgumentException(nameof(providerId));
 
         provider.UpdateRecordFromDTO(dto);
-        await db.SaveChangesAsync();
+        await ExecuteWithRetryAsync(async () =>
+        {
+            await db.SaveChangesAsync();
+        });
         return response;
     }
 
@@ -169,7 +197,7 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
     }
 
     // ──────────────────────── Private Methods ────────────────────────
-    private async Task ExecuteWithRetryAsync(Func<Task> action)
+    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();
         const int maxRetries = 3;
@@ -195,7 +223,7 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
             finally
             {
                 stopwatch.Stop();
-                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+                logger.LogInfo($"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }

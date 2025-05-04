@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
-    [Migration("20250504064459_Initial")]
+    [Migration("20250504203929_Initial")]
     partial class Initial
     {
         /// <inheritdoc />

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -155,7 +156,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         return dto;
     }
 
-    private async Task ExecuteWithRetryAsync(Func<Task> action)
+    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();
         const int maxRetries = 3;
@@ -181,7 +182,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
             finally
             {
                 stopwatch.Stop();
-                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+                logger.LogInfo($"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }
