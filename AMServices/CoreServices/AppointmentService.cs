@@ -17,25 +17,14 @@ public interface IAppointmentService
     Task<AppointmentDTO> DeleteAppointmentAsync(AppointmentDTO model, string jwt);
 }
 
-public class AppointmentService : IAppointmentService
+public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration config) : IAppointmentService
 {
-    private readonly IConfiguration _config;
-    private readonly AMCoreData _db;
-    private readonly IAMLogger _logger;
-
-    public AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration config)
-    {
-        _logger = logger;
-        _db = db;
-        _config = config;
-    }
-
     public async Task<List<AppointmentDTO>> GetAllAppointmentsAsync(string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-        var appointmentModels = await _db.Appointments
+        var appointmentModels = await db.Appointments
             .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
             .ToListAsync();
 
@@ -45,16 +34,17 @@ public class AppointmentService : IAppointmentService
     public async Task<AppointmentDTO> UpdateAppointmentAsync(AppointmentDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
 
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage))
             return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
 
-        var appointmentModel = await _db.Appointments
-            .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId));
+        var appointmentModel = await db.Appointments
+            .FirstOrDefaultAsync(x =>
+                x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId));
 
         var timesChanged = appointmentModel.StartDate != dto.StartDate || appointmentModel.EndDate != dto.EndDate;
 
@@ -65,13 +55,13 @@ public class AppointmentService : IAppointmentService
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var transaction = await _db.Database.BeginTransactionAsync();
+            using var transaction = await db.Database.BeginTransactionAsync();
 
-            _db.Appointments.Update(appointmentModel);
+            db.Appointments.Update(appointmentModel);
 
             // TODO: Add Client Comm if times changed
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
         });
 
@@ -81,22 +71,23 @@ public class AppointmentService : IAppointmentService
     public async Task<AppointmentDTO> DeleteAppointmentAsync(AppointmentDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
 
-        var appointmentModel = await _db.Appointments
-            .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId));
+        var appointmentModel = await db.Appointments
+            .FirstOrDefaultAsync(x =>
+                x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId));
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var transaction = await _db.Database.BeginTransactionAsync();
+            using var transaction = await db.Database.BeginTransactionAsync();
             appointmentModel.DeleteDate = DateTime.UtcNow;
-            _db.Appointments.Update(appointmentModel);
+            db.Appointments.Update(appointmentModel);
 
             // TODO: Add Client Comm
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
         });
 
@@ -106,7 +97,7 @@ public class AppointmentService : IAppointmentService
     public async Task<AppointmentDTO> CreateAppointmentAsync(AppointmentDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage))
@@ -128,12 +119,12 @@ public class AppointmentService : IAppointmentService
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var transaction = await _db.Database.BeginTransactionAsync();
-            await _db.Appointments.AddAsync(appointmentModel);
+            using var transaction = await db.Database.BeginTransactionAsync();
+            await db.Appointments.AddAsync(appointmentModel);
 
             // TODO: Add Client Comm
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await transaction.CommitAsync();
         });
 
@@ -142,8 +133,9 @@ public class AppointmentService : IAppointmentService
 
     private async Task<bool> ConflictsWithExistingAppointment(AppointmentDTO dto, long providerId)
     {
-        return await _db.Appointments.AnyAsync(a =>
-            a.StartDate < dto.EndDate && a.EndDate > dto.StartDate && a.ProviderId == providerId && a.DeleteDate == null);
+        return await db.Appointments.AnyAsync(a =>
+            a.StartDate < dto.EndDate && a.EndDate > dto.StartDate && a.ProviderId == providerId &&
+            a.DeleteDate == null);
     }
 
     private AppointmentDTO BuildEncryptedDTO(AppointmentModel model)
@@ -167,26 +159,24 @@ public class AppointmentService : IAppointmentService
         const int maxRetries = 3;
         var retryDelay = TimeSpan.FromSeconds(2);
 
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
             try
             {
                 await action();
-                _logger.LogInfo("All database changes completed successfully.");
+                logger.LogInfo("All database changes completed successfully.");
                 return;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+                logger.LogError($"Attempt {attempt} failed: {ex.Message}");
 
                 if (attempt == maxRetries)
                 {
-                    _logger.LogError("All attempts failed. No data was committed.");
+                    logger.LogError("All attempts failed. No data was committed.");
                     throw;
                 }
 
                 await Task.Delay(retryDelay);
             }
-        }
     }
 }

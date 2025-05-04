@@ -11,19 +11,9 @@ namespace AMWebAPI.Controllers;
 [ApiController]
 [Route("api/[controller]/[action]")]
 [Authorize]
-public class IdentityController : ControllerBase
+public class IdentityController(IAMLogger logger, IIdentityService identityService, IConfiguration configuration)
+    : ControllerBase
 {
-    private readonly IConfiguration _configuration;
-    private readonly IIdentityService _identityService;
-    private readonly IAMLogger _logger;
-
-    public IdentityController(IAMLogger logger, IIdentityService identityService, IConfiguration configuration)
-    {
-        _logger = logger;
-        _identityService = identityService;
-        _configuration = configuration;
-    }
-
     private void ExpireAuthCookies()
     {
         var expiredOptions = new CookieOptions
@@ -68,7 +58,7 @@ public class IdentityController : ControllerBase
 
             if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
             {
-                var newJwt = await _identityService.RefreshJWT(jwt, refreshToken, fingerprint);
+                var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
                 SetAuthCookies(newJwt, refreshToken);
                 return StatusCode((int)HttpStatusCodeEnum.LoggedIn);
             }
@@ -77,11 +67,11 @@ public class IdentityController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            _logger.LogError($"IP Address: {fingerprint.IPAddress} - {ex}");
+            logger.LogError($"IP Address: {fingerprint.IPAddress} - {ex}");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
         }
 
         ExpireAuthCookies();
@@ -92,7 +82,7 @@ public class IdentityController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> LogIn([FromBody] ProviderDTO dto)
     {
-        _logger.LogInfo("+");
+        logger.LogInfo("+");
         var response = new ProviderDTO();
 
         try
@@ -100,11 +90,11 @@ public class IdentityController : ControllerBase
             var fingerprint = ExtractFingerprint();
             fingerprint.Validate();
 
-            var loginResult = await _identityService.LogInAsync(dto, fingerprint);
+            var loginResult = await identityService.LogInAsync(dto, fingerprint);
             response = loginResult.ProviderDto;
             SetAuthCookies(loginResult.Jwt, loginResult.RefreshToken);
 
-            _logger.LogInfo("-");
+            logger.LogInfo("-");
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (ArgumentException)
@@ -114,12 +104,12 @@ public class IdentityController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
-            _logger.LogInfo("-");
+            logger.LogInfo("-");
         }
     }
 
@@ -146,7 +136,7 @@ public class IdentityController : ControllerBase
             if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
                 if (IdentityTool.IsTheJWTExpired(jwt))
                 {
-                    var newJwt = await _identityService.RefreshJWT(jwt, refreshToken, fingerprint);
+                    var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
                     SetAuthCookies(newJwt, refreshToken);
                 }
 
@@ -154,13 +144,13 @@ public class IdentityController : ControllerBase
         }
         catch (ArgumentException ae)
         {
-            _logger.LogError($"IP Address: {fingerprint.IPAddress} - {ae}");
+            logger.LogError($"IP Address: {fingerprint.IPAddress} - {ae}");
             ExpireAuthCookies();
             return StatusCode((int)HttpStatusCodeEnum.Unauthorized);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
     }
@@ -171,13 +161,13 @@ public class IdentityController : ControllerBase
     {
         try
         {
-            await _identityService.ResetPasswordAsync(dto);
+            await identityService.ResetPasswordAsync(dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
     }
@@ -189,7 +179,7 @@ public class IdentityController : ControllerBase
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.None,
-            Expires = DateTime.UtcNow.AddDays(int.Parse(_configuration["CookieSettings:CookieExperationDays"]!))
+            Expires = DateTime.UtcNow.AddDays(int.Parse(configuration["CookieSettings:CookieExperationDays"]!))
         };
 
         Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwt, options);
@@ -199,7 +189,7 @@ public class IdentityController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> UpdatePassword([FromBody] ProviderDTO dto)
     {
-        _logger.LogInfo("+");
+        logger.LogInfo("+");
         var result = new BaseDTO();
 
         try
@@ -207,7 +197,7 @@ public class IdentityController : ControllerBase
             var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
             if (string.IsNullOrWhiteSpace(jwt)) throw new Exception("JWT token missing.");
 
-            result = await _identityService.UpdatePasswordAsync(dto, jwt);
+            result = await identityService.UpdatePasswordAsync(dto, jwt);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
         catch (ArgumentException)
@@ -217,12 +207,12 @@ public class IdentityController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
-            _logger.LogInfo("-");
+            logger.LogInfo("-");
         }
     }
 }

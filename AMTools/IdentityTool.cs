@@ -9,7 +9,6 @@ namespace AMTools;
 
 public static class IdentityTool
 {
-    
     public static long GetJwtClaimById(string jwToken, string key, string claimValue)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -29,7 +28,7 @@ public static class IdentityTool
 
         return providerId;
     }
-    
+
     public static string GenerateSaltString()
     {
         var salt = new byte[32];
@@ -94,7 +93,7 @@ public static class IdentityTool
 
         return tokenHandler.WriteToken(token);
     }
-    
+
     public static bool IsTheJWTExpired(string token)
     {
         var handler = new JwtSecurityTokenHandler();

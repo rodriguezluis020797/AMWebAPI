@@ -72,19 +72,29 @@ internal class Program
                           $"Temporary password: {password}";
             var communication = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
-            using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
-
             provider.AccessGranted = true;
-            _coreData.Providers.Update(provider);
-            _coreData.ProviderCommunications.Add(communication);
-            _coreData.SaveChanges();
+            try
+            {
+                // First context
+                provider.AccessGranted = true;
+                _coreData.Providers.Update(provider);
+                _coreData.ProviderCommunications.Add(communication);
+                await _coreData.SaveChangesAsync();
 
-            _identityData.Passwords.Add(passwordModel);
-            _identityData.SaveChanges();
+                // Second context
+                _identityData.Passwords.Add(passwordModel);
+                await _identityData.SaveChangesAsync();
 
-            scope.Complete();
+                _logger.LogAudit($"Granted access to Provider Id: {provider.ProviderId} | Temp password sent.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
 
-            _logger.LogAudit($"Granted access to Provider Id: {provider.ProviderId} | Temp password sent.");
+                // Optional: Manual compensation logic if needed
+                // Example: Roll back _coreData changes or mark as failed
+                throw; // Rethrow or handle based on your use case
+            }
         }
     }
 }

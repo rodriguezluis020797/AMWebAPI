@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace AMWebAPI.Migrations
+namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
-    [Migration("20250503185547_Initial")]
+    [Migration("20250504064459_Initial")]
     partial class Initial
     {
         /// <inheritdoc />

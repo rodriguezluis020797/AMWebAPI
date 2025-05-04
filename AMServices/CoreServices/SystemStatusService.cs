@@ -1,62 +1,38 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using AMTools.Tools;
+﻿using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 
-namespace AMServices.CoreServices
+namespace AMServices.CoreServices;
+
+public interface ISystemStatusService
 {
-    public interface ISystemStatusService
-    {
-        Task<bool> IsFullSystemActive();
-    }
+    Task<bool> IsFullSystemActive();
+}
 
-    public class SystemStatusService : ISystemStatusService
+public class SystemStatusService(IAMLogger logger, AMCoreData coreData, AMIdentityData identityData)
+    : ISystemStatusService
+{
+    public async Task<bool> IsFullSystemActive()
     {
-        private readonly AMCoreData _coreData;
-        private readonly AMIdentityData _identityData;
-        private readonly IAMLogger _logger;
+        var coreTask = coreData.Database.CanConnectAsync();
+        var identityTask = identityData.Database.CanConnectAsync();
 
-        public SystemStatusService(IAMLogger logger, AMCoreData coreData, AMIdentityData identityData)
+        await Task.WhenAll(coreTask, identityTask);
+
+        var results = new Dictionary<string, bool>
         {
-            _logger = logger;
-            _coreData = coreData;
-            _identityData = identityData;
+            { "CoreDB", coreTask.Result },
+            { "IdentityDB", identityTask.Result }
+        };
+
+        var allSuccessful = true;
+
+        foreach (var (name, success) in results)
+        {
+            if (success) continue;
+            logger.LogError($"System check '{name}' failed.");
+            allSuccessful = false;
         }
 
-        public async Task<bool> IsFullSystemActive()
-        {
-            try
-            {
-                var coreTask = _coreData.Database.CanConnectAsync();
-                var identityTask = _identityData.Database.CanConnectAsync();
-
-                await Task.WhenAll(coreTask, identityTask);
-
-                var results = new Dictionary<string, bool>
-                {
-                    { "CoreDB", coreTask.Result },
-                    { "IdentityDB", identityTask.Result }
-                };
-
-                var allSuccessful = true;
-
-                foreach (var (name, success) in results)
-                {
-                    if (!success)
-                    {
-                        _logger.LogError($"System check '{name}' failed.");
-                        allSuccessful = false;
-                    }
-                }
-
-                return allSuccessful;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError($"System status check failed: {ex}");
-                return false;
-            }
-        }
+        return allSuccessful;
     }
 }

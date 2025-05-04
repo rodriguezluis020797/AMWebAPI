@@ -10,43 +10,34 @@ namespace AMWebAPI.Controllers;
 [ApiController]
 [Route("api/[controller]/[action]")]
 [Authorize]
-public class ProviderController : ControllerBase
+public class ProviderController(IAMLogger logger, IProviderService providerService) : ControllerBase
 {
-    private readonly IAMLogger _logger;
-    private readonly IProviderService _providerService;
-
-    public ProviderController(IAMLogger logger, IProviderService providerService)
-    {
-        _logger = logger;
-        _providerService = providerService;
-    }
-
     [HttpPost]
     [AllowAnonymous]
     //Finazlized...
     public async Task<IActionResult> CreateProvider([FromBody] ProviderDTO dto)
     {
-        _logger.LogInfo("+");
+        logger.LogInfo("+");
         try
         {
-            var result = await _providerService.CreateProviderAsync(dto);
+            var result = await providerService.CreateProviderAsync(dto);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
-            _logger.LogInfo("-");
+            logger.LogInfo("-");
         }
     }
 
     [HttpGet]
     public async Task<IActionResult> GetProvider()
     {
-        _logger.LogInfo("+");
+        logger.LogInfo("+");
 
         try
         {
@@ -54,30 +45,30 @@ public class ProviderController : ControllerBase
             if (string.IsNullOrWhiteSpace(jwToken))
                 throw new Exception("JWT token missing from cookies.");
 
-            var provider = await _providerService.GetProviderAsync(jwToken);
+            var provider = await providerService.GetProviderAsync(jwToken);
             return StatusCode((int)HttpStatusCodeEnum.Success, provider);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
-            _logger.LogInfo("-");
+            logger.LogInfo("-");
         }
     }
 
     [HttpPost]
     public async Task<IActionResult> UpdateEMail([FromBody] ProviderDTO dto)
     {
-        _logger.LogInfo("+");
+        logger.LogInfo("+");
         var response = new ProviderDTO();
         try
         {
             var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
 
-            response = await _providerService.UpdateEMailAsync(dto, jwt);
+            response = await providerService.UpdateEMailAsync(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -87,35 +78,35 @@ public class ProviderController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
         }
         finally
         {
-            _logger.LogInfo("-");
+            logger.LogInfo("-");
         }
     }
 
     [HttpPost]
     public async Task<IActionResult> UpdateProvider([FromBody] ProviderDTO dto)
     {
-        _logger.LogInfo("+");
+        logger.LogInfo("+");
         try
         {
             var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
 
-            var response = await _providerService.UpdateProviderAsync(dto, jwt);
+            var response = await providerService.UpdateProviderAsync(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
-            _logger.LogInfo("-");
+            logger.LogInfo("-");
         }
     }
 
@@ -123,22 +114,22 @@ public class ProviderController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> VerifyUpdateEMail([FromQuery] string guid)
     {
-        _logger.LogInfo("+");
+        logger.LogInfo("+");
         var response = new BaseDTO();
         try
         {
-            response = await _providerService.VerifyUpdateEMailAsync(guid);
+            response = await providerService.VerifyUpdateEMailAsync(guid);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex.ToString());
+            logger.LogError(ex.ToString());
             return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
         }
         finally
         {
-            _logger.LogInfo("-");
+            logger.LogInfo("-");
         }
     }
 }

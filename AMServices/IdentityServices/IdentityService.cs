@@ -52,13 +52,12 @@ public class IdentityService : IIdentityService
             throw new ArgumentException("Incorrect password.");
 
         var session = new SessionModel(provider.ProviderId);
-        var sessionAction = new SessionActionModel(0, SessionActionEnum.LogIn);
+        var sessionAction = new SessionActionModel(SessionActionEnum.LogIn);
         var refreshTokenModel = CreateRefreshTokenModel(provider.ProviderId, IdentityTool.GenerateRefreshToken(),
             fingerprintDTO);
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
             await _coreData.Sessions.AddAsync(session);
             await _coreData.SaveChangesAsync();
 
@@ -73,8 +72,6 @@ public class IdentityService : IIdentityService
 
             await Task.WhenAll(deleteOldTokens, addNewToken);
             await _identityData.SaveChangesAsync();
-
-            scope.Complete();
         });
 
         _logger.LogAudit($"Provider Id: {provider.ProviderId}");
@@ -134,14 +131,14 @@ public class IdentityService : IIdentityService
         var newPassword =
             new PasswordModel(providerId, false, IdentityTool.HashPassword(dto.NewPassword, salt), salt);
 
-        var sessionAction = new SessionActionModel(sessionId, SessionActionEnum.ChangePassword);
+        var sessionAction = new SessionActionModel(SessionActionEnum.ChangePassword);
+        sessionAction.SessionId = sessionId;
         var providerComm = new ProviderCommunicationModel(providerId,
             "Your password was recently changed. If you did not request this change, please contact support.",
             DateTime.MinValue);
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
             await _identityData.Passwords
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
@@ -152,8 +149,6 @@ public class IdentityService : IIdentityService
 
             await _coreData.SaveChangesAsync();
             await _identityData.SaveChangesAsync();
-
-            scope.Complete();
         });
 
         _logger.LogAudit($"Provider Id: {providerId}");
@@ -213,7 +208,6 @@ public class IdentityService : IIdentityService
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
             await _identityData.Passwords
                 .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
@@ -225,8 +219,6 @@ public class IdentityService : IIdentityService
 
             await _identityData.SaveChangesAsync();
             await _coreData.SaveChangesAsync();
-
-            scope.Complete();
         });
 
         return response;

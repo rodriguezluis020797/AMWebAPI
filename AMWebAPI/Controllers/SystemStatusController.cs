@@ -1,6 +1,5 @@
 ﻿using AMData.Models;
 using AMServices.CoreServices;
-using AMTools.Tools;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AMWebAPI.Controllers;
@@ -14,6 +13,7 @@ public class SystemStatusController(ISystemStatusService systemStatusService) : 
     {
         var result = await systemStatusService.IsFullSystemActive();
 
-        return StatusCode(Convert.ToInt32(result ? HttpStatusCodeEnum.Success : HttpStatusCodeEnum.SystemUnavailable), result);
+        return StatusCode(Convert.ToInt32(result ? HttpStatusCodeEnum.Success : HttpStatusCodeEnum.SystemUnavailable),
+            result);
     }
 }

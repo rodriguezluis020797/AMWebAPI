@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -11,136 +7,118 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace AMServices.CoreServices
+namespace AMServices.CoreServices;
+
+public interface IServiceService
 {
-    public interface IServiceService
+    Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt);
+    Task<List<ServiceDTO>> GetServicesAsync(string jwt);
+    Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt);
+    Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt);
+}
+
+public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration config) : IServiceService
+{
+    // ──────────────────────── Create ────────────────────────
+    public async Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt)
     {
-        Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt);
-        Task<List<ServiceDTO>> GetServicesAsync(string jwt);
-        Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt);
-        Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt);
+        dto.Validate();
+        if (!string.IsNullOrWhiteSpace(dto.ErrorMessage)) return dto;
+
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
+        var serviceModel = new ServiceModel(
+            providerId,
+            dto.Name,
+            dto.Description,
+            dto.AllowClientScheduling,
+            dto.Price
+        );
+
+        await db.Services.AddAsync(serviceModel);
+        await db.SaveChangesAsync();
+
+        return dto;
     }
 
-    public class ServiceService : IServiceService
+    // ──────────────────────── Read ────────────────────────
+    public async Task<List<ServiceDTO>> GetServicesAsync(string jwt)
     {
-        private readonly IConfiguration _config;
-        private readonly AMCoreData _db;
-        private readonly IAMLogger _logger;
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-        public ServiceService(IAMLogger logger, AMCoreData db, IConfiguration config)
+        var services = await db.Services
+            .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+            .OrderBy(x => x.Name)
+            .ToListAsync();
+
+        var serviceList = new List<ServiceDTO>();
+
+        foreach (var model in services)
         {
-            _logger = logger;
-            _db = db;
-            _config = config;
+            var dto = new ServiceDTO();
+            dto.AssignFromModel(model);
+            CryptographyTool.Encrypt(dto.ServiceId, out var encryptedId);
+            dto.ServiceId = encryptedId;
+            serviceList.Add(dto);
         }
 
-        // ──────────────────────── Create ────────────────────────
-        public async Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt)
+        return serviceList;
+    }
+
+    // ──────────────────────── Update ────────────────────────
+    public async Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt)
+    {
+        dto.Validate();
+        if (!string.IsNullOrWhiteSpace(dto.ErrorMessage)) return dto;
+
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
+        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
+        var serviceId = long.Parse(decryptedId);
+
+        var serviceModel = await db.Services
+            .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.ServiceId == serviceId);
+
+        if (serviceModel == null)
         {
-            dto.Validate();
-            if (!string.IsNullOrWhiteSpace(dto.ErrorMessage))
-            {
-                return dto;
-            }
-
-            var providerId = IdentityTool
-                .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-
-            var serviceModel = new ServiceModel(
-                providerId,
-                dto.Name,
-                dto.Description,
-                dto.AllowClientScheduling,
-                dto.Price
-            );
-
-            await _db.Services.AddAsync(serviceModel);
-            await _db.SaveChangesAsync();
-
+            dto.ErrorMessage = "Service not found.";
             return dto;
         }
 
-        // ──────────────────────── Read ────────────────────────
-        public async Task<List<ServiceDTO>> GetServicesAsync(string jwt)
+        serviceModel.UpdateRecordFromDTO(dto);
+
+        db.Update(serviceModel);
+        await db.SaveChangesAsync();
+
+        return dto;
+    }
+
+    // ──────────────────────── Delete ────────────────────────
+    public async Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt)
+    {
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
+        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
+        var serviceId = long.Parse(decryptedId);
+
+        var serviceModel = await db.Services
+            .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.ServiceId == serviceId);
+
+        if (serviceModel == null)
         {
-            var providerId = IdentityTool
-                .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-
-            var services = await _db.Services
-                .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
-                .OrderBy(x => x.Name)
-                .ToListAsync();
-
-            var serviceList = new List<ServiceDTO>();
-
-            foreach (var model in services)
-            {
-                var dto = new ServiceDTO();
-                dto.AssignFromModel(model);
-                CryptographyTool.Encrypt(dto.ServiceId, out var encryptedId);
-                dto.ServiceId = encryptedId;
-                serviceList.Add(dto);
-            }
-
-            return serviceList;
-        }
-
-        // ──────────────────────── Update ────────────────────────
-        public async Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt)
-        {
-            dto.Validate();
-            if (!string.IsNullOrWhiteSpace(dto.ErrorMessage))
-            {
-                return dto;
-            }
-
-            var providerId = IdentityTool
-                .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-            
-            CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
-            var serviceId = long.Parse(decryptedId);
-
-            var serviceModel = await _db.Services
-                .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.ServiceId == serviceId);
-
-            if (serviceModel == null)
-            {
-                dto.ErrorMessage = "Service not found.";
-                return dto;
-            }
-
-            serviceModel.UpdateRecordFromDTO(dto);
-
-            _db.Update(serviceModel);
-            await _db.SaveChangesAsync();
-
+            dto.ErrorMessage = "Service not found.";
             return dto;
         }
 
-        // ──────────────────────── Delete ────────────────────────
-        public async Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt)
-        {
-            var providerId = IdentityTool
-                .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-            
-            CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
-            var serviceId = long.Parse(decryptedId);
+        serviceModel.DeleteDate = DateTime.UtcNow;
 
-            var serviceModel = await _db.Services
-                .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.ServiceId == serviceId);
+        db.Update(serviceModel);
+        await db.SaveChangesAsync();
 
-            if (serviceModel == null)
-            {
-                dto.ErrorMessage = "Service not found.";
-                return dto;
-            }
-
-            serviceModel.DeleteDate = DateTime.UtcNow;
-
-            _db.Update(serviceModel);
-            await _db.SaveChangesAsync();
-
-            return dto;
-        }
+        return dto;
     }
 }

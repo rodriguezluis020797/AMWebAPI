@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
 
-namespace AMWebAPI.Migrations
+namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
     partial class AMCoreDataModelSnapshot : ModelSnapshot

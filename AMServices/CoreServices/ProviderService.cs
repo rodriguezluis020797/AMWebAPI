@@ -1,16 +1,11 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using System.Security.Claims;
-
-using AMData.Models;
+﻿using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace AMServices.CoreServices;
 
@@ -22,19 +17,9 @@ public interface IProviderService
     Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> VerifyUpdateEMailAsync(string guid);
 }
-public class ProviderService : IProviderService
+
+public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration config) : IProviderService
 {
-    private readonly IConfiguration _config;
-    private readonly AMCoreData _db;
-    private readonly IAMLogger _logger;
-
-    public ProviderService(IAMLogger logger, AMCoreData db, IConfiguration config)
-    {
-        _logger = logger;
-        _db = db;
-        _config = config;
-    }
-
     public async Task<BaseDTO> CreateProviderAsync(ProviderDTO dto)
     {
         var response = new BaseDTO();
@@ -45,7 +30,7 @@ public class ProviderService : IProviderService
             return response;
         }
 
-        if (await _db.Providers.AnyAsync(x => x.EMail.Equals(dto.EMail)))
+        if (await db.Providers.AnyAsync(x => x.EMail.Equals(dto.EMail)))
         {
             response.ErrorMessage = "Provider with given e-mail already exists.\nPlease wait to be given access.";
             return response;
@@ -56,34 +41,35 @@ public class ProviderService : IProviderService
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var trans = await _db.Database.BeginTransactionAsync();
-            await _db.Providers.AddAsync(provider);
-            await _db.SaveChangesAsync();
+            using var trans = await db.Database.BeginTransactionAsync();
+            await db.Providers.AddAsync(provider);
+            await db.SaveChangesAsync();
 
             var emailReq = new UpdateProviderEMailRequestModel(provider.ProviderId, dto.EMail);
-            var message = $"Thank you for joining AM Tech!\nPlease verify your email:\n{_config["Environment:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&isNew=true";
+            var message =
+                $"Thank you for joining AM Tech!\nPlease verify your email:\n{config["Environment:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&isNew=true";
             var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
             await Task.WhenAll(
-                _db.UpdateProviderEMailRequests.AddAsync(emailReq).AsTask(),
-                _db.ProviderCommunications.AddAsync(comm).AsTask()
+                db.UpdateProviderEMailRequests.AddAsync(emailReq).AsTask(),
+                db.ProviderCommunications.AddAsync(comm).AsTask()
             );
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await trans.CommitAsync();
         });
 
-        _logger.LogAudit($"Provider Id: {provider.ProviderId} - E-Mail: {provider.EMail}");
+        logger.LogAudit($"Provider Id: {provider.ProviderId} - E-Mail: {provider.EMail}");
         return response;
     }
 
     public async Task<ProviderDTO> GetProviderAsync(string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        
-        var provider = await _db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
-            ?? throw new ArgumentException(nameof(providerId));
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
+        var provider = await db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
+                       ?? throw new ArgumentException(nameof(providerId));
 
         provider.DeleteDate = null;
 
@@ -95,33 +81,32 @@ public class ProviderService : IProviderService
     public async Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt)
     {
         if (!ValidationTool.IsValidEmail(dto.EMail) ||
-            await _db.Providers.AnyAsync(x => x.EMail == dto.EMail) ||
-            await _db.UpdateProviderEMailRequests.AnyAsync(x => x.NewEMail == dto.EMail && x.DeleteDate == null))
-        {
-            return new ProviderDTO { ErrorMessage = "Provider with given e-mail already exists or e-mail is not in valid format." };
-        }
-        
+            await db.Providers.AnyAsync(x => x.EMail == dto.EMail) ||
+            await db.UpdateProviderEMailRequests.AnyAsync(x => x.NewEMail == dto.EMail && x.DeleteDate == null))
+            return new ProviderDTO
+                { ErrorMessage = "Provider with given e-mail already exists or e-mail is not in valid format." };
+
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        var provider = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId);
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        var provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId);
 
         var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
         var message =
-            $"There has been a request to change your E-Mail.\nIf this was not you, please change your password.\nOtherwise, verify here: {_config["Environement:AngularURI"]}/verify-email?guid={request.QueryGuid}&isNew=false\nNew E-Mail: {request.NewEMail}";
+            $"There has been a request to change your E-Mail.\nIf this was not you, please change your password.\nOtherwise, verify here: {config["Environement:AngularURI"]}/verify-email?guid={request.QueryGuid}&isNew=false\nNew E-Mail: {request.NewEMail}";
 
         var communication = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var trans = await _db.Database.BeginTransactionAsync();
+            using var trans = await db.Database.BeginTransactionAsync();
 
-            await _db.UpdateProviderEMailRequests
+            await db.UpdateProviderEMailRequests
                 .Where(x => x.ProviderId == providerId)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-            await _db.UpdateProviderEMailRequests.AddAsync(request);
-            await _db.ProviderCommunications.AddAsync(communication);
-            await _db.SaveChangesAsync();
+            await db.UpdateProviderEMailRequests.AddAsync(request);
+            await db.ProviderCommunications.AddAsync(communication);
+            await db.SaveChangesAsync();
             await trans.CommitAsync();
         });
 
@@ -139,65 +124,65 @@ public class ProviderService : IProviderService
         }
 
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        
-        var provider = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId)
-            ?? throw new ArgumentException(nameof(providerId));
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
+        var provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId)
+                       ?? throw new ArgumentException(nameof(providerId));
 
         provider.UpdateRecordFromDTO(dto);
-        await _db.SaveChangesAsync();
+        await db.SaveChangesAsync();
         return response;
     }
 
     public async Task<BaseDTO> VerifyUpdateEMailAsync(string guid)
     {
         var response = new BaseDTO();
-        var request = await _db.UpdateProviderEMailRequests
+        var request = await db.UpdateProviderEMailRequests
             .FirstOrDefaultAsync(x => x.QueryGuid == guid && x.DeleteDate == null);
-            if(request == null){
-                response.ErrorMessage = "Invalid or expired link.";
-                return response;
-            }
+        if (request == null)
+        {
+            response.ErrorMessage = "Invalid or expired link.";
+            return response;
+        }
 
-        var provider = await _db.Providers.FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId)
-            ?? throw new InvalidOperationException("Provider not found.");
+        var provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId)
+                       ?? throw new InvalidOperationException("Provider not found.");
 
         var oldEmail = provider.EMail;
 
         await ExecuteWithRetryAsync(async () =>
         {
-            using var trans = await _db.Database.BeginTransactionAsync();
+            using var trans = await db.Database.BeginTransactionAsync();
             provider.EMail = request.NewEMail;
             provider.EMailVerified = true;
             provider.UpdateDate = DateTime.UtcNow;
             request.DeleteDate = DateTime.UtcNow;
 
-            await _db.SaveChangesAsync();
+            await db.SaveChangesAsync();
             await trans.CommitAsync();
         });
 
-        _logger.LogAudit($"Email Changed - Provider Id: {provider.ProviderId} Old Email: {oldEmail} - New Email: {request.NewEMail}");
+        logger.LogAudit(
+            $"Email Changed - Provider Id: {provider.ProviderId} Old Email: {oldEmail} - New Email: {request.NewEMail}");
         return response;
     }
 
     // ──────────────────────── Private Methods ────────────────────────
     private async Task ExecuteWithRetryAsync(Func<Task> operation, int maxRetries = 3, int delaySeconds = 2)
     {
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
             try
             {
                 await operation();
-                _logger.LogInfo("All database changes completed successfully.");
+                logger.LogInfo("All database changes completed successfully.");
                 return;
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+                logger.LogError($"Attempt {attempt} failed: {ex.Message}");
                 if (attempt == maxRetries)
                     throw;
                 await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
             }
-        }
     }
 }

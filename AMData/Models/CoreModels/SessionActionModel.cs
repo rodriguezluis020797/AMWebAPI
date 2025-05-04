@@ -6,9 +6,8 @@ namespace AMData.Models.CoreModels;
 [Table("SessionAction")]
 public class SessionActionModel
 {
-    public SessionActionModel(long sessionId, SessionActionEnum sessionAction)
+    public SessionActionModel(SessionActionEnum sessionAction)
     {
-        SessionId = sessionId;
         SessionAction = sessionAction;
         CreateDate = DateTime.UtcNow;
     }
