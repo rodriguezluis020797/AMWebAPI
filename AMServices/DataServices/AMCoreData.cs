@@ -147,4 +147,32 @@ public class AMCoreData : DbContext
         modelBuilder.Entity<UpdateProviderEMailRequestModel>()
             .HasKey(x => x.UpdateProviderEMailRequestId);
     }
+    
+    public async Task ReseedIdentitiesAsync()
+    {
+        var tableIdMappings = new Dictionary<string, string>
+        {
+            { "Appointment", "AppointmentId" },
+            { "Client", "ClientId" },
+            { "ProviderCommunication", "CommunicationId" },
+            { "Provider", "ProviderId" },
+            { "Service", "ServiceId" },
+            { "SessionAction", "SessionActionId" },
+            { "Session", "SessionId" },
+            { "UpdateProviderEMailRequest", "UpdateProviderEMailRequestId" }
+        };
+
+        foreach (var kvp in tableIdMappings)
+        {
+            var tableName = kvp.Key;
+            var columnName = kvp.Value;
+
+            var sql = $@"
+            DECLARE @max INT;
+            SELECT @max = ISNULL(MAX([{columnName}]), 0) FROM [{tableName}];
+            DBCC CHECKIDENT ('{tableName}', RESEED, @max);";
+
+            await Database.ExecuteSqlRawAsync(sql);
+        }
+    }
 }
