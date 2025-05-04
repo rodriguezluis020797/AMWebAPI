@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -37,7 +38,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
 
-        await ExecuteWithRetry(async () =>
+        await ExecuteWithRetryAsync(async () =>
         {
             await db.Clients.AddAsync(clientModel);
             await db.SaveChangesAsync();
@@ -69,7 +70,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                 x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId);
         clientModel.UpdateRecordFromDTO(dto);
 
-        await ExecuteWithRetry(async () =>
+        await ExecuteWithRetryAsync(async () =>
         {
             db.Clients.Update(clientModel);
             await db.SaveChangesAsync();
@@ -92,7 +93,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                 x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId);
         clientModel.DeleteDate = DateTime.UtcNow;
 
-        await ExecuteWithRetry(async () =>
+        await ExecuteWithRetryAsync(async () =>
         {
             db.Clients.Update(clientModel);
             await db.SaveChangesAsync();
@@ -135,30 +136,33 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         return phoneExists.Result || nameExists.Result;
     }
 
-    private async Task ExecuteWithRetry(Func<Task> action)
+    private async Task ExecuteWithRetryAsync(Func<Task> action)
     {
-        var maxRetries = 3;
+        var stopwatch = Stopwatch.StartNew();
+        const int maxRetries = 3;
         var retryDelay = TimeSpan.FromSeconds(2);
+        var attempt = 0;
 
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        for (attempt = 1; attempt <= maxRetries; attempt++)
             try
             {
-                using var transaction = await db.Database.BeginTransactionAsync();
                 await action();
-                await transaction.CommitAsync();
-                logger.LogInfo("Database transaction committed successfully.");
-                break;
+                return;
             }
             catch (Exception ex)
             {
-                logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
                 if (attempt == maxRetries)
                 {
-                    logger.LogError("All attempts failed. No data was committed.");
+                    logger.LogError(ex.ToString());
                     throw;
                 }
-
                 await Task.Delay(retryDelay);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }

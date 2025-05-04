@@ -1,4 +1,5 @@
-﻿using System.Security.Claims;
+﻿using System.Diagnostics;
+using System.Security.Claims;
 using System.Transactions;
 using AMData.Models;
 using AMData.Models.CoreModels;
@@ -20,28 +21,20 @@ public interface IIdentityService
     Task<string> RefreshJWT(string jwt, string refreshToken, FingerprintDTO fingerprintDto);
 }
 
-public class IdentityService : IIdentityService
+public class IdentityService(
+    AMCoreData coreData,
+    AMIdentityData identityData,
+    IAMLogger logger,
+    IConfiguration config)
+    : IIdentityService
 {
-    private readonly IConfiguration _config;
-    private readonly AMCoreData _coreData;
-    private readonly AMIdentityData _identityData;
-    private readonly IAMLogger _logger;
-
-    public IdentityService(AMCoreData coreData, AMIdentityData identityData, IAMLogger logger,
-        IConfiguration config)
-    {
-        _coreData = coreData;
-        _identityData = identityData;
-        _logger = logger;
-        _config = config;
-    }
 
     public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
     {
-        var provider = await _coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
+        var provider = await coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
                        ?? throw new ArgumentException(nameof(dto.EMail));
 
-        var passwordModel = await _identityData.Passwords
+        var passwordModel = await identityData.Passwords
                                 .Where(x => x.ProviderId == provider.ProviderId)
                                 .OrderByDescending(x => x.CreateDate)
                                 .FirstOrDefaultAsync()
@@ -58,24 +51,24 @@ public class IdentityService : IIdentityService
 
         await ExecuteWithRetryAsync(async () =>
         {
-            await _coreData.Sessions.AddAsync(session);
-            await _coreData.SaveChangesAsync();
+            await coreData.Sessions.AddAsync(session);
+            await coreData.SaveChangesAsync();
 
             sessionAction.SessionId = session.SessionId;
-            await _coreData.SessionActions.AddAsync(sessionAction);
-            await _coreData.SaveChangesAsync();
+            await coreData.SessionActions.AddAsync(sessionAction);
+            await coreData.SaveChangesAsync();
 
-            var deleteOldTokens = _identityData.RefreshTokens
+            var deleteOldTokens = identityData.RefreshTokens
                 .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
-            var addNewToken = _identityData.RefreshTokens.AddAsync(refreshTokenModel).AsTask();
+            var addNewToken = identityData.RefreshTokens.AddAsync(refreshTokenModel).AsTask();
 
             await Task.WhenAll(deleteOldTokens, addNewToken);
-            await _identityData.SaveChangesAsync();
+            await identityData.SaveChangesAsync();
         });
 
-        _logger.LogAudit($"Provider Id: {provider.ProviderId}");
-        _logger.LogAudit(
+        logger.LogAudit($"Provider Id: {provider.ProviderId}");
+        logger.LogAudit(
             $"Login details: IP={fingerprintDTO.IPAddress}, UA={fingerprintDTO.UserAgent}, Platform={fingerprintDTO.Platform}, Language={fingerprintDTO.Language}");
 
         CryptographyTool.Encrypt(refreshTokenModel.Token, out var encryptedRefreshToken);
@@ -102,13 +95,13 @@ public class IdentityService : IIdentityService
             throw new ArgumentException("Password does not meet complexity requirements.");
 
         var providerId =
-            IdentityTool.GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
         var sessionId =
-            IdentityTool.GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
+            IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
 
         if (!dto.IsTempPassword)
         {
-            var currentPassword = await _identityData.Passwords
+            var currentPassword = await identityData.Passwords
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
                 .OrderByDescending(x => x.CreateDate)
                 .FirstOrDefaultAsync();
@@ -119,7 +112,7 @@ public class IdentityService : IIdentityService
                 throw new ArgumentException("Current password does not match.");
         }
 
-        var recentPasswords = await _identityData.Passwords
+        var recentPasswords = await identityData.Passwords
             .Where(x => x.ProviderId == providerId)
             .ToListAsync();
 
@@ -139,30 +132,30 @@ public class IdentityService : IIdentityService
 
         await ExecuteWithRetryAsync(async () =>
         {
-            await _identityData.Passwords
+            await identityData.Passwords
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-            await _identityData.Passwords.AddAsync(newPassword);
-            await _coreData.SessionActions.AddAsync(sessionAction);
-            await _coreData.ProviderCommunications.AddAsync(providerComm);
+            await identityData.Passwords.AddAsync(newPassword);
+            await coreData.SessionActions.AddAsync(sessionAction);
+            await coreData.ProviderCommunications.AddAsync(providerComm);
 
-            await _coreData.SaveChangesAsync();
-            await _identityData.SaveChangesAsync();
+            await coreData.SaveChangesAsync();
+            await identityData.SaveChangesAsync();
         });
 
-        _logger.LogAudit($"Provider Id: {providerId}");
+        logger.LogAudit($"Provider Id: {providerId}");
         return response;
     }
 
     public async Task<string> RefreshJWT(string jwt, string refreshToken, FingerprintDTO fingerprintDTO)
     {
         var providerId =
-            IdentityTool.GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
         var sessionId =
-            IdentityTool.GetJwtClaimById(jwt, _config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
+            IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
 
-        var refreshTokenModel = await _identityData.RefreshTokens
+        var refreshTokenModel = await identityData.RefreshTokens
                                     .Where(x => x.ProviderId == providerId && x.DeleteDate == null &&
                                                 DateTime.UtcNow < x.ExpiresDate)
                                     .FirstOrDefaultAsync()
@@ -184,9 +177,9 @@ public class IdentityService : IIdentityService
             throw new ArgumentException("Refresh token mismatch.");
 
         refreshTokenModel.ExpiresDate = refreshTokenModel.ExpiresDate
-            .AddDays(int.Parse(_config["Jwt:RefreshTokenExpirationDays"]!));
-        _identityData.RefreshTokens.Update(refreshTokenModel);
-        await _identityData.SaveChangesAsync();
+            .AddDays(int.Parse(config["Jwt:RefreshTokenExpirationDays"]!));
+        identityData.RefreshTokens.Update(refreshTokenModel);
+        await identityData.SaveChangesAsync();
 
         return GenerateJwt(providerId, sessionId);
     }
@@ -195,7 +188,7 @@ public class IdentityService : IIdentityService
     {
         var response = new BaseDTO();
 
-        var provider = await _coreData.Providers
+        var provider = await coreData.Providers
             .AsNoTracking()
             .FirstOrDefaultAsync(x => x.EMail == dto.EMail);
         if (provider == null) return response;
@@ -208,41 +201,50 @@ public class IdentityService : IIdentityService
 
         await ExecuteWithRetryAsync(async () =>
         {
-            await _identityData.Passwords
+            await identityData.Passwords
                 .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
-            await _identityData.SaveChangesAsync();
+            await identityData.SaveChangesAsync();
 
-            await _identityData.Passwords.AddAsync(new PasswordModel(provider.ProviderId, true, hashed, salt));
-            await _coreData.ProviderCommunications.AddAsync(
+            await identityData.Passwords.AddAsync(new PasswordModel(provider.ProviderId, true, hashed, salt));
+            await coreData.ProviderCommunications.AddAsync(
                 new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue));
 
-            await _identityData.SaveChangesAsync();
-            await _coreData.SaveChangesAsync();
+            await identityData.SaveChangesAsync();
+            await coreData.SaveChangesAsync();
         });
 
         return response;
     }
 
-    private async Task ExecuteWithRetryAsync(Func<Task> operation)
+    private async Task ExecuteWithRetryAsync(Func<Task> action)
     {
+        var stopwatch = Stopwatch.StartNew();
         const int maxRetries = 3;
-        var delay = TimeSpan.FromSeconds(2);
+        var retryDelay = TimeSpan.FromSeconds(2);
+        var attempt = 0;
 
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        for (attempt = 1; attempt <= maxRetries; attempt++)
             try
             {
-                await operation();
+                await action();
                 return;
             }
-            catch (Exception ex) when (attempt < maxRetries)
+            catch (Exception ex)
             {
-                _logger.LogError($"Attempt {attempt} failed: {ex.Message}");
-                await Task.Delay(delay);
-            }
 
-        _logger.LogError("All attempts failed. No data was committed.");
-        throw new InvalidOperationException("Operation failed after multiple retries.");
+                if (attempt == maxRetries)
+                {
+                    logger.LogError(ex.ToString());
+                    throw;
+                }
+                await Task.Delay(retryDelay);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+            }
     }
 
     private string GenerateJwt(long providerId, long sessionId)
@@ -255,10 +257,10 @@ public class IdentityService : IIdentityService
 
         return IdentityTool.GenerateJWTToken(
             claims,
-            _config["Jwt:Key"]!,
-            _config["Jwt:Issuer"]!,
-            _config["Jwt:Audience"]!,
-            _config["Jwt:ExpiresInMinutes"]!
+            config["Jwt:Key"]!,
+            config["Jwt:Issuer"]!,
+            config["Jwt:Audience"]!,
+            config["Jwt:ExpiresInMinutes"]!
         );
     }
 
@@ -280,7 +282,7 @@ public class IdentityService : IIdentityService
     private RefreshTokenModel CreateRefreshTokenModel(long providerId, string token, FingerprintDTO fp)
     {
         return new RefreshTokenModel(providerId, token, fp.IPAddress, fp.UserAgent, fp.Platform, fp.Language,
-            DateTime.UtcNow.AddDays(int.Parse(_config["Jwt:RefreshTokenExpirationDays"]!)));
+            DateTime.UtcNow.AddDays(int.Parse(config["Jwt:RefreshTokenExpirationDays"]!)));
     }
 }
 

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -35,9 +36,12 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
             dto.AllowClientScheduling,
             dto.Price
         );
-
-        await db.Services.AddAsync(serviceModel);
-        await db.SaveChangesAsync();
+        
+        await ExecuteWithRetryAsync(async () =>
+            {
+                await db.Services.AddAsync(serviceModel);
+                await db.SaveChangesAsync();
+            });
 
         return dto;
     }
@@ -89,9 +93,12 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         }
 
         serviceModel.UpdateRecordFromDTO(dto);
-
-        db.Update(serviceModel);
-        await db.SaveChangesAsync();
+        
+        await ExecuteWithRetryAsync(async () =>
+        {
+            db.Update(serviceModel);
+            await db.SaveChangesAsync();
+        });
 
         return dto;
     }
@@ -115,10 +122,43 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         }
 
         serviceModel.DeleteDate = DateTime.UtcNow;
-
-        db.Update(serviceModel);
-        await db.SaveChangesAsync();
+        
+        await ExecuteWithRetryAsync(async () =>
+        {
+            db.Update(serviceModel);
+            await db.SaveChangesAsync();
+        });
 
         return dto;
+    }
+    
+    private async Task ExecuteWithRetryAsync(Func<Task> action)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        const int maxRetries = 3;
+        var retryDelay = TimeSpan.FromSeconds(2);
+        var attempt = 0;
+
+        for (attempt = 1; attempt <= maxRetries; attempt++)
+            try
+            {
+                await action();
+                return;
+            }
+            catch (Exception ex)
+            {
+
+                if (attempt == maxRetries)
+                {
+                    logger.LogError(ex.ToString());
+                    throw;
+                }
+                await Task.Delay(retryDelay);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+            }
     }
 }

@@ -1,4 +1,5 @@
-﻿using AMData.Models;
+﻿using System.Diagnostics;
+using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMTools;
@@ -168,21 +169,33 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
     }
 
     // ──────────────────────── Private Methods ────────────────────────
-    private async Task ExecuteWithRetryAsync(Func<Task> operation, int maxRetries = 3, int delaySeconds = 2)
+    private async Task ExecuteWithRetryAsync(Func<Task> action)
     {
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        var stopwatch = Stopwatch.StartNew();
+        const int maxRetries = 3;
+        var retryDelay = TimeSpan.FromSeconds(2);
+        var attempt = 0;
+
+        for (attempt = 1; attempt <= maxRetries; attempt++)
             try
             {
-                await operation();
-                logger.LogInfo("All database changes completed successfully.");
+                await action();
                 return;
             }
             catch (Exception ex)
             {
-                logger.LogError($"Attempt {attempt} failed: {ex.Message}");
+
                 if (attempt == maxRetries)
+                {
+                    logger.LogError(ex.ToString());
                     throw;
-                await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
+                }
+                await Task.Delay(retryDelay);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }

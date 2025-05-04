@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -156,27 +157,31 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
     private async Task ExecuteWithRetryAsync(Func<Task> action)
     {
+        var stopwatch = Stopwatch.StartNew();
         const int maxRetries = 3;
         var retryDelay = TimeSpan.FromSeconds(2);
+        var attempt = 0;
 
-        for (var attempt = 1; attempt <= maxRetries; attempt++)
+        for (attempt = 1; attempt <= maxRetries; attempt++)
             try
             {
                 await action();
-                logger.LogInfo("All database changes completed successfully.");
                 return;
             }
             catch (Exception ex)
             {
-                logger.LogError($"Attempt {attempt} failed: {ex.Message}");
 
                 if (attempt == maxRetries)
                 {
-                    logger.LogError("All attempts failed. No data was committed.");
+                    logger.LogError(ex.ToString());
                     throw;
                 }
-
                 await Task.Delay(retryDelay);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }
