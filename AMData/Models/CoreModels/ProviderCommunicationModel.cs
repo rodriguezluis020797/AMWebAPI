@@ -19,7 +19,7 @@ public class ProviderCommunicationModel
         DeleteDate = null;
     }
 
-    [Key] public long CommunicationId { get; set; }
+    [Key] public long ProviderCommunicationId { get; set; }
     [ForeignKey("Provider")] public long ProviderId { get; set; }
     public string Message { get; set; }
     public DateTime SendAfter { get; set; }

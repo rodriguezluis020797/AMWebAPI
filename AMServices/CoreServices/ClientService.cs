@@ -39,10 +39,33 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
 
+        var message = "Your phone number is now being used by #ProviderName# to send you automated SMS messages.\n" +
+                      "Reply with 'Stop' to stop all further communication from this service.";
+
+        var clientComm = new ClientCommunicationModel(0, message, DateTime.MinValue);
+
         await ExecuteWithRetryAsync(async () =>
         {
-            await db.Clients.AddAsync(clientModel);
-            await db.SaveChangesAsync();
+            using (var trans = await db.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    await db.Clients.AddAsync(clientModel);
+                    await db.SaveChangesAsync();
+
+                    clientComm.ClientId = clientModel.ClientId;
+
+                    await db.ClientCommunications.AddAsync(clientComm);
+                    await db.SaveChangesAsync();
+
+                    await trans.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    await trans.RollbackAsync();
+                    throw;
+                }
+            }
         });
 
         return response;
@@ -66,15 +89,48 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
-        var clientModel =
-            await db.Clients.FirstOrDefaultAsync(x =>
-                x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId);
+        var clientModel = new ClientModel(0, string.Empty, string.Empty, string.Empty, string.Empty);
+
+        await ExecuteWithRetryAsync(async () =>
+        {
+            clientModel =
+                await db.Clients
+                    .Where(x => x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId)
+                    .Include(x => x.Provider)
+                    .FirstOrDefaultAsync();
+        });
+
+        var message = "Your phone number is now being used by #ProviderName# to send you automated SMS messages.\n" +
+                      "Reply with 'Stop' to stop all further communication from this service.";
+
+        var clientComm = new ClientCommunicationModel(0, message, DateTime.MinValue);
+        var addCom = !clientModel.PhoneNumber.Equals(dto.PhoneNumber);
+
         clientModel.UpdateRecordFromDTO(dto);
 
         await ExecuteWithRetryAsync(async () =>
         {
-            db.Clients.Update(clientModel);
-            await db.SaveChangesAsync();
+            using (var trans = await db.Database.BeginTransactionAsync())
+            {
+                try
+                {
+                    if (addCom)
+                    {
+                        clientComm.ClientId = clientModel.ClientId;
+                        await db.ClientCommunications.AddAsync(clientComm);
+                        await db.SaveChangesAsync();
+                    }
+
+                    db.Clients.Update(clientModel);
+                    await db.SaveChangesAsync();
+                    await trans.CommitAsync();
+                }
+                catch (Exception ex)
+                {
+                    await trans.RollbackAsync();
+                    throw;
+                }
+            }
         });
 
         return response;
@@ -108,28 +164,39 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-        var clients = await db.Clients
-            .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
-            .OrderBy(x => x.LastName)
-            .ToListAsync();
+        var clients = new List<ClientModel>();
 
-        return clients.Select(client =>
+        await ExecuteWithRetryAsync(async () =>
+        {
+            clients = await db.Clients
+                .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+                .OrderBy(x => x.LastName)
+                .ToListAsync();
+        });
+
+        var clientDtoList = new List<ClientDTO>();
+
+        foreach (var client in clients)
         {
             var dto = new ClientDTO();
             dto.CreateRecordFromModel(client);
             CryptographyTool.Encrypt(dto.ClientId, out var encryptedId);
             dto.ClientId = encryptedId;
-            return dto;
-        }).ToList();
+            clientDtoList.Add(dto);
+        }
+
+        return clientDtoList;
     }
 
     private async Task<bool> ClientExistsAsync(ClientDTO dto, bool isNewRecord)
     {
         var exists = false;
+        var decryptedId = string.Empty;
+        if (!isNewRecord) CryptographyTool.Decrypt(dto.ClientId, out decryptedId);
+
         await ExecuteWithRetryAsync(async () =>
             {
                 if (isNewRecord)
-                {
                     exists = await db.Clients.AnyAsync(x =>
                         x.DeleteDate == null &&
                         (
@@ -141,11 +208,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                             )
                         )
                     );
-                }
                 else
-                {
-                    CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
-
                     exists = await db.Clients
                         .Where(x => x.DeleteDate == null &&
                                     x.ClientId != long.Parse(decryptedId) &&
@@ -154,7 +217,6 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                                       x.MiddleName == dto.MiddleName &&
                                       x.LastName == dto.LastName)))
                         .AnyAsync();
-                }
             }
         );
         return exists;

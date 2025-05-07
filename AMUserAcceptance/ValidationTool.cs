@@ -1,7 +1,7 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
 
-namespace AMTools.Tools;
+namespace AMUserAcceptance;
 
 public static class ValidationTool
 {
@@ -25,11 +25,7 @@ public static class ValidationTool
                 return match.Groups[1].Value + domainName;
             }
         }
-        catch (RegexMatchTimeoutException e)
-        {
-            return false;
-        }
-        catch (ArgumentException e)
+        catch
         {
             return false;
         }

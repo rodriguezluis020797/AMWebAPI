@@ -28,24 +28,21 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         var response = new List<AppointmentDTO>();
         var appointmentModels = new List<AppointmentModel>();
         var timeZoneCode = TimeZoneCodeEnum.Select;
-        
+
         await ExecuteWithRetryAsync(async () =>
         {
             timeZoneCode = await db.Providers
                 .Where(x => x.ProviderId == providerId)
                 .Select(x => x.TimeZoneCode)
                 .FirstOrDefaultAsync();
-            
+
             appointmentModels = await db.Appointments
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
                 .ToListAsync();
         });
 
-        foreach (var appointment in appointmentModels)
-        {
-            response.Add(BuildEncryptedDTO(appointment, timeZoneCode));
-        }
-        
+        foreach (var appointment in appointmentModels) response.Add(BuildEncryptedDTO(appointment, timeZoneCode));
+
         return response;
     }
 
@@ -53,9 +50,9 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
     {
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-           
+
         var appointmentModel = new AppointmentModel(0, 0, 0, DateTime.MinValue, DateTime.MinValue, string.Empty);
-        
+
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
 
         await ExecuteWithRetryAsync(async () =>
@@ -66,14 +63,11 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                 .Include(x => x.Provider)
                 .FirstOrDefaultAsync();
         });
-        
+
         dto = TurnAppointmentTimeToUTC(dto, appointmentModel.Provider.TimeZoneCode);
-        
+
         dto.Validate();
-        if (!string.IsNullOrEmpty(dto.ErrorMessage))
-        {
-            return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
-        }
+        if (!string.IsNullOrEmpty(dto.ErrorMessage)) return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
 
         var timesChanged = appointmentModel.StartDate != dto.StartDate || appointmentModel.EndDate != dto.EndDate;
 
@@ -127,7 +121,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
     {
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        
+
         var providerTimeZone = TimeZoneCodeEnum.Select;
 
         await ExecuteWithRetryAsync(async () =>
@@ -137,19 +131,14 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                 .Select(x => x.TimeZoneCode)
                 .FirstOrDefaultAsync();
         });
-        
+
         dto = TurnAppointmentTimeToUTC(dto, providerTimeZone);
-        
+
         dto.Validate();
-        if (!string.IsNullOrEmpty(dto.ErrorMessage))
-        {
-            return new AppointmentDTO() { ErrorMessage = dto.ErrorMessage };   
-        }
+        if (!string.IsNullOrEmpty(dto.ErrorMessage)) return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
 
         if (await ConflictsWithExistingAppointment(dto, providerId))
-        {
-            return new AppointmentDTO() { ErrorMessage = "This conflicts with a different appointment." };   
-        }
+            return new AppointmentDTO { ErrorMessage = "This conflicts with a different appointment." };
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedServiceId);
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedClientId);
@@ -214,7 +203,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         }
         catch (TimeZoneNotFoundException ex)
         {
-            logger.LogError($"{ex.ToString()}");
+            logger.LogError($"{ex}");
             throw;
         }
 
@@ -236,7 +225,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
         return dto;
     }
-    
+
     private AppointmentDTO TurnAppointmentTimeToLocal(AppointmentDTO dto, TimeZoneCodeEnum timeZoneCode)
     {
         // Convert enum (e.g., America_New_York) to time zone ID string (e.g., "America/New York")

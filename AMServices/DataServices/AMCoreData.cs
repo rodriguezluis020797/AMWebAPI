@@ -16,7 +16,7 @@ public class AMCoreData : DbContext
 
     public DbSet<AppointmentModel> Appointments { get; init; }
     public DbSet<ClientModel> Clients { get; init; }
-    public DbSet<ClientModel> ClientCommunications { get; init; }
+    public DbSet<ClientCommunicationModel> ClientCommunications { get; init; }
     public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
     public DbSet<ProviderModel> Providers { get; init; }
     public DbSet<ServiceModel> Services { get; init; }
@@ -66,7 +66,7 @@ public class AMCoreData : DbContext
             .WithOne(c => c.Client)
             .HasForeignKey(c => c.ClientId)
             .OnDelete(DeleteBehavior.NoAction);
-        
+
         modelBuilder.Entity<ClientModel>()
             .HasMany(u => u.Communications)
             .WithOne(c => c.Client)
@@ -135,7 +135,7 @@ public class AMCoreData : DbContext
     private static void ConfigureProviderCommunicationModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ProviderCommunicationModel>()
-            .HasKey(uc => uc.CommunicationId);
+            .HasKey(uc => uc.ProviderCommunicationId);
     }
 
     private static void ConfigureSessionModel(ModelBuilder modelBuilder)

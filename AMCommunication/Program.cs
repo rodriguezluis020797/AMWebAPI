@@ -1,9 +1,13 @@
-﻿using AMTools.Tools;
+﻿using AMData.Models.CoreModels;
+using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SendGrid;
 using SendGrid.Helpers.Mail;
+using Twilio;
+using Twilio.Rest.Api.V2010.Account;
+using Twilio.Types;
 
 namespace AMCommunication;
 
@@ -20,7 +24,7 @@ internal class Program
         try
         {
             InitializeConfiguration();
-            await ProcessProviderCommunicationsAsync();
+            await ProcessCommunicationsAsync();
         }
         catch (Exception ex)
         {
@@ -37,28 +41,56 @@ internal class Program
             .AddJsonFile("appsettings.json", false, true);
     }
 
-    private static async Task ProcessProviderCommunicationsAsync()
+    private static async Task ProcessCommunicationsAsync()
     {
         var options = new DbContextOptionsBuilder<AMCoreData>()
             .UseSqlServer(_config.GetConnectionString("CoreConnectionString"))
             .Options;
 
-        using var _coreData = new AMCoreData(options, _config);
+        await using var coreData = new AMCoreData(options, _config);
 
-        var communications = await _coreData.ProviderCommunications
+        // Run both queries in parallel
+        var providerCommTask = coreData.ProviderCommunications
             .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
             .Include(x => x.Provider)
             .AsNoTracking()
             .ToListAsync();
 
-        var emailTasks = communications
+        var clientCommTask = coreData.ClientCommunications
+            .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
+            .Include(x => x.Client)
+            .AsNoTracking()
+            .ToListAsync();
+
+        await Task.WhenAll(providerCommTask, clientCommTask);
+
+        var providerCommunications = providerCommTask.Result;
+        var clientCommunications = clientCommTask.Result;
+
+        // Create and run send tasks in parallel
+        var emailTasks = providerCommunications
             .Select(comm => new AMProviderEmail { Communication = comm })
-            .Select(email => Task.Run(() => SendEmailAsyncHelper(email)))
+            .Select(email => SendEmailAsyncHelper(email)) // no need to wrap with Task.Run
             .ToList();
 
-        var results = await Task.WhenAll(emailTasks);
+        var smsTasks = clientCommunications
+            .Select(comm => new AMClientSMS { Communication = comm })
+            .Select(sms => SendSmsAsyncHelper(sms))
+            .ToList();
 
-        foreach (var result in results) await HandleEmailResultAsync(result, _coreData);
+        var allEmailResults = await Task.WhenAll(emailTasks);
+        var allSmsResults = await Task.WhenAll(smsTasks);
+
+        // Process all results sequentially (or in parallel again if you like)
+        foreach (var result in allEmailResults)
+        {
+            await HandleEmailResultAsync(result, coreData);
+        }
+
+        foreach (var result in allSmsResults)
+        {
+            await HandleSmsResultAsync(result, coreData);
+        }
     }
 
     private static async Task<AMProviderEmail> SendEmailAsyncHelper(AMProviderEmail email)
@@ -82,13 +114,14 @@ internal class Program
         return email;
     }
 
-    private static async Task HandleEmailResultAsync(AMProviderEmail result, AMCoreData _coreData)
+    private static async Task HandleEmailResultAsync(AMProviderEmail result, AMCoreData coreData)
     {
         try
         {
-            var comm = await _coreData.ProviderCommunications
+            var comm = await coreData.ProviderCommunications
+                .Where(x => x.ProviderCommunicationId == result.Communication.ProviderCommunicationId)
                 .Include(x => x.Provider)
-                .FirstOrDefaultAsync(x => x.CommunicationId == result.Communication.CommunicationId);
+                .FirstOrDefaultAsync();
 
             if (comm == null) throw new ArgumentException(nameof(comm));
 
@@ -101,19 +134,78 @@ internal class Program
             {
                 comm.Sent = true;
                 message =
-                    $"Sent communication ID {comm.CommunicationId} to {comm.Provider.EMail} (Provider ID {comm.Provider.ProviderId})";
+                    $"Sent communication ID {comm.ProviderCommunicationId} to {comm.Provider.EMail} (Provider ID {comm.Provider.ProviderId})";
                 _logger.LogInfo(message);
                 _logger.LogAudit(message);
             }
             else
             {
                 message =
-                    $"Failed to send communication ID {comm.CommunicationId} to {comm.Provider.EMail} (Provider ID {comm.Provider.ProviderId})";
+                    $"Failed to send communication ID {comm.ProviderCommunicationId} to {comm.Provider.EMail} (Provider ID {comm.Provider.ProviderId})";
                 _logger.LogError(message);
             }
 
-            _coreData.Update(comm);
-            await _coreData.SaveChangesAsync();
+            coreData.ProviderCommunications.Update(comm);
+            await coreData.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex.ToString());
+        }
+    }
+
+    private static Task<AMClientSMS> SendSmsAsyncHelper(AMClientSMS comm)
+    {
+    var accountSid = "your_account_sid";
+    var authToken = "your_auth_token";
+        TwilioClient.Init(accountSid, authToken);
+
+        var message = MessageResource.Create(
+            to: new PhoneNumber("+1" + comm.Communication.Client.PhoneNumber),
+            from: new PhoneNumber("your_twilio_phone_number"),
+            body: comm.Communication.Message
+        );
+        comm.Communication = comm.Communication;
+        if (message.Status != MessageResource.StatusEnum.Failed)
+        {
+            comm.Success = true;
+        }
+        return Task.FromResult(comm);
+    }
+
+    private static async Task HandleSmsResultAsync(AMClientSMS result, AMCoreData coreData)
+    {
+        try
+        {
+            var comm = await coreData.ClientCommunications
+                .Where(x => x.ClientCommunicationId == result.Communication.ClientCommunicationId)
+                .Include(x => x.Client)
+                .FirstOrDefaultAsync();
+
+            if (comm == null) throw new ArgumentException(nameof(comm));
+
+            if (comm.AttemptOne == null) comm.AttemptOne = DateTime.UtcNow;
+            else if (comm.AttemptTwo == null) comm.AttemptTwo = DateTime.UtcNow;
+            else if (comm.AttemptThree == null) comm.AttemptThree = DateTime.UtcNow;
+
+            string message;
+            if (result.Success)
+            {
+                comm.Sent = true;
+                message =
+                    $"Sent communication ID {comm.ClientCommunicationId} to +1{comm.Client.PhoneNumber} (Client ID {comm.Client.ClientId})";
+                _logger.LogInfo(message);
+                _logger.LogAudit(message);
+            }
+            else
+            {
+                message =
+                    $"Failed to send communication ID {comm.ClientCommunicationId} to {comm.Client.PhoneNumber} (Provider ID {comm.Client.ClientId})";
+                _logger.LogError(message);
+            }
+
+            coreData.ClientCommunications.Update(comm);
+            await coreData.SaveChangesAsync();
         }
         catch (Exception ex)
         {
