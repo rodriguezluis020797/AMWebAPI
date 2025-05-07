@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Security.Claims;
-using System.Transactions;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -28,7 +28,6 @@ public class IdentityService(
     IConfiguration config)
     : IIdentityService
 {
-
     public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
     {
         var provider = await coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
@@ -217,7 +216,7 @@ public class IdentityService(
         return response;
     }
 
-    private async Task ExecuteWithRetryAsync(Func<Task> action)
+    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();
         const int maxRetries = 3;
@@ -232,18 +231,19 @@ public class IdentityService(
             }
             catch (Exception ex)
             {
-
                 if (attempt == maxRetries)
                 {
                     logger.LogError(ex.ToString());
                     throw;
                 }
+
                 await Task.Delay(retryDelay);
             }
             finally
             {
                 stopwatch.Stop();
-                logger.LogInfo($"{nameof(action.Method)}'s {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+                logger.LogInfo(
+                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 
@@ -267,14 +267,45 @@ public class IdentityService(
     private bool IsFingerprintTrustworthy(FingerprintDTO db, FingerprintDTO provided)
     {
         var score = 0;
-        if (db.IPAddress == provided.IPAddress) score += 25;
-        else score -= 10;
-        if (db.Language == provided.Language) score += 25;
-        else score -= 5;
-        if (db.Platform == provided.Platform) score += 25;
-        else score -= 10;
-        if (db.UserAgent == provided.UserAgent) score += 25;
-        else score -= 15;
+        if (db.IPAddress == provided.IPAddress)
+        {
+            score += 25;
+        }
+        else
+        {
+            logger.LogInfo($"IP address mismatch. - Provided: {provided.IPAddress} - Stored: {db.IPAddress}");
+            score -= 10;
+        }
+
+        if (db.Language == provided.Language)
+        {
+            score += 25;
+        }
+        else
+        {
+            logger.LogInfo($"Language mismatch. - Provided: {provided.Language} - Stored: {db.Language}");
+            score -= 5;
+        }
+
+        if (db.Platform == provided.Platform)
+        {
+            score += 25;
+        }
+        else
+        {
+            logger.LogInfo($"Platform mismatch. - Provided: {provided.Platform} - Stored: {db.Platform}");
+            score -= 10;
+        }
+
+        if (db.UserAgent == provided.UserAgent)
+        {
+            score += 25;
+        }
+        else
+        {
+            logger.LogInfo($"User agent mismatch. - Provided: {provided.UserAgent} - Stored: {db.UserAgent}");
+            score -= 15;
+        }
 
         return Math.Clamp(score, 0, 100) >= 80;
     }

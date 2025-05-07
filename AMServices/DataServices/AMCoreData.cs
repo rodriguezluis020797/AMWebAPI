@@ -16,6 +16,7 @@ public class AMCoreData : DbContext
 
     public DbSet<AppointmentModel> Appointments { get; init; }
     public DbSet<ClientModel> Clients { get; init; }
+    public DbSet<ClientModel> ClientCommunications { get; init; }
     public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
     public DbSet<ProviderModel> Providers { get; init; }
     public DbSet<ServiceModel> Services { get; init; }
@@ -35,6 +36,7 @@ public class AMCoreData : DbContext
     {
         ConfigureAppointmentModel(modelBuilder);
         ConfigureClientModel(modelBuilder);
+        ConfigureClientCommunicationModel(modelBuilder);
         ConfigureProviderCommunicationModel(modelBuilder);
         ConfigureProviderModel(modelBuilder);
         ConfigureServiceModel(modelBuilder);
@@ -64,6 +66,18 @@ public class AMCoreData : DbContext
             .WithOne(c => c.Client)
             .HasForeignKey(c => c.ClientId)
             .OnDelete(DeleteBehavior.NoAction);
+        
+        modelBuilder.Entity<ClientModel>()
+            .HasMany(u => u.Communications)
+            .WithOne(c => c.Client)
+            .HasForeignKey(c => c.ClientId)
+            .OnDelete(DeleteBehavior.NoAction);
+    }
+
+    private static void ConfigureClientCommunicationModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ClientCommunicationModel>()
+            .HasKey(x => x.ClientCommunicationId);
     }
 
     private static void ConfigureProviderModel(ModelBuilder modelBuilder)
@@ -147,7 +161,7 @@ public class AMCoreData : DbContext
         modelBuilder.Entity<UpdateProviderEMailRequestModel>()
             .HasKey(x => x.UpdateProviderEMailRequestId);
     }
-    
+
     public async Task ReseedIdentitiesAsync()
     {
         var tableIdMappings = new Dictionary<string, string>
@@ -159,7 +173,8 @@ public class AMCoreData : DbContext
             { "Service", "ServiceId" },
             { "SessionAction", "SessionActionId" },
             { "Session", "SessionId" },
-            { "UpdateProviderEMailRequest", "UpdateProviderEMailRequestId" }
+            { "UpdateProviderEMailRequest", "UpdateProviderEMailRequestId" },
+            { "ClientCommunication", "ClientCommunicationId" }
         };
 
         foreach (var kvp in tableIdMappings)

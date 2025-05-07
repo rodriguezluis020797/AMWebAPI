@@ -14,9 +14,7 @@ public class AppointmentDTO : BaseDTO
 
     public void Validate()
     {
-        StartDate = StartDate.ToUniversalTime();
-        EndDate = EndDate.ToUniversalTime();
-
+        //Make sure time is already converted to utc.
         if (StartDate < DateTime.UtcNow)
         {
             ErrorMessage = "Start date must be in the future.";

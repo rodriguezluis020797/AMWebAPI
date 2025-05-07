@@ -20,19 +20,19 @@ public class Program
         ConfigureEnvironmentLogging(builder);
 
         var app = builder.Build();
-        
+
         using (var scope = app.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AMCoreData>();
             dbContext.ReseedIdentitiesAsync().GetAwaiter().GetResult();
         }
-        
+
         using (var scope = app.Services.CreateScope())
         {
             var dbContext = scope.ServiceProvider.GetRequiredService<AMIdentityData>();
             dbContext.ReseedIdentitiesAsync().GetAwaiter().GetResult();
         }
-        
+
         ConfigureMiddleware(app);
 
         app.Run();

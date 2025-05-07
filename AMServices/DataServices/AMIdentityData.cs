@@ -27,7 +27,7 @@ public class AMIdentityData : DbContext
             sql => sql.MigrationsAssembly("AMWebAPI")
         );
     }
-    
+
     public async Task ReseedIdentitiesAsync()
     {
         var tableIdMappings = new Dictionary<string, string>

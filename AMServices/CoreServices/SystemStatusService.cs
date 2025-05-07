@@ -17,11 +17,8 @@ public class SystemStatusService(IAMLogger logger, AMCoreData coreData, AMIdenti
     {
         var coreTask = coreData.Database.CanConnectAsync();
         var identityTask = identityData.Database.CanConnectAsync();
-        
-        await ExecuteWithRetryAsync(async () =>
-        {
-            await Task.WhenAll(coreTask, identityTask);
-        });
+
+        await ExecuteWithRetryAsync(async () => { await Task.WhenAll(coreTask, identityTask); });
 
         var results = new Dictionary<string, bool>
         {
@@ -40,7 +37,7 @@ public class SystemStatusService(IAMLogger logger, AMCoreData coreData, AMIdenti
 
         return allSuccessful;
     }
-    
+
     private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();
@@ -56,18 +53,19 @@ public class SystemStatusService(IAMLogger logger, AMCoreData coreData, AMIdenti
             }
             catch (Exception ex)
             {
-
                 if (attempt == maxRetries)
                 {
                     logger.LogError(ex.ToString());
                     throw;
                 }
+
                 await Task.Delay(retryDelay);
             }
             finally
             {
                 stopwatch.Stop();
-                logger.LogInfo($"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+                logger.LogInfo(
+                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }

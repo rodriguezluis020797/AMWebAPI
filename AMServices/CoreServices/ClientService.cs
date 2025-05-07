@@ -28,7 +28,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
 
-        if (await ClientExists(dto, false))
+        if (await ClientExistsAsync(dto, true))
         {
             response.ErrorMessage = "A client with the given phone number or name already exists.";
             return response;
@@ -55,7 +55,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
 
-        if (await ClientExists(dto, true))
+        if (await ClientExistsAsync(dto, false))
         {
             response.ErrorMessage = "A client with the given phone number or name already exists.";
             return response;
@@ -123,18 +123,41 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         }).ToList();
     }
 
-    private async Task<bool> ClientExists(ClientDTO dto, bool updating)
+    private async Task<bool> ClientExistsAsync(ClientDTO dto, bool isNewRecord)
     {
-        var phoneExists = db.Clients.AnyAsync(x => x.PhoneNumber == dto.PhoneNumber && x.DeleteDate == null);
-        var nameExists = db.Clients.AnyAsync(x =>
-            x.FirstName == dto.FirstName &&
-            x.MiddleName == dto.MiddleName &&
-            x.LastName == dto.LastName &&
-            x.DeleteDate == null);
+        var exists = false;
+        await ExecuteWithRetryAsync(async () =>
+            {
+                if (isNewRecord)
+                {
+                    exists = await db.Clients.AnyAsync(x =>
+                        x.DeleteDate == null &&
+                        (
+                            x.PhoneNumber == dto.PhoneNumber ||
+                            (
+                                x.FirstName == dto.FirstName &&
+                                x.MiddleName == dto.MiddleName &&
+                                x.LastName == dto.LastName
+                            )
+                        )
+                    );
+                }
+                else
+                {
+                    CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
-        await Task.WhenAll(phoneExists, nameExists);
-
-        return phoneExists.Result || nameExists.Result;
+                    exists = await db.Clients
+                        .Where(x => x.DeleteDate == null &&
+                                    x.ClientId != long.Parse(decryptedId) &&
+                                    (x.PhoneNumber == dto.PhoneNumber ||
+                                     (x.FirstName == dto.FirstName &&
+                                      x.MiddleName == dto.MiddleName &&
+                                      x.LastName == dto.LastName)))
+                        .AnyAsync();
+                }
+            }
+        );
+        return exists;
     }
 
     private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
@@ -152,18 +175,19 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
             }
             catch (Exception ex)
             {
-
                 if (attempt == maxRetries)
                 {
                     logger.LogError(ex.ToString());
                     throw;
                 }
+
                 await Task.Delay(retryDelay);
             }
             finally
             {
                 stopwatch.Stop();
-                logger.LogInfo($"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+                logger.LogInfo(
+                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }

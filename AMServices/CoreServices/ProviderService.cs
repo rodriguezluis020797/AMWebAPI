@@ -74,8 +74,8 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
         await ExecuteWithRetryAsync(async () =>
         {
             provider = await db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
-                           ?? throw new ArgumentException(nameof(providerId));
-            
+                       ?? throw new ArgumentException(nameof(providerId));
+
             if (provider.DeleteDate != null)
             {
                 provider.DeleteDate = null;
@@ -99,7 +99,7 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
             existingProviderExists = await db.Providers
                 .Where(x => x.EMail == dto.EMail)
                 .AnyAsync();
-            
+
             existingeMailRequestExists = await db.UpdateProviderEMailRequests
                 .Where(x => x.NewEMail == dto.EMail && x.DeleteDate == null)
                 .AnyAsync();
@@ -109,7 +109,7 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
             response.ErrorMessage = "Provider with given e-mail already exists or e-mail is not in valid format.";
             return response;
         }
-            
+
 
         var providerId = IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
@@ -156,10 +156,7 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
                        ?? throw new ArgumentException(nameof(providerId));
 
         provider.UpdateRecordFromDTO(dto);
-        await ExecuteWithRetryAsync(async () =>
-        {
-            await db.SaveChangesAsync();
-        });
+        await ExecuteWithRetryAsync(async () => { await db.SaveChangesAsync(); });
         return response;
     }
 
@@ -212,18 +209,19 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
             }
             catch (Exception ex)
             {
-
                 if (attempt == maxRetries)
                 {
                     logger.LogError(ex.ToString());
                     throw;
                 }
+
                 await Task.Delay(retryDelay);
             }
             finally
             {
                 stopwatch.Stop();
-                logger.LogInfo($"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+                logger.LogInfo(
+                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }

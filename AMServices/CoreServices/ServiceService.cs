@@ -37,12 +37,12 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
             dto.AllowClientScheduling,
             dto.Price
         );
-        
+
         await ExecuteWithRetryAsync(async () =>
-            {
-                await db.Services.AddAsync(serviceModel);
-                await db.SaveChangesAsync();
-            });
+        {
+            await db.Services.AddAsync(serviceModel);
+            await db.SaveChangesAsync();
+        });
 
         return dto;
     }
@@ -94,7 +94,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         }
 
         serviceModel.UpdateRecordFromDTO(dto);
-        
+
         await ExecuteWithRetryAsync(async () =>
         {
             db.Update(serviceModel);
@@ -123,7 +123,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         }
 
         serviceModel.DeleteDate = DateTime.UtcNow;
-        
+
         await ExecuteWithRetryAsync(async () =>
         {
             db.Update(serviceModel);
@@ -132,7 +132,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
 
         return dto;
     }
-    
+
     private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();
@@ -148,18 +148,19 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
             }
             catch (Exception ex)
             {
-
                 if (attempt == maxRetries)
                 {
                     logger.LogError(ex.ToString());
                     throw;
                 }
+
                 await Task.Delay(retryDelay);
             }
             finally
             {
                 stopwatch.Stop();
-                logger.LogInfo($"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+                logger.LogInfo(
+                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }
 }

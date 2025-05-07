@@ -1,7 +1,6 @@
 ﻿using AMData.Models;
 using AMData.Models.DTOModels;
 using AMServices.IdentityServices;
-using AMTools;
 using AMTools.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -133,8 +132,8 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
             var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
             fingerprint.Validate();
 
-            if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
-                if (IdentityTool.IsTheJWTExpired(jwt))
+            if (true) //(!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
+                if (true) //(IdentityTool.IsTheJWTExpired(jwt))
                 {
                     var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
                     SetAuthCookies(newJwt, refreshToken);

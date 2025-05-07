@@ -29,6 +29,7 @@ public class ClientModel
     public DateTime? DeleteDate { get; set; }
     [NotMapped] public virtual ProviderModel Provider { get; set; }
     [NotMapped] public virtual List<AppointmentModel> Appointments { get; set; }
+    [NotMapped] public virtual List<ClientCommunicationModel> Communications { get; set; }
 
     public void UpdateRecordFromDTO(ClientDTO dto)
     {
