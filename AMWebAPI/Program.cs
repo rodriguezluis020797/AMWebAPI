@@ -1,12 +1,15 @@
 using System.Text;
 using AMServices.CoreServices;
 using AMServices.IdentityServices;
+using AMServices.PaymentEngineServices;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
+using Stripe;
+using IdentityService = AMServices.IdentityServices.IdentityService;
 
 namespace AMWebAPI;
 
@@ -50,6 +53,8 @@ public class Program
     private static void ConfigureServices(WebApplicationBuilder builder)
     {
         var config = builder.Configuration;
+
+        StripeConfiguration.ApiKey = config["Stripe:SecretKey"];
 
         // Auth & JWT
         builder.Services
@@ -115,6 +120,9 @@ public class Program
 
         // Identity Services
         builder.Services.AddScoped<IIdentityService, IdentityService>();
+
+        //PaymentEngineServices
+        builder.Services.AddScoped<IProviderBillingService, StripeProviderBillingService>();
     }
 
     private static void ConfigureEnvironmentLogging(WebApplicationBuilder builder)

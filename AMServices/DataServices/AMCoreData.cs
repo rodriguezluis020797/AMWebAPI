@@ -17,12 +17,14 @@ public class AMCoreData : DbContext
     public DbSet<AppointmentModel> Appointments { get; init; }
     public DbSet<ClientModel> Clients { get; init; }
     public DbSet<ClientCommunicationModel> ClientCommunications { get; init; }
+    public DbSet<ProviderBillingModel> ProviderBillings { get; init; }
     public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
     public DbSet<ProviderModel> Providers { get; init; }
     public DbSet<ServiceModel> Services { get; init; }
     public DbSet<SessionActionModel> SessionActions { get; init; }
     public DbSet<SessionModel> Sessions { get; init; }
     public DbSet<UpdateProviderEMailRequestModel> UpdateProviderEMailRequests { get; init; }
+    public DbSet<VerifyProviderEMailRequestModel> VerifyProviderEMailRequests { get; init; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -43,6 +45,8 @@ public class AMCoreData : DbContext
         ConfigureSessionActionModel(modelBuilder);
         ConfigureSessionModel(modelBuilder);
         ConfigureUpdateProviderEMailRequestModel(modelBuilder);
+        ConfigureProviderBillingModel(modelBuilder);
+        ConffigureVerifyProviderEMailRequestModel(modelBuilder);
 
         foreach (var foreignKey in modelBuilder.Model
                      .GetEntityTypes()
@@ -50,10 +54,27 @@ public class AMCoreData : DbContext
             foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
     }
 
+    private void ConffigureVerifyProviderEMailRequestModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<VerifyProviderEMailRequestModel>()
+            .HasKey(x => x.VerifyProviderEMailRequestId);
+    }
+
+    private static void ConfigureProviderBillingModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProviderBillingModel>()
+            .HasKey(s => s.ProviderBillingId);
+    }
+
     private static void ConfigureAppointmentModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppointmentModel>()
             .HasKey(s => s.AppointmentId);
+
+        modelBuilder.Entity<AppointmentModel>()
+            .HasOne(a => a.Service)
+            .WithMany(s => s.Appointments)
+            .HasForeignKey(a => a.ServiceId);
     }
 
     private static void ConfigureClientModel(ModelBuilder modelBuilder)
@@ -64,14 +85,12 @@ public class AMCoreData : DbContext
         modelBuilder.Entity<ClientModel>()
             .HasMany(u => u.Appointments)
             .WithOne(c => c.Client)
-            .HasForeignKey(c => c.ClientId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(c => c.ClientId);
 
         modelBuilder.Entity<ClientModel>()
             .HasMany(u => u.Communications)
             .WithOne(c => c.Client)
-            .HasForeignKey(c => c.ClientId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(c => c.ClientId);
     }
 
     private static void ConfigureClientCommunicationModel(ModelBuilder modelBuilder)
@@ -88,38 +107,46 @@ public class AMCoreData : DbContext
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.Sessions)
             .WithOne(s => s.Provider)
-            .HasForeignKey(s => s.ProviderId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(s => s.ProviderId);
 
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.Communications)
             .WithOne(c => c.Provider)
-            .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(c => c.ProviderId);
 
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.Services)
             .WithOne(c => c.Provider)
-            .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(c => c.ProviderId);
 
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.UpdateProviderEMailRequests)
             .WithOne(c => c.Provider)
-            .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(c => c.ProviderId);
 
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.Appointments)
             .WithOne(c => c.Provider)
-            .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(c => c.ProviderId);
 
         modelBuilder.Entity<ProviderModel>()
             .HasMany(u => u.Clients)
             .WithOne(c => c.Provider)
-            .HasForeignKey(c => c.ProviderId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(c => c.ProviderId);
+
+        modelBuilder.Entity<ProviderModel>()
+            .HasMany(x => x.ProviderBillings)
+            .WithOne(x => x.Provider)
+            .HasForeignKey(x => x.ProviderId);
+
+        modelBuilder.Entity<ProviderModel>()
+            .HasIndex(x => x.PayEngineId)
+            .IsUnique();
+
+        modelBuilder.Entity<ProviderModel>()
+            .HasOne(x => x.VerifyProviderEMailRequest)
+            .WithOne(x => x.Provider)
+            .HasForeignKey<VerifyProviderEMailRequestModel>(x => x.ProviderId);
     }
 
     private static void ConfigureServiceModel(ModelBuilder modelBuilder)
@@ -146,8 +173,7 @@ public class AMCoreData : DbContext
         modelBuilder.Entity<SessionModel>()
             .HasMany(s => s.SessionActions)
             .WithOne(sa => sa.Session)
-            .HasForeignKey(sa => sa.SessionId)
-            .OnDelete(DeleteBehavior.NoAction);
+            .HasForeignKey(sa => sa.SessionId);
     }
 
     private static void ConfigureSessionActionModel(ModelBuilder modelBuilder)
@@ -168,13 +194,14 @@ public class AMCoreData : DbContext
         {
             { "Appointment", "AppointmentId" },
             { "Client", "ClientId" },
-            { "ProviderCommunication", "CommunicationId" },
+            { "ProviderCommunication", "ProviderCommunicationId" },
             { "Provider", "ProviderId" },
             { "Service", "ServiceId" },
             { "SessionAction", "SessionActionId" },
             { "Session", "SessionId" },
             { "UpdateProviderEMailRequest", "UpdateProviderEMailRequestId" },
-            { "ClientCommunication", "ClientCommunicationId" }
+            { "ClientCommunication", "ClientCommunicationId" },
+            { "VerifyProviderEMailRequest", "VerifyProviderEMailRequestId" }
         };
 
         foreach (var kvp in tableIdMappings)

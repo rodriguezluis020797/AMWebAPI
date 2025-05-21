@@ -15,6 +15,7 @@ public interface IAppointmentService
 {
     Task<AppointmentDTO> CreateAppointmentAsync(AppointmentDTO dto, string jwt);
     Task<List<AppointmentDTO>> GetAllAppointmentsAsync(string jwt);
+    Task<List<AppointmentDTO>> GetUpcomingAppointmentsAsync(string jwt);
     Task<AppointmentDTO> UpdateAppointmentAsync(AppointmentDTO model, string jwt);
     Task<AppointmentDTO> DeleteAppointmentAsync(AppointmentDTO model, string jwt);
 }
@@ -38,6 +39,42 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
             appointmentModels = await db.Appointments
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+                .Include(x => x.Service)
+                .Include(x => x.Client)
+                .ToListAsync();
+        });
+
+        foreach (var appointment in appointmentModels) response.Add(BuildEncryptedDTO(appointment, timeZoneCode));
+
+        return response;
+    }
+
+    public async Task<List<AppointmentDTO>> GetUpcomingAppointmentsAsync(string jwt)
+    {
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        var response = new List<AppointmentDTO>();
+        var appointmentModels = new List<AppointmentModel>();
+        var timeZoneCode = TimeZoneCodeEnum.Select;
+
+        await ExecuteWithRetryAsync(async () =>
+        {
+            timeZoneCode = await db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .Select(x => x.TimeZoneCode)
+                .FirstOrDefaultAsync();
+
+            var now = DateTime.UtcNow;
+            var next24Hours = now.AddHours(24);
+
+            appointmentModels = await db.Appointments
+                .Where(x =>
+                    x.ProviderId == providerId &&
+                    x.DeleteDate == null &&
+                    x.StartDate >= now &&
+                    x.StartDate <= next24Hours)
+                .Include(x => x.Service)
+                .Include(x => x.Client)
                 .ToListAsync();
         });
 

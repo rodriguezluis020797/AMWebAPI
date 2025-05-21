@@ -10,7 +10,6 @@ public enum HttpStatusCodeEnum
     Unauthorized = 401,
     BadPassword = 402,
     ServerError = 500,
-    SystemUnavailable = 501
 }
 
 public enum SessionClaimEnum

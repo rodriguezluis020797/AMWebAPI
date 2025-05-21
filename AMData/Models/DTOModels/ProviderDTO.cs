@@ -8,11 +8,15 @@ public class ProviderDTO : BaseDTO
     public string FirstName { get; set; } = string.Empty;
     public string? MiddleName { get; set; } = string.Empty;
     public string LastName { get; set; } = string.Empty;
+    public string BusinessName { get; set; } = string.Empty;
+    public string AddressLine1 { get; set; } = string.Empty;
+    public string? AddressLine2 { get; set; } = string.Empty;
+    public string City { get; set; } = string.Empty;
+    public string ZipCode { get; set; } = string.Empty;
     public string EMail { get; set; } = string.Empty;
     public CountryCodeEnum CountryCode { get; set; } = CountryCodeEnum.Select;
     public StateCodeEnum StateCode { get; set; } = StateCodeEnum.Select;
     public TimeZoneCodeEnum TimeZoneCode { get; set; } = TimeZoneCodeEnum.Select;
-    public bool HasCompletedSignUp { get; set; }
     public bool HasLoggedIn { get; set; }
     public string CurrentPassword { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
@@ -29,16 +33,21 @@ public class ProviderDTO : BaseDTO
         CountryCode = provider.CountryCode;
         StateCode = provider.StateCode;
         TimeZoneCode = provider.TimeZoneCode;
-        HasLoggedIn = provider.LastLogindate != null ? true : false;
+        HasLoggedIn = provider.LastLogindate != null;
         CurrentPassword = string.Empty;
         NewPassword = string.Empty;
         IsTempPassword = false;
-        HasCompletedSignUp = CountryCode != CountryCodeEnum.Select && StateCode != StateCodeEnum.Select &&
-                             TimeZoneCode != TimeZoneCodeEnum.Select;
+        BusinessName = provider.BusinessName;
     }
 
     public void Validate()
     {
+        // Validate Business Name
+        ValidationTool.ValidateName(BusinessName, out var bnOutput);
+        BusinessName = bnOutput;
+        ErrorMessage = string.IsNullOrEmpty(BusinessName) ? "Please enter Business name." : string.Empty;
+        if (!string.IsNullOrEmpty(ErrorMessage)) return;
+
         // Validate First Name
         ValidationTool.ValidateName(FirstName, out var fnOutput);
         FirstName = fnOutput;
@@ -49,12 +58,27 @@ public class ProviderDTO : BaseDTO
         ValidationTool.ValidateName(MiddleName, out var mnOutput);
         MiddleName = mnOutput;
         MiddleName = string.IsNullOrEmpty(MiddleName) ? null : MiddleName;
-        if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate Last Name
         ValidationTool.ValidateName(LastName, out var lnOutput);
         LastName = lnOutput;
         ErrorMessage = string.IsNullOrEmpty(LastName) ? "Please enter last name." : string.Empty;
+        if (!string.IsNullOrEmpty(ErrorMessage)) return;
+
+        // Validate Address Line 1
+        ValidationTool.ValidateName(AddressLine1, out var al1Output);
+        AddressLine1 = al1Output;
+        ErrorMessage = string.IsNullOrEmpty(AddressLine1) ? "Please enter address line 1." : string.Empty;
+        if (!string.IsNullOrEmpty(ErrorMessage)) return;
+
+        // Validate Address Line 2
+        ValidationTool.ValidateName(AddressLine2, out var al2Output);
+        AddressLine2 = al2Output;
+        AddressLine2 = string.IsNullOrEmpty(AddressLine2) ? null : AddressLine2;
+
+        ValidationTool.ValidateZipCode(ZipCode, out var zcOutput);
+        ZipCode = zcOutput;
+        ErrorMessage = string.IsNullOrEmpty(ZipCode) ? "Please enter valid 5 digit zip code." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate Email

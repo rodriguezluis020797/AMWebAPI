@@ -27,6 +27,7 @@ public class ServiceModel
     public DateTime CreateDate { get; set; }
     public DateTime? DeleteDate { get; set; }
     [NotMapped] public virtual ProviderModel Provider { get; set; }
+    [NotMapped] public virtual List<AppointmentModel> Appointments { get; set; }
 
     public void UpdateRecordFromDTO(ServiceDTO dto)
     {

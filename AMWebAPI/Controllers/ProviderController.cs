@@ -111,14 +111,36 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
     }
 
     [HttpGet]
-    [AllowAnonymous]
-    public async Task<IActionResult> VerifyUpdateEMail([FromQuery] string guid)
+    public async Task<IActionResult> UpdateEMail([FromQuery] string guid)
     {
         logger.LogInfo("+");
         var response = new BaseDTO();
         try
         {
-            response = await providerService.VerifyUpdateEMailAsync(guid);
+            //response = await providerService.UpdateEMailAsync(guid);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+    
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyEMail([FromQuery] string guid, [FromQuery] bool verifying)
+    {
+        logger.LogInfo("+");
+        var response = new BaseDTO();
+        try
+        {
+            response = await providerService.VerifyEMailAsync(guid, verifying);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }

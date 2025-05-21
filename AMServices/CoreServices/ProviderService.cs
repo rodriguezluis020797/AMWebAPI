@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
+using AMServices.PaymentEngineServices;
 using AMTools;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
@@ -17,10 +18,15 @@ public interface IProviderService
     Task<ProviderDTO> GetProviderAsync(string jwt);
     Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt);
-    Task<BaseDTO> VerifyUpdateEMailAsync(string guid);
+    Task<BaseDTO> VerifyEMailAsync(string guid, bool verifying);
 }
 
-public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration config) : IProviderService
+public class ProviderService(
+    IAMLogger logger,
+    AMCoreData db,
+    IConfiguration config,
+    IProviderBillingService providerBillingService)
+    : IProviderService
 {
     public async Task<BaseDTO> CreateProviderAsync(ProviderDTO dto)
     {
@@ -31,15 +37,23 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
             response.ErrorMessage = dto.ErrorMessage;
             return response;
         }
-
-        if (await db.Providers.AnyAsync(x => x.EMail.Equals(dto.EMail)))
+        
+        await ExecuteWithRetryAsync(async () =>
         {
-            response.ErrorMessage = "Provider with given e-mail already exists.\nPlease wait to be given access.";
+            if (await db.Providers.AnyAsync(x => x.EMail.Equals(dto.EMail)))
+            {
+                response.ErrorMessage = "Provider with given e-mail already exists.\nPlease wait to be given access.";
+            }
+        });
+
+        if (!string.IsNullOrEmpty(response.ErrorMessage))
+        {
             return response;
         }
 
         var provider = new ProviderModel(long.MinValue, dto.FirstName, dto.MiddleName, dto.LastName, dto.EMail,
-            CountryCodeEnum.Select, StateCodeEnum.Select, TimeZoneCodeEnum.Select);
+            dto.AddressLine1, dto.AddressLine2, dto.City, dto.ZipCode, dto.CountryCode, dto.StateCode,
+            dto.TimeZoneCode, dto.BusinessName);
 
         await ExecuteWithRetryAsync(async () =>
         {
@@ -47,15 +61,13 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
             await db.Providers.AddAsync(provider);
             await db.SaveChangesAsync();
 
-            var emailReq = new UpdateProviderEMailRequestModel(provider.ProviderId, dto.EMail);
+            var emailReq = new VerifyProviderEMailRequestModel(provider.ProviderId);
             var message =
-                $"Thank you for joining AM Tech!\nPlease verify your email:\n{config["Environment:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&isNew=true";
+                $"Thank you for joining AM Tech!\nPlease verify your email:\n{config["Environment:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&verifying=true";
             var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
-            await Task.WhenAll(
-                db.UpdateProviderEMailRequests.AddAsync(emailReq).AsTask(),
-                db.ProviderCommunications.AddAsync(comm).AsTask()
-            );
+            await db.VerifyProviderEMailRequests.AddAsync(emailReq);
+            await db.ProviderCommunications.AddAsync(comm);
 
             await db.SaveChangesAsync();
             await trans.CommitAsync();
@@ -69,7 +81,9 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
     {
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        var provider = new ProviderModel();
+        var provider = new ProviderModel(long.MinValue, string.Empty, string.Empty, string.Empty, string.Empty,
+            string.Empty, string.Empty, string.Empty, string.Empty, CountryCodeEnum.Select, StateCodeEnum.Select,
+            TimeZoneCodeEnum.Select, string.Empty);
 
         await ExecuteWithRetryAsync(async () =>
         {
@@ -159,37 +173,118 @@ public class ProviderService(IAMLogger logger, AMCoreData db, IConfiguration con
         await ExecuteWithRetryAsync(async () => { await db.SaveChangesAsync(); });
         return response;
     }
-
-    public async Task<BaseDTO> VerifyUpdateEMailAsync(string guid)
+    
+    public async Task<BaseDTO> VerifyEMailAsync(string guid, bool verifying)
     {
         var response = new BaseDTO();
-        var request = await db.UpdateProviderEMailRequests
-            .FirstOrDefaultAsync(x => x.QueryGuid == guid && x.DeleteDate == null);
-        if (request == null)
+        if (verifying)
         {
-            response.ErrorMessage = "Invalid or expired link.";
-            return response;
+            var request = new VerifyProviderEMailRequestModel();
+        
+            await ExecuteWithRetryAsync(async () =>
+            {
+                request = await db.VerifyProviderEMailRequests
+                    .FirstOrDefaultAsync(x => x.QueryGuid == guid && x.DeleteDate == null);
+            });
+        
+            if (request == null)
+            {
+                response.ErrorMessage = "Invalid or expired link.";
+                return response;
+            }
+
+            var provider = new ProviderModel();
+        
+            await ExecuteWithRetryAsync(async () =>
+            {
+                provider = await db.Providers
+                    .FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId);
+            });
+
+            var providerPayEngineSessionId = string.Empty;
+            var message =
+                $"Thank you for verifying your e-mail!\n" +
+                $"You will receive an e-mail with instructions from Stripe on setting up your billing profile shortly.\n" +
+                $"If you don't please reach out to customer support.";
+            
+            var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
+            await ExecuteWithRetryAsync(async () =>
+            {
+                var providerPayEngineProfileId = await providerBillingService
+                    .CreateProviderBillingProfileAsync(provider.EMail, provider.BusinessName, provider.FirstName, provider.MiddleName, provider.LastName);
+                
+                using var trans = await db.Database
+                    .BeginTransactionAsync();
+                
+                provider.EMailVerified = true;
+                provider.PayEngineId = providerPayEngineProfileId;
+                provider.UpdateDate = DateTime.UtcNow;
+                request.DeleteDate = DateTime.UtcNow;
+                db.ProviderCommunications.Add(comm);
+                
+                await db.SaveChangesAsync();
+                
+                providerPayEngineSessionId =
+                    await providerBillingService
+                        .CreateProviderSession(providerPayEngineProfileId, "setup");
+
+                
+                await trans.CommitAsync();
+            });
+
+            logger.LogAudit(
+                $"Email Verified - Provider Id: {provider.ProviderId} - Pay Session Id: {providerPayEngineSessionId}");
         }
-
-        var provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId)
-                       ?? throw new InvalidOperationException("Provider not found.");
-
-        var oldEmail = provider.EMail;
-
-        await ExecuteWithRetryAsync(async () =>
+        else
         {
-            using var trans = await db.Database.BeginTransactionAsync();
-            provider.EMail = request.NewEMail;
-            provider.EMailVerified = true;
-            provider.UpdateDate = DateTime.UtcNow;
-            request.DeleteDate = DateTime.UtcNow;
+            var request = new VerifyProviderEMailRequestModel();
+        
+            await ExecuteWithRetryAsync(async () =>
+            {
+                request = await db.VerifyProviderEMailRequests
+                    .FirstOrDefaultAsync(x => x.QueryGuid == guid && x.DeleteDate == null);
+            });
+        
+            if (request == null)
+            {
+                response.ErrorMessage = "Invalid or expired link.";
+                return response;
+            }
 
-            await db.SaveChangesAsync();
-            await trans.CommitAsync();
-        });
+            var provider = new ProviderModel();
+        
+            await ExecuteWithRetryAsync(async () =>
+            {
+                provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId)
+                           ?? throw new InvalidOperationException("Provider not found.");
+            });
+        
+            var providerPayEngineProfileId = await providerBillingService.CreateProviderBillingProfileAsync(provider.EMail,
+                provider.BusinessName, provider.FirstName, provider.MiddleName, provider.LastName);
 
-        logger.LogAudit(
-            $"Email Changed - Provider Id: {provider.ProviderId} Old Email: {oldEmail} - New Email: {request.NewEMail}");
+            var oldEmail = provider.EMail;
+
+            await ExecuteWithRetryAsync(async () =>
+            {
+                using var trans = await db.Database.BeginTransactionAsync();
+                provider.EMailVerified = true;
+                provider.PayEngineId = providerPayEngineProfileId;
+                provider.UpdateDate = DateTime.UtcNow;
+            
+            
+                request.DeleteDate = DateTime.UtcNow;
+
+                await db.SaveChangesAsync();
+                await trans.CommitAsync();
+            });
+        
+            var providerPayEngineSessionId =
+                await providerBillingService.CreateProviderSession(providerPayEngineProfileId, "setup");
+
+            logger.LogAudit(
+                $"Email Updated - Provider Id: {provider.ProviderId} - Email: {oldEmail} - Pay Session Id: {providerPayEngineSessionId}");
+
+        }
         return response;
     }
 

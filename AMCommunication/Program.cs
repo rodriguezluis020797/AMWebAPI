@@ -1,5 +1,4 @@
-﻿using AMData.Models.CoreModels;
-using AMTools.Tools;
+﻿using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -50,30 +49,25 @@ internal class Program
         await using var coreData = new AMCoreData(options, _config);
 
         // Run both queries in parallel
-        var providerCommTask = coreData.ProviderCommunications
+        var providerCommTask = await coreData.ProviderCommunications
             .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
             .Include(x => x.Provider)
             .AsNoTracking()
             .ToListAsync();
 
-        var clientCommTask = coreData.ClientCommunications
+        var clientCommTask = await coreData.ClientCommunications
             .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
             .Include(x => x.Client)
             .AsNoTracking()
             .ToListAsync();
 
-        await Task.WhenAll(providerCommTask, clientCommTask);
-
-        var providerCommunications = providerCommTask.Result;
-        var clientCommunications = clientCommTask.Result;
-
         // Create and run send tasks in parallel
-        var emailTasks = providerCommunications
+        var emailTasks = providerCommTask
             .Select(comm => new AMProviderEmail { Communication = comm })
             .Select(email => SendEmailAsyncHelper(email)) // no need to wrap with Task.Run
             .ToList();
 
-        var smsTasks = clientCommunications
+        var smsTasks = clientCommTask
             .Select(comm => new AMClientSMS { Communication = comm })
             .Select(sms => SendSmsAsyncHelper(sms))
             .ToList();
@@ -82,15 +76,9 @@ internal class Program
         var allSmsResults = await Task.WhenAll(smsTasks);
 
         // Process all results sequentially (or in parallel again if you like)
-        foreach (var result in allEmailResults)
-        {
-            await HandleEmailResultAsync(result, coreData);
-        }
+        foreach (var result in allEmailResults) await HandleEmailResultAsync(result, coreData);
 
-        foreach (var result in allSmsResults)
-        {
-            await HandleSmsResultAsync(result, coreData);
-        }
+        foreach (var result in allSmsResults) await HandleSmsResultAsync(result, coreData);
     }
 
     private static async Task<AMProviderEmail> SendEmailAsyncHelper(AMProviderEmail email)
@@ -156,20 +144,17 @@ internal class Program
 
     private static Task<AMClientSMS> SendSmsAsyncHelper(AMClientSMS comm)
     {
-    var accountSid = "your_account_sid";
-    var authToken = "your_auth_token";
+        var accountSid = _config["Twilio:SID"];
+        var authToken = _config["Twilio:Token"];
         TwilioClient.Init(accountSid, authToken);
 
         var message = MessageResource.Create(
-            to: new PhoneNumber("+1" + comm.Communication.Client.PhoneNumber),
-            from: new PhoneNumber("your_twilio_phone_number"),
+            new PhoneNumber("+1" + "8777804236"),
+            from: new PhoneNumber(_config["Twilio:PhoneNumber"]),
             body: comm.Communication.Message
         );
         comm.Communication = comm.Communication;
-        if (message.Status != MessageResource.StatusEnum.Failed)
-        {
-            comm.Success = true;
-        }
+        if (message.Status != MessageResource.StatusEnum.Failed) comm.Success = true;
         return Task.FromResult(comm);
     }
 

@@ -33,6 +33,11 @@ public class IdentityService(
         var provider = await coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
                        ?? throw new ArgumentException(nameof(dto.EMail));
 
+        if (provider.AccessGranted == false)
+        {
+            throw new ArgumentException(nameof(provider.AccessGranted));
+        }
+
         var passwordModel = await identityData.Passwords
                                 .Where(x => x.ProviderId == provider.ProviderId)
                                 .OrderByDescending(x => x.CreateDate)
@@ -76,10 +81,7 @@ public class IdentityService(
         {
             ProviderDto = new ProviderDTO
             {
-                IsSpecialCase = passwordModel.Temporary,
-                HasCompletedSignUp = provider.CountryCode != CountryCodeEnum.Select &&
-                                     provider.StateCode != StateCodeEnum.Select &&
-                                     provider.TimeZoneCode != TimeZoneCodeEnum.Select
+                IsSpecialCase = passwordModel.Temporary
             },
             Jwt = GenerateJwt(provider.ProviderId, session.SessionId),
             RefreshToken = encryptedRefreshToken
@@ -175,7 +177,7 @@ public class IdentityService(
         if (refreshTokenModel.Token != decryptedToken)
             throw new ArgumentException("Refresh token mismatch.");
 
-        refreshTokenModel.ExpiresDate = refreshTokenModel.ExpiresDate
+        refreshTokenModel.ExpiresDate = DateTime.UtcNow
             .AddDays(int.Parse(config["Jwt:RefreshTokenExpirationDays"]!));
         identityData.RefreshTokens.Update(refreshTokenModel);
         await identityData.SaveChangesAsync();

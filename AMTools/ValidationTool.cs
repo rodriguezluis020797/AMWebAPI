@@ -59,4 +59,18 @@ public static class ValidationTool
         else
             output = string.Empty;
     }
+
+    public static void ValidateZipCode(string input, out string output)
+    {
+        input = input?.Trim() ?? string.Empty;
+
+        // Remove all non-numeric characters
+        var digitsOnly = Regex.Replace(input, @"\D", "");
+
+        // Validate length
+        if (digitsOnly.Length == 5)
+            output = digitsOnly;
+        else
+            output = string.Empty;
+    }
 }

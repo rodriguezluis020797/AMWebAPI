@@ -13,7 +13,7 @@ namespace AMWebAPI.Controllers;
 public class AppointmentController(IAMLogger logger, IAppointmentService appointmentService) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> GetAppointments()
+    public async Task<IActionResult> GetAllAppointments()
     {
         logger.LogInfo("+");
 
@@ -24,6 +24,32 @@ public class AppointmentController(IAMLogger logger, IAppointmentService appoint
                 throw new Exception("JWT token missing from cookies.");
 
             var response = await appointmentService.GetAllAppointmentsAsync(jwt);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetUpcomingAppointments()
+    {
+        logger.LogInfo("+");
+
+        try
+        {
+            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
+
+            var response = await appointmentService.GetUpcomingAppointmentsAsync(jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }

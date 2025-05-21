@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
-    partial class AMCoreDataModelSnapshot : ModelSnapshot
+    [Migration("20250509205759_Add pay engine models and fields")]
+    partial class Addpayenginemodelsandfields
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -249,18 +252,7 @@ namespace AMWebAPI.CoreMigrations
                     b.Property<bool>("AccessGranted")
                         .HasColumnType("bit");
 
-                    b.Property<string>("AddressLine1")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("AddressLine2")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<string>("BusinessName")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("City")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -298,6 +290,7 @@ namespace AMWebAPI.CoreMigrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("PayEngineId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<int>("StateCode")
@@ -312,15 +305,10 @@ namespace AMWebAPI.CoreMigrations
                     b.Property<DateTime?>("UpdateDate")
                         .HasColumnType("datetime2");
 
-                    b.Property<string>("ZipCode")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.HasKey("ProviderId");
 
                     b.HasIndex("PayEngineId")
-                        .IsUnique()
-                        .HasFilter("[PayEngineId] IS NOT NULL");
+                        .IsUnique();
 
                     b.ToTable("Provider");
                 });
@@ -439,35 +427,6 @@ namespace AMWebAPI.CoreMigrations
                     b.ToTable("UpdateProviderEMailRequest");
                 });
 
-            modelBuilder.Entity("AMData.Models.CoreModels.VerifyProviderEMailRequestModel", b =>
-                {
-                    b.Property<long>("VerifyProviderEMailRequestId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("VerifyProviderEMailRequestId"));
-
-                    b.Property<DateTime>("CreateDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DeleteDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long>("ProviderId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("QueryGuid")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("VerifyProviderEMailRequestId");
-
-                    b.HasIndex("ProviderId")
-                        .IsUnique();
-
-                    b.ToTable("VerifyProviderEMailRequest");
-                });
-
             modelBuilder.Entity("AMData.Models.CoreModels.AppointmentModel", b =>
                 {
                     b.HasOne("AMData.Models.CoreModels.ClientModel", "Client")
@@ -583,17 +542,6 @@ namespace AMWebAPI.CoreMigrations
                     b.Navigation("Provider");
                 });
 
-            modelBuilder.Entity("AMData.Models.CoreModels.VerifyProviderEMailRequestModel", b =>
-                {
-                    b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
-                        .WithOne("VerifyProviderEMailRequest")
-                        .HasForeignKey("AMData.Models.CoreModels.VerifyProviderEMailRequestModel", "ProviderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
             modelBuilder.Entity("AMData.Models.CoreModels.ClientModel", b =>
                 {
                     b.Navigation("Appointments");
@@ -616,9 +564,6 @@ namespace AMWebAPI.CoreMigrations
                     b.Navigation("Sessions");
 
                     b.Navigation("UpdateProviderEMailRequests");
-
-                    b.Navigation("VerifyProviderEMailRequest")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("AMData.Models.CoreModels.ServiceModel", b =>

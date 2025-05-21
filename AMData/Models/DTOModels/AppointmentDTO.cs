@@ -7,6 +7,8 @@ public class AppointmentDTO : BaseDTO
     public string AppointmentId { get; set; } = string.Empty;
     public string ServiceId { get; set; } = string.Empty;
     public string ClientId { get; set; } = string.Empty;
+    public string ClientName { get; set; } = string.Empty;
+    public string ServiceName { get; set; } = string.Empty;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public string Notes { get; set; } = string.Empty;
@@ -39,5 +41,9 @@ public class AppointmentDTO : BaseDTO
         EndDate = model.EndDate;
         Notes = model.Notes ?? string.Empty;
         Status = AppointmentStatusEnum.Scheduled;
+        ServiceName = model.Service.Name;
+        ClientName = string.IsNullOrEmpty(model.Client.MiddleName)
+            ? $"{model.Client.FirstName} {model.Client.LastName}"
+            : $"{model.Client.FirstName} {model.Client.MiddleName} {model.Client.LastName}";
     }
 }

@@ -1,6 +1,7 @@
 ﻿using AMData.Models;
 using AMData.Models.DTOModels;
 using AMServices.IdentityServices;
+using AMTools;
 using AMTools.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -55,26 +56,28 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
             var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
             fingerprint.Validate();
 
-            if (!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
+            if (string.IsNullOrEmpty(jwt) && string.IsNullOrEmpty(refreshToken))
             {
-                var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
-                SetAuthCookies(newJwt, refreshToken);
-                return StatusCode((int)HttpStatusCodeEnum.LoggedIn);
+                return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);   
             }
+            
+            var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
+            SetAuthCookies(newJwt, refreshToken);
+            return StatusCode((int)HttpStatusCodeEnum.LoggedIn);
 
-            return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);
         }
         catch (ArgumentException ex)
         {
             logger.LogError($"IP Address: {fingerprint.IPAddress} - {ex}");
+            ExpireAuthCookies(); 
         }
         catch (Exception ex)
         {
             logger.LogError(ex.ToString());
+            ExpireAuthCookies(); 
         }
-
-        ExpireAuthCookies();
-        return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);
+        
+        return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);  
     }
 
     [HttpPost]
@@ -98,7 +101,7 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
         }
         catch (ArgumentException)
         {
-            response.ErrorMessage = "Invalid Credentials.";
+            response.ErrorMessage = "Invalid Credentials or access has not yet been granted.";
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
@@ -132,12 +135,12 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
             var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
             fingerprint.Validate();
 
-            if (true) //(!string.IsNullOrEmpty(jwt) || !string.IsNullOrEmpty(refreshToken))
-                if (true) //(IdentityTool.IsTheJWTExpired(jwt))
-                {
-                    var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
-                    SetAuthCookies(newJwt, refreshToken);
-                }
+            if (string.IsNullOrEmpty(jwt) && string.IsNullOrEmpty(refreshToken) || !IdentityTool.IsTheJWTExpired(jwt))
+                return StatusCode((int)HttpStatusCodeEnum.Success);
+
+            var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
+            SetAuthCookies(newJwt, refreshToken);
+
 
             return StatusCode((int)HttpStatusCodeEnum.Success);
         }
@@ -150,6 +153,7 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
         catch (Exception ex)
         {
             logger.LogError(ex.ToString());
+            ExpireAuthCookies();
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
     }

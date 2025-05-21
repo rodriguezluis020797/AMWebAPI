@@ -10,4 +10,8 @@
         <ProjectReference Include="..\AMTools\AMTools.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <PackageReference Include="Stripe.net" Version="48.1.0"/>
+    </ItemGroup>
+
 </Project>

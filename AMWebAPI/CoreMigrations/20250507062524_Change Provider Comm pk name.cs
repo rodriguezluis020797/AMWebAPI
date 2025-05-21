@@ -1,28 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace AMWebAPI.CoreMigrations
+namespace AMWebAPI.CoreMigrations;
+
+/// <inheritdoc />
+public partial class ChangeProviderCommpkname : Migration
 {
     /// <inheritdoc />
-    public partial class ChangeProviderCommpkname : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.RenameColumn(
-                name: "CommunicationId",
-                table: "ProviderCommunication",
-                newName: "ProviderCommunicationId");
-        }
+        migrationBuilder.RenameColumn(
+            "CommunicationId",
+            "ProviderCommunication",
+            "ProviderCommunicationId");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.RenameColumn(
-                name: "ProviderCommunicationId",
-                table: "ProviderCommunication",
-                newName: "CommunicationId");
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.RenameColumn(
+            "ProviderCommunicationId",
+            "ProviderCommunication",
+            "CommunicationId");
     }
 }

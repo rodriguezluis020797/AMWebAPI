@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
-    partial class AMCoreDataModelSnapshot : ModelSnapshot
+    [Migration("20250520222059_Make payEngineId nullable")]
+    partial class MakepayEngineIdnullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -439,35 +442,6 @@ namespace AMWebAPI.CoreMigrations
                     b.ToTable("UpdateProviderEMailRequest");
                 });
 
-            modelBuilder.Entity("AMData.Models.CoreModels.VerifyProviderEMailRequestModel", b =>
-                {
-                    b.Property<long>("VerifyProviderEMailRequestId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("VerifyProviderEMailRequestId"));
-
-                    b.Property<DateTime>("CreateDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("DeleteDate")
-                        .HasColumnType("datetime2");
-
-                    b.Property<long>("ProviderId")
-                        .HasColumnType("bigint");
-
-                    b.Property<string>("QueryGuid")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("VerifyProviderEMailRequestId");
-
-                    b.HasIndex("ProviderId")
-                        .IsUnique();
-
-                    b.ToTable("VerifyProviderEMailRequest");
-                });
-
             modelBuilder.Entity("AMData.Models.CoreModels.AppointmentModel", b =>
                 {
                     b.HasOne("AMData.Models.CoreModels.ClientModel", "Client")
@@ -583,17 +557,6 @@ namespace AMWebAPI.CoreMigrations
                     b.Navigation("Provider");
                 });
 
-            modelBuilder.Entity("AMData.Models.CoreModels.VerifyProviderEMailRequestModel", b =>
-                {
-                    b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
-                        .WithOne("VerifyProviderEMailRequest")
-                        .HasForeignKey("AMData.Models.CoreModels.VerifyProviderEMailRequestModel", "ProviderId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Provider");
-                });
-
             modelBuilder.Entity("AMData.Models.CoreModels.ClientModel", b =>
                 {
                     b.Navigation("Appointments");
@@ -616,9 +579,6 @@ namespace AMWebAPI.CoreMigrations
                     b.Navigation("Sessions");
 
                     b.Navigation("UpdateProviderEMailRequests");
-
-                    b.Navigation("VerifyProviderEMailRequest")
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("AMData.Models.CoreModels.ServiceModel", b =>
