@@ -160,13 +160,31 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
 
     [HttpPost]
     [AllowAnonymous]
-    public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto)
+    public async Task<IActionResult> ResetPasswordRequest([FromBody] ProviderDTO dto)
     {
         try
         {
-            await identityService.ResetPasswordAsync(dto);
+            await identityService.ResetPasswordRequestAsync(dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+    }
+    
+    [HttpPost]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto, [FromQuery] string guid)
+    {
+        try
+        {
+            
+            var response = await identityService.ResetPasswordAsync(dto, guid);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
         {

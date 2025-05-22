@@ -65,6 +65,7 @@ public class ProviderModel
     [NotMapped] public virtual VerifyProviderEMailRequestModel VerifyProviderEMailRequest { get; set; }
     [NotMapped] public virtual List<ServiceModel> Services { get; set; }
     [NotMapped] public virtual List<ProviderBillingModel> ProviderBillings { get; set; }
+    public List<ResetPasswordRequestModel> ResetPasswordRequests { get; set; }
 
     public void UpdateRecordFromDTO(ProviderDTO dto)
     {

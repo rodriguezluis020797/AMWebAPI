@@ -17,7 +17,8 @@ public interface IIdentityService
 {
     Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDto);
     Task<BaseDTO> UpdatePasswordAsync(ProviderDTO providerDto, string jwt);
-    Task<BaseDTO> ResetPasswordAsync(ProviderDTO providerDto);
+    Task<BaseDTO> ResetPasswordRequestAsync(ProviderDTO providerDto);
+    Task<BaseDTO> ResetPasswordAsync(ProviderDTO providerDto, string guid);
     Task<string> RefreshJWT(string jwt, string refreshToken, FingerprintDTO fingerprintDto);
 }
 
@@ -96,26 +97,41 @@ public class IdentityService(
             throw new ArgumentException("Password does not meet complexity requirements.");
 
         var providerId =
-            IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            IdentityTool
+                .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
         var sessionId =
-            IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
+            IdentityTool
+                .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
 
         if (!dto.IsTempPassword)
         {
-            var currentPassword = await identityData.Passwords
-                .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
-                .OrderByDescending(x => x.CreateDate)
-                .FirstOrDefaultAsync();
+            var currentPassword = new PasswordModel();
+            
+            await ExecuteWithRetryAsync(async () =>
+            {
+                currentPassword = await identityData.Passwords
+                    .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+                    .OrderByDescending(x => x.CreateDate)
+                    .FirstOrDefaultAsync();
+            });
 
             if (currentPassword == null ||
-                IdentityTool.HashPassword(dto.CurrentPassword, currentPassword.Salt) !=
-                currentPassword.HashedPassword)
-                throw new ArgumentException("Current password does not match.");
+                IdentityTool.HashPassword(dto.CurrentPassword, currentPassword.Salt)
+                    .Equals(currentPassword.HashedPassword))
+            {
+                throw new ArgumentException("Current password does not match.");   
+            }
         }
 
-        var recentPasswords = await identityData.Passwords
-            .Where(x => x.ProviderId == providerId)
-            .ToListAsync();
+        var recentPasswords = new List<PasswordModel>();
+        
+        await ExecuteWithRetryAsync(async () =>
+        {
+            recentPasswords = await identityData.Passwords
+                .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+                .ToListAsync();
+        });
 
         if (recentPasswords.Any(p =>
                 IdentityTool.HashPassword(dto.NewPassword, p.Salt) == p.HashedPassword))
@@ -146,6 +162,76 @@ public class IdentityService(
         });
 
         logger.LogAudit($"Provider Id: {providerId}");
+        return response;
+    }
+
+    public async Task<BaseDTO> ResetPasswordAsync(ProviderDTO dto, string guid)
+    {
+        var response = new BaseDTO();
+        var request = new ResetPasswordRequestModel();
+        var recentPasswords = new List<PasswordModel>();
+        
+        await ExecuteWithRetryAsync(async () =>
+        {
+            request = await coreData.ResetPasswordRequests
+                .Where(x => x.QueryGuid.Equals(guid) && x.DeleteDate == null)
+                .FirstOrDefaultAsync();
+
+            if (request == null)
+            {
+                throw new Exception(nameof(request));
+            }
+            
+            recentPasswords = await identityData.Passwords
+                .Where(x => x.ProviderId == request.ProviderId && x.DeleteDate == null)
+                .ToListAsync();
+        });
+
+        if (recentPasswords.Any(p =>
+                IdentityTool.HashPassword(dto.NewPassword, p.Salt) == p.HashedPassword))
+        {
+            response.ErrorMessage = "Password was recently used.";
+            return response;
+        }
+        
+        var salt = IdentityTool
+            .GenerateSaltString();
+        
+        var newPassword =
+            new PasswordModel(request.ProviderId, false, IdentityTool
+                .HashPassword(dto.NewPassword, salt), salt);
+        
+        var providerComm = new ProviderCommunicationModel(request.ProviderId,
+            "Your password was recently changed. If you did not request this change, please contact support.",
+            DateTime.MinValue);
+
+        await ExecuteWithRetryAsync(async () =>
+        {
+            await identityData.Passwords
+                .Where(x => x.ProviderId == request.ProviderId && x.DeleteDate == null)
+                .ExecuteUpdateAsync(upd => upd
+                    .SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+            
+            await coreData.ResetPasswordRequests
+                .Where(x => x.ProviderId == request.ProviderId && x.DeleteDate == null)
+                .ExecuteUpdateAsync(upd => upd
+                    .SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+
+            await identityData.Passwords
+                .AddAsync(newPassword);
+            
+            await coreData.ProviderCommunications
+                .AddAsync(providerComm);
+
+            await coreData
+                .SaveChangesAsync();
+            
+            await identityData
+                .SaveChangesAsync();
+        });
+        
+        logger.LogAudit($"Provider Id: {request.ProviderId}");
+        
         return response;
     }
 
@@ -185,34 +271,42 @@ public class IdentityService(
         return GenerateJwt(providerId, sessionId);
     }
 
-    public async Task<BaseDTO> ResetPasswordAsync(ProviderDTO dto)
+    public async Task<BaseDTO> ResetPasswordRequestAsync(ProviderDTO dto)
     {
         var response = new BaseDTO();
-
-        var provider = await coreData.Providers
-            .AsNoTracking()
-            .FirstOrDefaultAsync(x => x.EMail == dto.EMail);
+        var provider = new ProviderModel();
+        
+        await ExecuteWithRetryAsync(async () =>
+        {
+            provider = await coreData.Providers
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.EMail == dto.EMail);
+        });
+        
         if (provider == null) return response;
 
-        var tempPassword = IdentityTool.GenerateRandomPassword();
-        var salt = IdentityTool.GenerateSaltString();
-        var hashed = IdentityTool.HashPassword(tempPassword, salt);
-
-        var message = $"A password reset has been requested for your account.\nTemporary password: {tempPassword}";
+        var guid = Guid.NewGuid().ToString();
+        
+        var message = $"A password reset has been requested for your account.\n" +
+                      $"If you did not request this change, please disregard this e-mail.\n" +
+                      $"Otherwise, please follow this link to reset your password:\n" +
+                      $"{config["Environment:AngularURI"]}/reset-password?guid={guid}";
 
         await ExecuteWithRetryAsync(async () =>
         {
-            await identityData.Passwords
+            using var trans = await coreData.Database.BeginTransactionAsync();
+            
+            await coreData.ResetPasswordRequests
                 .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
-                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
-            await identityData.SaveChangesAsync();
-
-            await identityData.Passwords.AddAsync(new PasswordModel(provider.ProviderId, true, hashed, salt));
+                .ExecuteUpdateAsync(upd => upd
+                    .SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+            
             await coreData.ProviderCommunications.AddAsync(
                 new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue));
+            await coreData.ResetPasswordRequests.AddAsync(new ResetPasswordRequestModel(provider.ProviderId, guid));
 
-            await identityData.SaveChangesAsync();
             await coreData.SaveChangesAsync();
+            await trans.CommitAsync();
         });
 
         return response;

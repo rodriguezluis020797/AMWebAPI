@@ -6,6 +6,7 @@ namespace AMData.Models.IdentityModels;
 [Table("Password")]
 public class PasswordModel
 {
+    public PasswordModel(){}
     public PasswordModel(long providerId, bool temporary, string hashedPassword, string salt)
     {
         ProviderId = providerId;

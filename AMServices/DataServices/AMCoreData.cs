@@ -25,6 +25,7 @@ public class AMCoreData : DbContext
     public DbSet<SessionModel> Sessions { get; init; }
     public DbSet<UpdateProviderEMailRequestModel> UpdateProviderEMailRequests { get; init; }
     public DbSet<VerifyProviderEMailRequestModel> VerifyProviderEMailRequests { get; init; }
+    public DbSet<ResetPasswordRequestModel> ResetPasswordRequests { get; init; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
@@ -47,11 +48,18 @@ public class AMCoreData : DbContext
         ConfigureUpdateProviderEMailRequestModel(modelBuilder);
         ConfigureProviderBillingModel(modelBuilder);
         ConffigureVerifyProviderEMailRequestModel(modelBuilder);
+        ConffigureResetPasswordRequestsModel(modelBuilder);
 
         foreach (var foreignKey in modelBuilder.Model
                      .GetEntityTypes()
                      .SelectMany(e => e.GetForeignKeys()))
             foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
+    }
+
+    private void ConffigureResetPasswordRequestsModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ResetPasswordRequestModel>()
+            .HasKey(x => x.ResetPasswordId);
     }
 
     private void ConffigureVerifyProviderEMailRequestModel(ModelBuilder modelBuilder)
@@ -147,6 +155,11 @@ public class AMCoreData : DbContext
             .HasOne(x => x.VerifyProviderEMailRequest)
             .WithOne(x => x.Provider)
             .HasForeignKey<VerifyProviderEMailRequestModel>(x => x.ProviderId);
+        
+        modelBuilder.Entity<ProviderModel>()
+            .HasMany(x => x.ResetPasswordRequests)
+            .WithOne(x => x.Provider)
+            .HasForeignKey(x => x.ProviderId);
     }
 
     private static void ConfigureServiceModel(ModelBuilder modelBuilder)

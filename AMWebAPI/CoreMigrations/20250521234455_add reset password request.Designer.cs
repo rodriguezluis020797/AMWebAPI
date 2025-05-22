@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
-    partial class AMCoreDataModelSnapshot : ModelSnapshot
+    [Migration("20250521234455_add reset password request")]
+    partial class addresetpasswordrequest
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -356,7 +359,7 @@ namespace AMWebAPI.CoreMigrations
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("ResetPasswordRequest");
+                    b.ToTable("ResetPassword");
                 });
 
             modelBuilder.Entity("AMData.Models.CoreModels.ServiceModel", b =>
