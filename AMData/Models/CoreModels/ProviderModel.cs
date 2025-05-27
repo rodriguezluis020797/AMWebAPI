@@ -7,7 +7,10 @@ namespace AMData.Models.CoreModels;
 [Table("Provider")]
 public class ProviderModel
 {
-    public ProviderModel(){}
+    public ProviderModel()
+    {
+    }
+
     public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail,
         string addressLine1, string addressLine2, string city, string zipCode, CountryCodeEnum countryCode,
         StateCodeEnum stateCode, TimeZoneCodeEnum timeZoneCode, string businessName)

@@ -1,51 +1,49 @@
-﻿using System;
+﻿#nullable disable
+
 using Microsoft.EntityFrameworkCore.Migrations;
 
-#nullable disable
+namespace AMWebAPI.CoreMigrations;
 
-namespace AMWebAPI.CoreMigrations
+/// <inheritdoc />
+public partial class addresetpasswordrequest : Migration
 {
     /// <inheritdoc />
-    public partial class addresetpasswordrequest : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.CreateTable(
-                name: "ResetPassword",
-                columns: table => new
-                {
-                    ResetPasswordId = table.Column<long>(type: "bigint", nullable: false)
-                        .Annotation("SqlServer:Identity", "1, 1"),
-                    ProviderId = table.Column<long>(type: "bigint", nullable: false),
-                    QueryGuid = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    Reset = table.Column<bool>(type: "bit", nullable: false),
-                    CreateDate = table.Column<DateTime>(type: "datetime2", nullable: false),
-                    UpdateDate = table.Column<DateTime>(type: "datetime2", nullable: true),
-                    DeleteDate = table.Column<DateTime>(type: "datetime2", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_ResetPassword", x => x.ResetPasswordId);
-                    table.ForeignKey(
-                        name: "FK_ResetPassword_Provider_ProviderId",
-                        column: x => x.ProviderId,
-                        principalTable: "Provider",
-                        principalColumn: "ProviderId",
-                        onDelete: ReferentialAction.Restrict);
-                });
+        migrationBuilder.CreateTable(
+            "ResetPassword",
+            table => new
+            {
+                ResetPasswordId = table.Column<long>("bigint", nullable: false)
+                    .Annotation("SqlServer:Identity", "1, 1"),
+                ProviderId = table.Column<long>("bigint", nullable: false),
+                QueryGuid = table.Column<string>("nvarchar(max)", nullable: false),
+                Reset = table.Column<bool>("bit", nullable: false),
+                CreateDate = table.Column<DateTime>("datetime2", nullable: false),
+                UpdateDate = table.Column<DateTime>("datetime2", nullable: true),
+                DeleteDate = table.Column<DateTime>("datetime2", nullable: true)
+            },
+            constraints: table =>
+            {
+                table.PrimaryKey("PK_ResetPassword", x => x.ResetPasswordId);
+                table.ForeignKey(
+                    "FK_ResetPassword_Provider_ProviderId",
+                    x => x.ProviderId,
+                    "Provider",
+                    "ProviderId",
+                    onDelete: ReferentialAction.Restrict);
+            });
 
-            migrationBuilder.CreateIndex(
-                name: "IX_ResetPassword_ProviderId",
-                table: "ResetPassword",
-                column: "ProviderId");
-        }
+        migrationBuilder.CreateIndex(
+            "IX_ResetPassword_ProviderId",
+            "ResetPassword",
+            "ProviderId");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropTable(
-                name: "ResetPassword");
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropTable(
+            "ResetPassword");
     }
 }

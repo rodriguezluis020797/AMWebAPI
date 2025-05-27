@@ -1,5 +1,6 @@
 ﻿using AMData.Models.CoreModels;
 using AMTools.Tools;
+using Stripe;
 
 namespace AMData.Models.DTOModels;
 
@@ -17,12 +18,13 @@ public class ProviderDTO : BaseDTO
     public CountryCodeEnum CountryCode { get; set; } = CountryCodeEnum.Select;
     public StateCodeEnum StateCode { get; set; } = StateCodeEnum.Select;
     public TimeZoneCodeEnum TimeZoneCode { get; set; } = TimeZoneCodeEnum.Select;
-    public bool HasLoggedIn { get; set; }
+    public bool HasLoggedIn { get; set; } = false;
     public string CurrentPassword { get; set; } = string.Empty;
     public string NewPassword { get; set; } = string.Empty;
-    public bool IsTempPassword { get; set; }
-
-    public void CreateNewRecordFromModel(ProviderModel provider)
+    public bool IsTempPassword { get; set; } = false;
+    public string PayEngineInfoUrl { get; set; } = string.Empty;
+    
+    public void CreateNewRecordFromModel(ProviderModel provider, string payEngineInfoUrl)
     {
         ErrorMessage = null;
         IsSpecialCase = null;
@@ -38,6 +40,11 @@ public class ProviderDTO : BaseDTO
         NewPassword = string.Empty;
         IsTempPassword = false;
         BusinessName = provider.BusinessName;
+        AddressLine1 = provider.AddressLine1;
+        AddressLine2 = provider.AddressLine2;
+        City = provider.City;
+        ZipCode = provider.ZipCode;
+        PayEngineInfoUrl = payEngineInfoUrl;
     }
 
     public void Validate()

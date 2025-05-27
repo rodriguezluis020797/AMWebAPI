@@ -6,7 +6,10 @@ namespace AMData.Models.CoreModels;
 [Table("ResetPasswordRequest")]
 public class ResetPasswordRequestModel
 {
-    public ResetPasswordRequestModel(){}
+    public ResetPasswordRequestModel()
+    {
+    }
+
     public ResetPasswordRequestModel(long providerId, string queryGuid)
     {
         ProviderId = providerId;
@@ -16,6 +19,7 @@ public class ResetPasswordRequestModel
         UpdateDate = null;
         DeleteDate = null;
     }
+
     [Key] public long ResetPasswordId { get; set; }
     [ForeignKey("Provider")] public long ProviderId { get; set; }
     public string QueryGuid { get; set; }

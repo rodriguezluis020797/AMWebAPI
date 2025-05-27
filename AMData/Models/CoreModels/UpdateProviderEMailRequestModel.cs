@@ -6,7 +6,10 @@ namespace AMData.Models.CoreModels;
 [Table("UpdateProviderEMailRequest")]
 public class UpdateProviderEMailRequestModel
 {
-    public UpdateProviderEMailRequestModel(){}
+    public UpdateProviderEMailRequestModel()
+    {
+    }
+
     public UpdateProviderEMailRequestModel(long providerId, string newEMail)
     {
         ProviderId = providerId;

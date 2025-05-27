@@ -14,7 +14,6 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
 {
     [HttpPost]
     [AllowAnonymous]
-    //Finazlized...
     public async Task<IActionResult> CreateProvider([FromBody] ProviderDTO dto)
     {
         logger.LogInfo("+");
@@ -35,7 +34,7 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetProvider()
+    public async Task<IActionResult> GetProvider([FromQuery] bool generateUrl)
     {
         logger.LogInfo("+");
 
@@ -45,7 +44,7 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
             if (string.IsNullOrWhiteSpace(jwToken))
                 throw new Exception("JWT token missing from cookies.");
 
-            var provider = await providerService.GetProviderAsync(jwToken);
+            var provider = await providerService.GetProviderAsync(jwToken, generateUrl);
             return StatusCode((int)HttpStatusCodeEnum.Success, provider);
         }
         catch (Exception ex)

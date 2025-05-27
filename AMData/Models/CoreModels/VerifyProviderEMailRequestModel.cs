@@ -6,7 +6,10 @@ namespace AMData.Models.CoreModels;
 [Table("VerifyProviderEMailRequest")]
 public class VerifyProviderEMailRequestModel
 {
-    public VerifyProviderEMailRequestModel(){}
+    public VerifyProviderEMailRequestModel()
+    {
+    }
+
     public VerifyProviderEMailRequestModel(long providerId)
     {
         ProviderId = providerId;
@@ -14,7 +17,7 @@ public class VerifyProviderEMailRequestModel
         CreateDate = DateTime.UtcNow;
         DeleteDate = null;
     }
-    
+
     [Key] public long VerifyProviderEMailRequestId { get; set; }
     [ForeignKey("Provider")] public long ProviderId { get; set; }
     public string QueryGuid { get; set; }

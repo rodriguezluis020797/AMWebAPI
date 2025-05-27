@@ -217,17 +217,24 @@ public class AMCoreData : DbContext
             { "VerifyProviderEMailRequest", "VerifyProviderEMailRequestId" }
         };
 
-        foreach (var kvp in tableIdMappings)
+        try
         {
-            var tableName = kvp.Key;
-            var columnName = kvp.Value;
+            foreach (var kvp in tableIdMappings)
+            {
+                var tableName = kvp.Key;
+                var columnName = kvp.Value;
 
-            var sql = $@"
+                var sql = $@"
             DECLARE @max INT;
             SELECT @max = ISNULL(MAX([{columnName}]), 0) FROM [{tableName}];
             DBCC CHECKIDENT ('{tableName}', RESEED, @max);";
 
-            await Database.ExecuteSqlRawAsync(sql);
+                await Database.ExecuteSqlRawAsync(sql);
+            }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
         }
     }
 }

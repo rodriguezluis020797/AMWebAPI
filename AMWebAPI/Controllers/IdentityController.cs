@@ -57,27 +57,24 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
             fingerprint.Validate();
 
             if (string.IsNullOrEmpty(jwt) && string.IsNullOrEmpty(refreshToken))
-            {
-                return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);   
-            }
-            
+                return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);
+
             var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
             SetAuthCookies(newJwt, refreshToken);
             return StatusCode((int)HttpStatusCodeEnum.LoggedIn);
-
         }
         catch (ArgumentException ex)
         {
             logger.LogError($"IP Address: {fingerprint.IPAddress} - {ex}");
-            ExpireAuthCookies(); 
+            ExpireAuthCookies();
         }
         catch (Exception ex)
         {
             logger.LogError(ex.ToString());
-            ExpireAuthCookies(); 
+            ExpireAuthCookies();
         }
-        
-        return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);  
+
+        return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);
     }
 
     [HttpPost]
@@ -135,7 +132,7 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
             var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
             fingerprint.Validate();
 
-            if (string.IsNullOrEmpty(jwt) && string.IsNullOrEmpty(refreshToken) || !IdentityTool.IsTheJWTExpired(jwt))
+            if ((string.IsNullOrEmpty(jwt) && string.IsNullOrEmpty(refreshToken)) || !IdentityTool.IsTheJWTExpired(jwt))
                 return StatusCode((int)HttpStatusCodeEnum.Success);
 
             var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
@@ -174,14 +171,13 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
             return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
     }
-    
+
     [HttpPost]
     [AllowAnonymous]
     public async Task<IActionResult> ResetPassword([FromBody] ProviderDTO dto, [FromQuery] string guid)
     {
         try
         {
-            
             var response = await identityService.ResetPasswordAsync(dto, guid);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);

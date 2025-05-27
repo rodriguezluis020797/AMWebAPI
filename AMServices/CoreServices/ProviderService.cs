@@ -9,13 +9,15 @@ using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Stripe;
+using Stripe.FinancialConnections;
 
 namespace AMServices.CoreServices;
 
 public interface IProviderService
 {
     Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
-    Task<ProviderDTO> GetProviderAsync(string jwt);
+    Task<ProviderDTO> GetProviderAsync(string jwt,bool generateUrl);
     Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> VerifyEMailAsync(string guid, bool verifying);
@@ -77,19 +79,34 @@ public class ProviderService(
         return response;
     }
 
-    public async Task<ProviderDTO> GetProviderAsync(string jwt)
+    public async Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl)
     {
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
         var provider = new ProviderModel(long.MinValue, string.Empty, string.Empty, string.Empty, string.Empty,
             string.Empty, string.Empty, string.Empty, string.Empty, CountryCodeEnum.Select, StateCodeEnum.Select,
             TimeZoneCodeEnum.Select, string.Empty);
+        
+        var service = new Stripe.BillingPortal.SessionService();
+        var url = string.Empty;
 
         await ExecuteWithRetryAsync(async () =>
         {
             provider = await db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
                        ?? throw new ArgumentException(nameof(providerId));
 
+            if (generateUrl)
+            {
+                var options = new Stripe.BillingPortal.SessionCreateOptions
+                {
+                    Customer = provider.PayEngineId,
+                    ReturnUrl = "https://google.com/"
+                };
+
+                var session = await service.CreateAsync(options);
+                url = session.Url;   
+            }
+            
             if (provider.DeleteDate != null)
             {
                 provider.DeleteDate = null;
@@ -99,7 +116,7 @@ public class ProviderService(
         });
 
         var dto = new ProviderDTO();
-        dto.CreateNewRecordFromModel(provider);
+        dto.CreateNewRecordFromModel(provider, url);
         return dto;
     }
 
@@ -170,7 +187,27 @@ public class ProviderService(
                        ?? throw new ArgumentException(nameof(providerId));
 
         provider.UpdateRecordFromDTO(dto);
-        await ExecuteWithRetryAsync(async () => { await db.SaveChangesAsync(); });
+        
+        var customerService = new CustomerService();
+        var options = new CustomerUpdateOptions
+        {
+            Name = $"{provider.BusinessName} - {provider.FirstName} {provider.LastName}",
+            Address = new AddressOptions()
+            {
+                Line1 = provider.AddressLine1,
+                Line2 = provider.AddressLine2,
+                City = provider.City,
+                PostalCode = provider.ZipCode,
+                Country = provider.CountryCode.ToString().Replace('_', ' '),
+                State = provider.StateCode.ToString().Split('_')[1],
+            },
+        };
+        
+        await ExecuteWithRetryAsync(async () =>
+        {
+            await customerService.UpdateAsync(provider.PayEngineId, options);
+            await db.SaveChangesAsync();
+        });
         return response;
     }
     
@@ -208,13 +245,32 @@ public class ProviderService(
                 $"If you don't please reach out to customer support.";
             
             var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
+            var customerService = new CustomerService();
+            var options = new CustomerUpdateOptions
+            {
+                Name = $"{provider.BusinessName} - {provider.FirstName} {provider.LastName}",
+                Email = provider.EMail,
+                Address = new AddressOptions()
+                {
+                    Line1 = provider.AddressLine1,
+                    Line2 = provider.AddressLine2,
+                    City = provider.City,
+                    PostalCode = provider.ZipCode,
+                    Country = provider.CountryCode.ToString().Replace('_', ' '),
+                    State = provider.StateCode.ToString().Split('_')[1],
+                },
+            };
+            
             await ExecuteWithRetryAsync(async () =>
             {
+                using var trans = await db.Database
+                    .BeginTransactionAsync();
+                
                 var providerPayEngineProfileId = await providerBillingService
                     .CreateProviderBillingProfileAsync(provider.EMail, provider.BusinessName, provider.FirstName, provider.MiddleName, provider.LastName);
                 
-                using var trans = await db.Database
-                    .BeginTransactionAsync();
+                await customerService
+                    .UpdateAsync(provider.PayEngineId, options);
                 
                 provider.EMailVerified = true;
                 provider.PayEngineId = providerPayEngineProfileId;
@@ -237,11 +293,11 @@ public class ProviderService(
         }
         else
         {
-            var request = new VerifyProviderEMailRequestModel();
+            var request = new UpdateProviderEMailRequestModel();
         
             await ExecuteWithRetryAsync(async () =>
             {
-                request = await db.VerifyProviderEMailRequests
+                request = await db.UpdateProviderEMailRequests
                     .FirstOrDefaultAsync(x => x.QueryGuid == guid && x.DeleteDate == null);
             });
         
@@ -258,31 +314,31 @@ public class ProviderService(
                 provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId)
                            ?? throw new InvalidOperationException("Provider not found.");
             });
-        
-            var providerPayEngineProfileId = await providerBillingService.CreateProviderBillingProfileAsync(provider.EMail,
-                provider.BusinessName, provider.FirstName, provider.MiddleName, provider.LastName);
 
             var oldEmail = provider.EMail;
+            
+            var customerService = new CustomerService();
+            var options = new CustomerUpdateOptions
+            {
+                Email = request.NewEMail
+            };
 
             await ExecuteWithRetryAsync(async () =>
             {
                 using var trans = await db.Database.BeginTransactionAsync();
-                provider.EMailVerified = true;
-                provider.PayEngineId = providerPayEngineProfileId;
+                
+                await customerService.UpdateAsync(provider.PayEngineId, options);
+                
                 provider.UpdateDate = DateTime.UtcNow;
-            
-            
+                provider.EMail = request.NewEMail;
                 request.DeleteDate = DateTime.UtcNow;
-
+                
                 await db.SaveChangesAsync();
                 await trans.CommitAsync();
             });
-        
-            var providerPayEngineSessionId =
-                await providerBillingService.CreateProviderSession(providerPayEngineProfileId, "setup");
-
+            
             logger.LogAudit(
-                $"Email Updated - Provider Id: {provider.ProviderId} - Email: {oldEmail} - Pay Session Id: {providerPayEngineSessionId}");
+                $"Email Updated - Provider Id: {provider.ProviderId} - Old E-Mail: {oldEmail} - New E-Mail: {provider.EMail}");
 
         }
         return response;

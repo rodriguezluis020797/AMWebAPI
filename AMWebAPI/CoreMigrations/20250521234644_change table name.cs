@@ -1,78 +1,77 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace AMWebAPI.CoreMigrations
+namespace AMWebAPI.CoreMigrations;
+
+/// <inheritdoc />
+public partial class changetablename : Migration
 {
     /// <inheritdoc />
-    public partial class changetablename : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropForeignKey(
-                name: "FK_ResetPassword_Provider_ProviderId",
-                table: "ResetPassword");
+        migrationBuilder.DropForeignKey(
+            "FK_ResetPassword_Provider_ProviderId",
+            "ResetPassword");
 
-            migrationBuilder.DropPrimaryKey(
-                name: "PK_ResetPassword",
-                table: "ResetPassword");
+        migrationBuilder.DropPrimaryKey(
+            "PK_ResetPassword",
+            "ResetPassword");
 
-            migrationBuilder.RenameTable(
-                name: "ResetPassword",
-                newName: "ResetPasswordRequest");
+        migrationBuilder.RenameTable(
+            "ResetPassword",
+            newName: "ResetPasswordRequest");
 
-            migrationBuilder.RenameIndex(
-                name: "IX_ResetPassword_ProviderId",
-                table: "ResetPasswordRequest",
-                newName: "IX_ResetPasswordRequest_ProviderId");
+        migrationBuilder.RenameIndex(
+            "IX_ResetPassword_ProviderId",
+            table: "ResetPasswordRequest",
+            newName: "IX_ResetPasswordRequest_ProviderId");
 
-            migrationBuilder.AddPrimaryKey(
-                name: "PK_ResetPasswordRequest",
-                table: "ResetPasswordRequest",
-                column: "ResetPasswordId");
+        migrationBuilder.AddPrimaryKey(
+            "PK_ResetPasswordRequest",
+            "ResetPasswordRequest",
+            "ResetPasswordId");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_ResetPasswordRequest_Provider_ProviderId",
-                table: "ResetPasswordRequest",
-                column: "ProviderId",
-                principalTable: "Provider",
-                principalColumn: "ProviderId",
-                onDelete: ReferentialAction.Restrict);
-        }
+        migrationBuilder.AddForeignKey(
+            "FK_ResetPasswordRequest_Provider_ProviderId",
+            "ResetPasswordRequest",
+            "ProviderId",
+            "Provider",
+            principalColumn: "ProviderId",
+            onDelete: ReferentialAction.Restrict);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropForeignKey(
-                name: "FK_ResetPasswordRequest_Provider_ProviderId",
-                table: "ResetPasswordRequest");
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropForeignKey(
+            "FK_ResetPasswordRequest_Provider_ProviderId",
+            "ResetPasswordRequest");
 
-            migrationBuilder.DropPrimaryKey(
-                name: "PK_ResetPasswordRequest",
-                table: "ResetPasswordRequest");
+        migrationBuilder.DropPrimaryKey(
+            "PK_ResetPasswordRequest",
+            "ResetPasswordRequest");
 
-            migrationBuilder.RenameTable(
-                name: "ResetPasswordRequest",
-                newName: "ResetPassword");
+        migrationBuilder.RenameTable(
+            "ResetPasswordRequest",
+            newName: "ResetPassword");
 
-            migrationBuilder.RenameIndex(
-                name: "IX_ResetPasswordRequest_ProviderId",
-                table: "ResetPassword",
-                newName: "IX_ResetPassword_ProviderId");
+        migrationBuilder.RenameIndex(
+            "IX_ResetPasswordRequest_ProviderId",
+            table: "ResetPassword",
+            newName: "IX_ResetPassword_ProviderId");
 
-            migrationBuilder.AddPrimaryKey(
-                name: "PK_ResetPassword",
-                table: "ResetPassword",
-                column: "ResetPasswordId");
+        migrationBuilder.AddPrimaryKey(
+            "PK_ResetPassword",
+            "ResetPassword",
+            "ResetPasswordId");
 
-            migrationBuilder.AddForeignKey(
-                name: "FK_ResetPassword_Provider_ProviderId",
-                table: "ResetPassword",
-                column: "ProviderId",
-                principalTable: "Provider",
-                principalColumn: "ProviderId",
-                onDelete: ReferentialAction.Restrict);
-        }
+        migrationBuilder.AddForeignKey(
+            "FK_ResetPassword_Provider_ProviderId",
+            "ResetPassword",
+            "ProviderId",
+            "Provider",
+            principalColumn: "ProviderId",
+            onDelete: ReferentialAction.Restrict);
     }
 }

@@ -5,7 +5,8 @@ namespace AMServices.PaymentEngineServices;
 
 public interface IProviderBillingService
 {
-    public Task<string> CreateProviderBillingProfileAsync(string eMail, string businessName, string firstName, string? middleName,
+    public Task<string> CreateProviderBillingProfileAsync(string eMail, string businessName, string firstName,
+        string? middleName,
         string lastName);
 
     public Task<string> CreateProviderSession(string providerPayEngineId, string sessionMode);

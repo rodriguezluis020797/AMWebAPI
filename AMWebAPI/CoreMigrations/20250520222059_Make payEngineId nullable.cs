@@ -1,57 +1,56 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace AMWebAPI.CoreMigrations
+namespace AMWebAPI.CoreMigrations;
+
+/// <inheritdoc />
+public partial class MakepayEngineIdnullable : Migration
 {
     /// <inheritdoc />
-    public partial class MakepayEngineIdnullable : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropIndex(
-                name: "IX_Provider_PayEngineId",
-                table: "Provider");
+        migrationBuilder.DropIndex(
+            "IX_Provider_PayEngineId",
+            "Provider");
 
-            migrationBuilder.AlterColumn<string>(
-                name: "PayEngineId",
-                table: "Provider",
-                type: "nvarchar(450)",
-                nullable: true,
-                oldClrType: typeof(string),
-                oldType: "nvarchar(450)");
+        migrationBuilder.AlterColumn<string>(
+            "PayEngineId",
+            "Provider",
+            "nvarchar(450)",
+            nullable: true,
+            oldClrType: typeof(string),
+            oldType: "nvarchar(450)");
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Provider_PayEngineId",
-                table: "Provider",
-                column: "PayEngineId",
-                unique: true,
-                filter: "[PayEngineId] IS NOT NULL");
-        }
+        migrationBuilder.CreateIndex(
+            "IX_Provider_PayEngineId",
+            "Provider",
+            "PayEngineId",
+            unique: true,
+            filter: "[PayEngineId] IS NOT NULL");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropIndex(
-                name: "IX_Provider_PayEngineId",
-                table: "Provider");
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropIndex(
+            "IX_Provider_PayEngineId",
+            "Provider");
 
-            migrationBuilder.AlterColumn<string>(
-                name: "PayEngineId",
-                table: "Provider",
-                type: "nvarchar(450)",
-                nullable: false,
-                defaultValue: "",
-                oldClrType: typeof(string),
-                oldType: "nvarchar(450)",
-                oldNullable: true);
+        migrationBuilder.AlterColumn<string>(
+            "PayEngineId",
+            "Provider",
+            "nvarchar(450)",
+            nullable: false,
+            defaultValue: "",
+            oldClrType: typeof(string),
+            oldType: "nvarchar(450)",
+            oldNullable: true);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Provider_PayEngineId",
-                table: "Provider",
-                column: "PayEngineId",
-                unique: true);
-        }
+        migrationBuilder.CreateIndex(
+            "IX_Provider_PayEngineId",
+            "Provider",
+            "PayEngineId",
+            unique: true);
     }
 }
