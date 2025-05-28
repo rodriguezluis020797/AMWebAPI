@@ -29,15 +29,15 @@ public class ProviderModel
         StateCode = stateCode;
         TimeZoneCode = timeZoneCode;
         LastLogindate = null;
-        //TrialEndDate = DateTime.UtcNow.AddMonths(1);
+        TrialEndDate = DateTime.UtcNow.AddMonths(1);
         IsActive = false;
         PayEngineId = null;
         AddressLine1 = addressLine1;
         AddressLine2 = addressLine2;
         City = city;
         ZipCode = zipCode;
-        EndOfService = new DateTime(TrialEndDate.Year, TrialEndDate.Month, TrialEndDate.Day, 4, 0, 0, DateTimeKind.Utc);
         NextBillingDate = TrialEndDate.AddDays(1);
+        SubscriptionToBeCancelled = false;
     }
 
     [Key] public long ProviderId { get; set; }
@@ -59,8 +59,8 @@ public class ProviderModel
     public string? PayEngineId { get; set; }
     public DateTime TrialEndDate { get; set; }
     public bool IsActive { get; set; }
+    public bool SubscriptionToBeCancelled { get; set; }
     public DateTime? NextBillingDate { get; set; }
-    public DateTime? EndOfService { get; set; }
     public DateTime CreateDate { get; set; }
     public DateTime? UpdateDate { get; set; }
     public DateTime? DeleteDate { get; set; }

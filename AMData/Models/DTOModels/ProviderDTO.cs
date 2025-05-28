@@ -22,7 +22,8 @@ public class ProviderDTO : BaseDTO
     public string NewPassword { get; set; } = string.Empty;
     public bool IsTempPassword { get; set; }
     public string PayEngineInfoUrl { get; set; } = string.Empty;
-    public DateTime? EndOfService { get; set; }
+    public DateTime? NextBillingDate { get; set; } 
+    public bool SubscriptionToBeCancelled  { get; set; }
 
     public void CreateNewRecordFromModel(ProviderModel provider, string payEngineInfoUrl)
     {
@@ -45,7 +46,8 @@ public class ProviderDTO : BaseDTO
         City = provider.City;
         ZipCode = provider.ZipCode;
         PayEngineInfoUrl = payEngineInfoUrl;
-        EndOfService = provider.EndOfService;
+        NextBillingDate = provider.NextBillingDate;
+        SubscriptionToBeCancelled = provider.SubscriptionToBeCancelled;
     }
 
     public void Validate()

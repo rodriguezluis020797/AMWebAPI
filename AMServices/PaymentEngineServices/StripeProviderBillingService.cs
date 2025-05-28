@@ -14,6 +14,7 @@ public interface IProviderBillingService
     Task UpdateProviderBillingProfile(ProviderModel provider);
 
     Task<Invoice> CapturePayment(string customerPayEngineId, List<InvoiceItemCreateOptions> invoiceItems);
+    Task<bool> IsThereADefaultPaymentMetho(string paymentEngineId);
 }
 
 public class StripeProviderBillingService (IAMLogger logger, IConfiguration config) : IProviderBillingService
@@ -84,5 +85,13 @@ public class StripeProviderBillingService (IAMLogger logger, IConfiguration conf
 
         //await Task.Delay(2000);
         return await invoiceService.PayAsync(invoice.Id);
+    }
+
+    public async Task<bool> IsThereADefaultPaymentMetho(string payEngineId)
+    {
+        var customerService = new CustomerService();
+        var customer = await customerService.GetAsync(payEngineId);
+
+        return !string.IsNullOrEmpty(customer.InvoiceSettings.DefaultPaymentMethodId);
     }
 }
