@@ -381,16 +381,7 @@ public class ProviderService(
                 .Include(x => x.Communications)
                 .FirstOrDefaultAsync();
         });
-
-        var customerService = new CustomerService();
-        var customer = await customerService.GetAsync(provider.PayEngineId);
-
-        if (string.IsNullOrEmpty(customer.InvoiceSettings.DefaultPaymentMethodId))
-        {
-            response.ErrorMessage = "No Default Payment Method Found";
-            return response;
-        }
-
+        
         //var testUtc = new DateTime(2025, 7, 20, 0, 30, 0, DateTimeKind.Utc); 
         var utcNow = DateTime.UtcNow;
 
@@ -412,39 +403,46 @@ public class ProviderService(
             return response;
         }
 
+        /*
+         * TODO:
+         * Move this to it's own method in the billing service.
+         */
+        var customerService = new CustomerService();
+        var customer = await customerService.GetAsync(provider.PayEngineId);
 
-        var invoiceItems = new List<InvoiceItemCreateOptions>();
-
-        if (customerLocalNow.Day == 1)
+        if (string.IsNullOrEmpty(customer.InvoiceSettings.DefaultPaymentMethodId))
         {
-            invoiceItems.Add(new InvoiceItemCreateOptions()
-            {
-                Customer = provider.PayEngineId,
-                Amount = int.Parse(config["Stripe:BaseSubPrice"]!),
-                Currency = "usd",
-                Description = $"Service Subscription for {customerLocalNow:MMMM}.",
-            });
+            response.ErrorMessage = "No Default Payment Method Found";
+            return response;
         }
-        else
+
+
+        var invoiceItems = new List<InvoiceItemCreateOptions>()
         {
-            invoiceItems.Add(new InvoiceItemCreateOptions()
+            new()
             {
                 Customer = provider.PayEngineId,
-                Amount = CalculateProratedAmount(int.Parse(config["Stripe:BaseSubPrice"]!), customerLocalNow),
                 Currency = "usd",
                 Description = $"Prorated Subscription for {customerLocalNow:MMMM}.",
-            });
-        }
+                Pricing = new InvoiceItemPricingOptions()
+                {
+                    Price = "price_1RTrwgPmRnZS7JiXUMMF3sQZ"
+                },
+                Quantity = 1
+            }
+        };
 
         await ExecuteWithRetryAsync(async () =>
         {
+            provider.NextBillingDate = customerLocalNow.AddMonths(1);
+
             provider.EndOfService = null;
             
             var capturedPayment = await providerBillingService.CapturePayment(provider.PayEngineId, invoiceItems);
             
             if (!capturedPayment.Status.Equals("paid"))
             {
-                response.ErrorMessage = "Unable to process transaction";
+                response.ErrorMessage = "Unable to process transaction.\nPlease review your payment method.";
             }
             else
             {
@@ -454,18 +452,7 @@ public class ProviderService(
 
         return response;
     }
-
-    // ──────────────────────── Private Methods ────────────────────────
-    private int CalculateProratedAmount(int fullAmountInCents, DateTime localNow)
-    {
-        var totalDaysInMonth = DateTime.DaysInMonth(localNow.Year, localNow.Month);
-        var remainingDays = totalDaysInMonth - localNow.Day + 1; // +1 to include today
-
-        var perDayRate = fullAmountInCents / (decimal)totalDaysInMonth;
-        var proratedAmount = (int)Math.Round(perDayRate * remainingDays);
-
-        return proratedAmount;
-    }
+    
     private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();
