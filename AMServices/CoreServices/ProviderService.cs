@@ -239,59 +239,30 @@ public class ProviderService(
                 provider = await db.Providers
                     .FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId);
             });
-
-            var providerPayEngineSessionId = string.Empty;
             var message =
                 $"Thank you for verifying your e-mail!\n" +
                 $"You will receive an e-mail when you have been given access to the system.";
 
             var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
-            var customerService = new CustomerService();
-            var options = new CustomerUpdateOptions
-            {
-                Name = $"{provider.BusinessName} - {provider.FirstName} {provider.LastName}",
-                Email = provider.EMail,
-                Address = new AddressOptions
-                {
-                    Line1 = provider.AddressLine1,
-                    Line2 = provider.AddressLine2,
-                    City = provider.City,
-                    PostalCode = provider.ZipCode,
-                    Country = provider.CountryCode.ToString().Replace('_', ' '),
-                    State = provider.StateCode.ToString().Split('_')[1]
-                }
-            };
 
             await ExecuteWithRetryAsync(async () =>
             {
                 using var trans = await db.Database
                     .BeginTransactionAsync();
-
-                var providerPayEngineProfileId = await providerBillingService
-                    .CreateProviderBillingProfileAsync(provider.EMail, provider.BusinessName, provider.FirstName,
-                        provider.MiddleName, provider.LastName);
-
-                await customerService
-                    .UpdateAsync(provider.PayEngineId, options);
-
-                provider.EMailVerified = true;
-                provider.PayEngineId = providerPayEngineProfileId;
+                
+                db.ProviderCommunications.Add(comm);
+                
                 provider.UpdateDate = DateTime.UtcNow;
                 request.DeleteDate = DateTime.UtcNow;
-                db.ProviderCommunications.Add(comm);
-
+                provider.EMailVerified = true;
+                
+                provider.PayEngineId = await providerBillingService
+                    .CreateProviderBillingProfileAsync(provider.EMail, provider.BusinessName, provider.FirstName,
+                        provider.MiddleName, provider.LastName);
+                
                 await db.SaveChangesAsync();
-
-                providerPayEngineSessionId =
-                    await providerBillingService
-                        .CreateProviderSession(providerPayEngineProfileId, "setup");
-
-
                 await trans.CommitAsync();
             });
-
-            logger.LogAudit(
-                $"Email Verified - Provider Id: {provider.ProviderId} - Pay Session Id: {providerPayEngineSessionId}");
         }
         else
         {
@@ -314,26 +285,20 @@ public class ProviderService(
             await ExecuteWithRetryAsync(async () =>
             {
                 provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId)
-                           ?? throw new InvalidOperationException("Provider not found.");
+                           ?? throw new Exception(nameof(request.ProviderId));
             });
 
             var oldEmail = provider.EMail;
 
-            var customerService = new CustomerService();
-            var options = new CustomerUpdateOptions
-            {
-                Email = request.NewEMail
-            };
-
             await ExecuteWithRetryAsync(async () =>
             {
                 using var trans = await db.Database.BeginTransactionAsync();
-
-                await customerService.UpdateAsync(provider.PayEngineId, options);
-
+                
                 provider.UpdateDate = DateTime.UtcNow;
                 provider.EMail = request.NewEMail;
                 request.DeleteDate = DateTime.UtcNow;
+                
+                await providerBillingService.UpdateProviderBillingProfile(provider);
 
                 await db.SaveChangesAsync();
                 await trans.CommitAsync();
@@ -426,9 +391,7 @@ public class ProviderService(
             return response;
         }
 
-        Console.WriteLine($"Default Payment Method Found: {customer.InvoiceSettings.DefaultPaymentMethodId}");
-
-        //var testUtc = new DateTime(2025, 6, 20, 0, 30, 0, DateTimeKind.Utc); 
+        //var testUtc = new DateTime(2025, 7, 20, 0, 30, 0, DateTimeKind.Utc); 
         var utcNow = DateTime.UtcNow;
 
         var customerTimeZoneName = provider.TimeZoneCode.ToString().Replace("_", " ");
@@ -449,54 +412,42 @@ public class ProviderService(
             return response;
         }
 
-        var price = 0;
+
+        var invoiceItems = new List<InvoiceItemCreateOptions>();
 
         if (customerLocalNow.Day == 1)
-            price = int.Parse(config["Stripe:BaseSubPrice"]!);
+        {
+            invoiceItems.Add(new InvoiceItemCreateOptions()
+            {
+                Customer = provider.PayEngineId,
+                Amount = int.Parse(config["Stripe:BaseSubPrice"]!),
+                Currency = "usd",
+                Description = $"Service Subscription for {customerLocalNow:MMMM}.",
+            });
+        }
         else
-            price = CalculateProratedAmount(int.Parse(config["Stripe:BaseSubPrice"]!), customerLocalNow);
-
-        var invoiceService = new InvoiceService();
-        var invoiceItemService = new InvoiceItemService();
+        {
+            invoiceItems.Add(new InvoiceItemCreateOptions()
+            {
+                Customer = provider.PayEngineId,
+                Amount = CalculateProratedAmount(int.Parse(config["Stripe:BaseSubPrice"]!), customerLocalNow),
+                Currency = "usd",
+                Description = $"Prorated Subscription for {customerLocalNow:MMMM}.",
+            });
+        }
 
         await ExecuteWithRetryAsync(async () =>
         {
-            var invoice = await invoiceService.CreateAsync(new InvoiceCreateOptions
-            {
-                Customer = provider.PayEngineId,
-                AutoAdvance = false, // We'll finalize manually
-                CollectionMethod = "charge_automatically",
-                PaymentSettings = new InvoicePaymentSettingsOptions
-                {
-                    PaymentMethodTypes = new List<string> { "card" }
-                }
-            });
-
-            //await Task.Delay(1000);
-            var invoiceItem = await invoiceItemService.CreateAsync(new InvoiceItemCreateOptions
-            {
-                Customer = provider.PayEngineId,
-                Amount = price,
-                Currency = "usd",
-                Description = "Test Invoice 3",
-                Invoice = invoice.Id
-            });
-
-            //await Task.Delay(1000);
-            var finalizedInvoice = await invoiceService.FinalizeInvoiceAsync(invoice.Id);
-
-            //await Task.Delay(2000);
-            var paidInvoice = await invoiceService.PayAsync(invoice.Id);
-
-            Console.WriteLine($"Invoice status after PayAsync: {paidInvoice.Status}");
-
-            if (!paidInvoice.Status.Equals("paid"))
+            provider.EndOfService = null;
+            
+            var capturedPayment = await providerBillingService.CapturePayment(provider.PayEngineId, invoiceItems);
+            
+            if (!capturedPayment.Status.Equals("paid"))
             {
                 response.ErrorMessage = "Unable to process transaction";
             }
             else
             {
-                provider.EndOfService = null;
                 await db.SaveChangesAsync();
             }
         });
@@ -504,6 +455,7 @@ public class ProviderService(
         return response;
     }
 
+    // ──────────────────────── Private Methods ────────────────────────
     private int CalculateProratedAmount(int fullAmountInCents, DateTime localNow)
     {
         var totalDaysInMonth = DateTime.DaysInMonth(localNow.Year, localNow.Month);
@@ -514,8 +466,6 @@ public class ProviderService(
 
         return proratedAmount;
     }
-
-    // ──────────────────────── Private Methods ────────────────────────
     private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();

@@ -1,3 +1,6 @@
+using AMData.Models.CoreModels;
+using AMTools.Tools;
+using Microsoft.Extensions.Configuration;
 using Stripe;
 using Stripe.Checkout;
 
@@ -5,16 +8,15 @@ namespace AMServices.PaymentEngineServices;
 
 public interface IProviderBillingService
 {
-    public Task<string> CreateProviderBillingProfileAsync(string eMail, string businessName, string firstName,
-        string? middleName,
-        string lastName);
+    Task<string> CreateProviderBillingProfileAsync(string eMail, string businessName, string firstName,
+        string? middleName, string lastName);
 
-    public Task<string> CreateProviderSession(string providerPayEngineId, string sessionMode);
-    public bool CreateBill(string billingServiceproviderId);
-    public bool IssueRefund(string billingServiceproviderId);
+    Task UpdateProviderBillingProfile(ProviderModel provider);
+
+    Task<Invoice> CapturePayment(string customerPayEngineId, List<InvoiceItemCreateOptions> invoiceItems);
 }
 
-public class StripeProviderBillingService : IProviderBillingService
+public class StripeProviderBillingService (IAMLogger logger, IConfiguration config) : IProviderBillingService
 {
     public async Task<string> CreateProviderBillingProfileAsync(string eMail, string businessName, string firstName,
         string? middleName, string lastName)
@@ -33,30 +35,54 @@ public class StripeProviderBillingService : IProviderBillingService
         return customerCreateResult.Id;
     }
 
-    public async Task<string> CreateProviderSession(string providerPayEngineId, string sessionMode)
+    public async Task UpdateProviderBillingProfile(ProviderModel provider)
     {
-        var options = new SessionCreateOptions
+        var customerService = new CustomerService();
+        var options = new CustomerUpdateOptions
         {
-            Mode = "setup",
-            Customer = providerPayEngineId, // The Stripe Customer ID
-            PaymentMethodTypes = new List<string> { "card" },
-            SuccessUrl = "https://yourapp.com/setup-success?session_id={CHECKOUT_SESSION_ID}",
-            CancelUrl = "https://yourapp.com/setup-cancelled"
+            Name = $"{provider.BusinessName} - {provider.FirstName} {provider.LastName}",
+            Email = provider.EMail,
+            Address = new AddressOptions
+            {
+                Line1 = provider.AddressLine1,
+                Line2 = provider.AddressLine2,
+                City = provider.City,
+                PostalCode = provider.ZipCode,
+                Country = provider.CountryCode.ToString().Replace('_', ' '),
+                State = provider.StateCode.ToString().Split('_')[1]
+            }
         };
-
-        var service = new SessionService();
-        var session = await service.CreateAsync(options);
-
-        return session.Id;
+        
+        await customerService
+            .UpdateAsync(provider.PayEngineId, options);
     }
 
-    public bool CreateBill(string billingServiceproviderId)
+    public async Task<Invoice> CapturePayment(string customerPayEngineId, List<InvoiceItemCreateOptions> invoiceItems)
     {
-        throw new NotImplementedException();
-    }
+        var invoiceService = new InvoiceService();
+        var invoiceItemService = new InvoiceItemService();
+        
+        var invoice = await invoiceService.CreateAsync(new InvoiceCreateOptions
+        {
+            Customer = customerPayEngineId,
+            AutoAdvance = false,
+            CollectionMethod = "charge_automatically",
+            PaymentSettings = new InvoicePaymentSettingsOptions
+            {
+                PaymentMethodTypes = new List<string> { "card" }
+            }
+        });
+        
+        foreach (var item in invoiceItems)
+        {
+            item.Invoice = invoice.Id;
+            await invoiceItemService.CreateAsync(item);
+        }
 
-    public bool IssueRefund(string billingServiceproviderId)
-    {
-        throw new NotImplementedException();
+        //await Task.Delay(1000);
+        var finalizedInvoice = await invoiceService.FinalizeInvoiceAsync(invoice.Id);
+
+        //await Task.Delay(2000);
+        return await invoiceService.PayAsync(invoice.Id);
     }
 }
