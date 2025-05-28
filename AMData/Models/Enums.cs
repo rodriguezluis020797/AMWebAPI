@@ -9,7 +9,7 @@ public enum HttpStatusCodeEnum
     BadCredentials = 400,
     Unauthorized = 401,
     BadPassword = 402,
-    ServerError = 500,
+    ServerError = 500
 }
 
 public enum SessionClaimEnum
@@ -46,7 +46,8 @@ public enum TimeZoneCodeEnum
     Hawaii_Standard_Time // United States
 }
 
-public enum StateCodeEnum {
+public enum StateCodeEnum
+{
     Select,
 
     // United States
@@ -135,7 +136,7 @@ public enum StateCodeEnum {
     MX_TL, // Tlaxcala
     MX_VE, // Veracruz
     MX_YU, // Yucatán
-    MX_ZA  // Zacatecas
+    MX_ZA // Zacatecas
 }
 
 public enum AppointmentStatusEnum

@@ -155,7 +155,7 @@ public class AMCoreData : DbContext
             .HasOne(x => x.VerifyProviderEMailRequest)
             .WithOne(x => x.Provider)
             .HasForeignKey<VerifyProviderEMailRequestModel>(x => x.ProviderId);
-        
+
         modelBuilder.Entity<ProviderModel>()
             .HasMany(x => x.ResetPasswordRequests)
             .WithOne(x => x.Provider)

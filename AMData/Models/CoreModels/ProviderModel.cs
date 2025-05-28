@@ -36,6 +36,7 @@ public class ProviderModel
         AddressLine2 = addressLine2;
         City = city;
         ZipCode = zipCode;
+        EndOfService = null;
     }
 
     [Key] public long ProviderId { get; set; }
@@ -57,6 +58,8 @@ public class ProviderModel
     public string? PayEngineId { get; set; }
     public DateTime TrialEndDate { get; set; }
     public bool IsActive { get; set; }
+    
+    public DateTime? EndOfService {get; set;}
     public DateTime CreateDate { get; set; }
     public DateTime? UpdateDate { get; set; }
     public DateTime? DeleteDate { get; set; }

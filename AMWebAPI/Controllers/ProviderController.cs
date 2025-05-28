@@ -110,13 +110,14 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
     }
 
     [HttpGet]
-    public async Task<IActionResult> UpdateEMail([FromQuery] string guid)
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyEMail([FromQuery] string guid, [FromQuery] bool verifying)
     {
         logger.LogInfo("+");
         var response = new BaseDTO();
         try
         {
-            //response = await providerService.UpdateEMailAsync(guid);
+            response = await providerService.VerifyEMailAsync(guid, verifying);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -130,16 +131,17 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
             logger.LogInfo("-");
         }
     }
-    
+
     [HttpGet]
-    [AllowAnonymous]
-    public async Task<IActionResult> VerifyEMail([FromQuery] string guid, [FromQuery] bool verifying)
+    public async Task<IActionResult> CancelSubscription()
     {
         logger.LogInfo("+");
         var response = new BaseDTO();
         try
         {
-            response = await providerService.VerifyEMailAsync(guid, verifying);
+            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            
+            response = await providerService.CancelSubscriptionAsync(jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
