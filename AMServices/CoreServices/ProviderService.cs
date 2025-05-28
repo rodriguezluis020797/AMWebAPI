@@ -22,6 +22,7 @@ public interface IProviderService
     Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> VerifyEMailAsync(string guid, bool verifying);
     Task<BaseDTO> CancelSubscriptionAsync(string jwt);
+    Task<BaseDTO> ReActivateSubscriptionAsync(string jwt);
 }
 
 public class ProviderService(
@@ -346,76 +347,172 @@ public class ProviderService(
     }
 
     public async Task<BaseDTO> CancelSubscriptionAsync(string jwt)
-{
-    var response = new BaseDTO();
-    var providerId = IdentityTool
-        .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-
-    var utcNow = DateTime.UtcNow;
-
-    await ExecuteWithRetryAsync(async () =>
     {
-        using var trans = await db.Database.BeginTransactionAsync();
+        var response = new BaseDTO();
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-        var provider = await db.Providers
-            .Where(x => x.ProviderId == providerId)
-            .Include(x => x.Clients)
-            .Include(x => x.Communications)
-            .FirstOrDefaultAsync();
+        var utcNow = DateTime.UtcNow;
 
-        var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(provider.TimeZoneCode.ToString().Replace("_", " "));
-
-        var localCancelTime = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
-
-        // Determine the last day of the local month
-        var lastDayLocal = DateTime.DaysInMonth(localCancelTime.Year, localCancelTime.Month);
-        var lastDayLocalDate = new DateTime(localCancelTime.Year, localCancelTime.Month, lastDayLocal);
-
-        if (localCancelTime.Date == lastDayLocalDate.Date)
+        await ExecuteWithRetryAsync(async () =>
         {
-            provider.EndOfService = new DateTime(
-                localCancelTime.Year,
-                localCancelTime.Month,
-                lastDayLocal,
-                23, 59, 59,
-                DateTimeKind.Utc);
-        }
-        else
-        {
-            provider.EndOfService = new DateTime(utcNow.Year, utcNow.Month,
-                DateTime.DaysInMonth(utcNow.Year, utcNow.Month), 23, 59, 59, DateTimeKind.Utc);
-        }
+            using var trans = await db.Database.BeginTransactionAsync();
 
-        foreach (var client in provider.Clients)
-        {
-            await db.ClientCommunications
-                .Where(x => x.Client.ClientId == client.ClientId && provider.EndOfService <= x.SendAfter)
-                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
-        }
-        
-        await db.ProviderCommunications
+            var provider = await db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .Include(x => x.Clients)
+                .Include(x => x.Communications)
+                .FirstOrDefaultAsync();
+
+            var customerTimeZone =
+                TimeZoneInfo.FindSystemTimeZoneById(provider.TimeZoneCode.ToString().Replace("_", " "));
+
+            var localCancelTime = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
+
+            // Determine the last day of the local month
+            var lastDayLocal = DateTime.DaysInMonth(localCancelTime.Year, localCancelTime.Month);
+            var lastDayLocalDate = new DateTime(localCancelTime.Year, localCancelTime.Month, lastDayLocal);
+
+            if (localCancelTime.Date == lastDayLocalDate.Date)
+                provider.EndOfService = new DateTime(
+                    localCancelTime.Year,
+                    localCancelTime.Month,
+                    lastDayLocal,
+                    23, 59, 59,
+                    DateTimeKind.Utc);
+            else
+                provider.EndOfService = new DateTime(utcNow.Year, utcNow.Month,
+                    DateTime.DaysInMonth(utcNow.Year, utcNow.Month), 23, 59, 59, DateTimeKind.Utc);
+
+            foreach (var client in provider.Clients)
+                await db.ClientCommunications
+                    .Where(x => x.Client.ClientId == client.ClientId && provider.EndOfService <= x.SendAfter)
+                    .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+
+            await db.ProviderCommunications
                 .Where(x => x.ProviderId == providerId && provider.EndOfService <= x.SendAfter)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-        await db.SaveChangesAsync();
-        await trans.CommitAsync();
-    });
+            await db.SaveChangesAsync();
+            await trans.CommitAsync();
+        });
 
-    return response;
-}
-    
-    private bool IsCancellationOnLastDay(TimeZoneCodeEnum customerTimeZoneId)
+        return response;
+    }
+
+    public async Task<BaseDTO> ReActivateSubscriptionAsync(string jwt)
     {
-        var utcCancelTime = DateTime.UtcNow;
-        
-        var customerTimeZoneName = customerTimeZoneId.ToString().Replace("_", " ");
-        var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(customerTimeZoneName);
-        var localCancelTime = TimeZoneInfo.ConvertTimeFromUtc(utcCancelTime, customerTimeZone);
-        var endOfMonth = new DateTime(localCancelTime.Year, localCancelTime.Month, 1)
-            .AddMonths(1)
-            .AddDays(-1);
+        var response = new BaseDTO();
 
-        return localCancelTime.Date == endOfMonth.Date;
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
+        var provider = new ProviderModel();
+        await ExecuteWithRetryAsync(async () =>
+        {
+            provider = await db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .Include(x => x.Clients)
+                .Include(x => x.Communications)
+                .FirstOrDefaultAsync();
+        });
+
+        var customerService = new CustomerService();
+        var customer = await customerService.GetAsync(provider.PayEngineId);
+
+        if (string.IsNullOrEmpty(customer.InvoiceSettings.DefaultPaymentMethodId))
+        {
+            response.ErrorMessage = "No Default Payment Method Found";
+            return response;
+        }
+
+        Console.WriteLine($"Default Payment Method Found: {customer.InvoiceSettings.DefaultPaymentMethodId}");
+
+        //var testUtc = new DateTime(2025, 6, 20, 0, 30, 0, DateTimeKind.Utc); 
+        var utcNow = DateTime.UtcNow;
+
+        var customerTimeZoneName = provider.TimeZoneCode.ToString().Replace("_", " ");
+        var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(customerTimeZoneName);
+        var customerLocalNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
+
+        var endOfServiceUtc = new DateTime(provider.EndOfService.Value.Year, provider.EndOfService.Value.Month,
+            provider.EndOfService.Value.Day, 23, 59, 59, DateTimeKind.Utc);
+        var endOfServiceLocalTime = TimeZoneInfo.ConvertTimeFromUtc(endOfServiceUtc, customerTimeZone);
+
+        if (customerLocalNow.Month == endOfServiceLocalTime.Month)
+        {
+            await ExecuteWithRetryAsync(async () =>
+            {
+                provider.EndOfService = null;
+                await db.SaveChangesAsync();
+            });
+            return response;
+        }
+
+        var price = 0;
+
+        if (customerLocalNow.Day == 1)
+            price = int.Parse(config["Stripe:BaseSubPrice"]!);
+        else
+            price = CalculateProratedAmount(int.Parse(config["Stripe:BaseSubPrice"]!), customerLocalNow);
+
+        var invoiceService = new InvoiceService();
+        var invoiceItemService = new InvoiceItemService();
+
+        await ExecuteWithRetryAsync(async () =>
+        {
+            var invoice = await invoiceService.CreateAsync(new InvoiceCreateOptions
+            {
+                Customer = provider.PayEngineId,
+                AutoAdvance = false, // We'll finalize manually
+                CollectionMethod = "charge_automatically",
+                PaymentSettings = new InvoicePaymentSettingsOptions
+                {
+                    PaymentMethodTypes = new List<string> { "card" }
+                }
+            });
+
+            //await Task.Delay(1000);
+            var invoiceItem = await invoiceItemService.CreateAsync(new InvoiceItemCreateOptions
+            {
+                Customer = provider.PayEngineId,
+                Amount = price,
+                Currency = "usd",
+                Description = "Test Invoice 3",
+                Invoice = invoice.Id
+            });
+
+            //await Task.Delay(1000);
+            var finalizedInvoice = await invoiceService.FinalizeInvoiceAsync(invoice.Id);
+
+            //await Task.Delay(2000);
+            var paidInvoice = await invoiceService.PayAsync(invoice.Id);
+
+            Console.WriteLine($"Invoice status after PayAsync: {paidInvoice.Status}");
+
+            if (!paidInvoice.Status.Equals("paid"))
+            {
+                response.ErrorMessage = "Unable to process transaction";
+            }
+            else
+            {
+                provider.EndOfService = null;
+                await db.SaveChangesAsync();
+            }
+        });
+
+        return response;
+    }
+
+    private int CalculateProratedAmount(int fullAmountInCents, DateTime localNow)
+    {
+        var totalDaysInMonth = DateTime.DaysInMonth(localNow.Year, localNow.Month);
+        var remainingDays = totalDaysInMonth - localNow.Day + 1; // +1 to include today
+
+        var perDayRate = fullAmountInCents / (decimal)totalDaysInMonth;
+        var proratedAmount = (int)Math.Round(perDayRate * remainingDays);
+
+        return proratedAmount;
     }
 
     // ──────────────────────── Private Methods ────────────────────────

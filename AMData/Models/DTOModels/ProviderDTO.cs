@@ -22,7 +22,7 @@ public class ProviderDTO : BaseDTO
     public string NewPassword { get; set; } = string.Empty;
     public bool IsTempPassword { get; set; }
     public string PayEngineInfoUrl { get; set; } = string.Empty;
-    public DateTime? EndOfService { get; set; } = null;
+    public DateTime? EndOfService { get; set; }
 
     public void CreateNewRecordFromModel(ProviderModel provider, string payEngineInfoUrl)
     {

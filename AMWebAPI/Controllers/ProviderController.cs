@@ -140,8 +140,32 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         try
         {
             var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            
+
             response = await providerService.CancelSubscriptionAsync(jwt);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> ReActivateSubscription()
+    {
+        logger.LogInfo("+");
+        var response = new BaseDTO();
+        try
+        {
+            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+
+            response = await providerService.ReActivateSubscriptionAsync(jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
