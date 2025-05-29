@@ -21,7 +21,6 @@ public interface IServiceService
 
 public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration config) : IServiceService
 {
-    // ──────────────────────── Create ────────────────────────
     public async Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt)
     {
         dto.Validate();
@@ -53,12 +52,16 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-        var services = await db.Services
-            .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
-            .OrderBy(x => x.Name)
-            .ToListAsync();
+        var services = new List<ServiceModel>();
+        await ExecuteWithRetryAsync(async () =>
+        {
+            services = await db.Services
+                .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
+                .OrderBy(x => x.Name)
+                .ToListAsync();
+        });
 
-        var serviceList = new List<ServiceDTO>();
+        var serviceDTOs = new List<ServiceDTO>();
 
         foreach (var model in services)
         {
@@ -66,13 +69,12 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
             dto.AssignFromModel(model);
             CryptographyTool.Encrypt(dto.ServiceId, out var encryptedId);
             dto.ServiceId = encryptedId;
-            serviceList.Add(dto);
+            serviceDTOs.Add(dto);
         }
 
-        return serviceList;
+        return serviceDTOs;
     }
 
-    // ──────────────────────── Update ────────────────────────
     public async Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt)
     {
         dto.Validate();
@@ -84,19 +86,15 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
 
-        var serviceModel = await db.Services
-            .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.ServiceId == serviceId);
-
-        if (serviceModel == null)
-        {
-            dto.ErrorMessage = "Service not found.";
-            return dto;
-        }
-
-        serviceModel.UpdateRecordFromDTO(dto);
-
+        var serviceModel = new ServiceModel();
         await ExecuteWithRetryAsync(async () =>
         {
+            serviceModel = await db.Services
+                .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
+                .FirstOrDefaultAsync();
+            
+            serviceModel.UpdateRecordFromDTO(dto);
+            
             db.Update(serviceModel);
             await db.SaveChangesAsync();
         });
@@ -104,7 +102,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         return dto;
     }
 
-    // ──────────────────────── Delete ────────────────────────
+    
     public async Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt)
     {
         var providerId = IdentityTool
@@ -112,20 +110,16 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
-
-        var serviceModel = await db.Services
-            .FirstOrDefaultAsync(x => x.ProviderId == providerId && x.ServiceId == serviceId);
-
-        if (serviceModel == null)
-        {
-            dto.ErrorMessage = "Service not found.";
-            return dto;
-        }
-
-        serviceModel.DeleteDate = DateTime.UtcNow;
-
+        
+        var serviceModel = new ServiceModel();
         await ExecuteWithRetryAsync(async () =>
         {
+            serviceModel = await db.Services
+                .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
+                .FirstOrDefaultAsync();
+            
+            serviceModel.DeleteDate = DateTime.UtcNow;
+            
             db.Update(serviceModel);
             await db.SaveChangesAsync();
         });

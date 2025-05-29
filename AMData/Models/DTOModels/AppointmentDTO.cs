@@ -9,6 +9,8 @@ public class AppointmentDTO : BaseDTO
     public string ClientId { get; set; } = string.Empty;
     public string ClientName { get; set; } = string.Empty;
     public string ServiceName { get; set; } = string.Empty;
+    public bool OverridePrice { get; set; } = false;
+    public decimal Price { get; set; } = decimal.Zero;
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public string Notes { get; set; } = string.Empty;

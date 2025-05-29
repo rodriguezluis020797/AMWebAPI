@@ -376,7 +376,7 @@ public class ProviderService(
         {
             Customer = provider.PayEngineId,
             Currency = "usd",
-            Description = $"Prorated Subscription for {customerLocalNow:MMMM}.",
+            Description = $"AM Tech Base Services.",
             Pricing = new InvoiceItemPricingOptions()
             {
                 Price = "price_1RTrwgPmRnZS7JiXUMMF3sQZ"
@@ -396,6 +396,7 @@ public class ProviderService(
         else
         {
             provider.SubscriptionToBeCancelled = false;
+            provider.UpdateDate = DateTime.UtcNow;
             provider.NextBillingDate = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
             await db.SaveChangesAsync();
         }
