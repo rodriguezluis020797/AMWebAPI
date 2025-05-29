@@ -1,4 +1,7 @@
-﻿using AMData.Models.CoreModels;
+﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using AMData.Models.CoreModels;
+using AMTools.Tools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -7,11 +10,13 @@ namespace AMWebAPI.Services.DataServices;
 public class AMCoreData : DbContext
 {
     private readonly IConfiguration _configuration;
+    private readonly IAMLogger _logger;
 
-    public AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration)
+    public AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration,  IAMLogger logger)
         : base(options)
     {
         _configuration = configuration;
+        _logger = logger;
     }
 
     public DbSet<AppointmentModel> Appointments { get; init; }
@@ -236,5 +241,36 @@ public class AMCoreData : DbContext
         {
             Console.WriteLine(e.ToString());
         }
+    }
+    
+    public async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
+    {
+        var stopwatch = Stopwatch.StartNew();
+        const int maxRetries = 3;
+        var retryDelay = TimeSpan.FromSeconds(2);
+        var attempt = 0;
+
+        for (attempt = 1; attempt <= maxRetries; attempt++)
+            try
+            {
+                await action();
+                return;
+            }
+            catch (Exception ex)
+            {
+                if (attempt == maxRetries)
+                {
+                    _logger.LogError(ex.ToString());
+                    throw;
+                }
+
+                await Task.Delay(retryDelay);
+            }
+            finally
+            {
+                stopwatch.Stop();
+                _logger.LogInfo(
+                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
+            }
     }
 }

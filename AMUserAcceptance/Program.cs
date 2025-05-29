@@ -46,7 +46,7 @@ internal class Program
             .UseSqlServer(_config.GetConnectionString("IdentityConnectionString"))
             .Options;
 
-        _coreData = new AMCoreData(coreOptions, _config);
+        _coreData = new AMCoreData(coreOptions, _config, _logger);
         _identityData = new AMIdentityData(identityOptions, _config);
     }
 

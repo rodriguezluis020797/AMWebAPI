@@ -46,7 +46,7 @@ internal class Program
             .UseSqlServer(_config.GetConnectionString("CoreConnectionString"))
             .Options;
 
-        await using var coreData = new AMCoreData(options, _config);
+        await using var coreData = new AMCoreData(options, _config, _logger);
 
         // Run both queries in parallel
         var providerCommTask = await coreData.ProviderCommunications
