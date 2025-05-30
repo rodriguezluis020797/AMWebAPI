@@ -10,7 +10,7 @@ public static class DateTimeTool
     {
         try
         {
-            string ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
+            var ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
             var dateTimeZone = DateTimeZoneProviders.Tzdb[ianaZoneId];
 
             var instant = Instant.FromDateTimeUtc(DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc));
@@ -21,7 +21,6 @@ public static class DateTimeTool
         }
         catch (Exception e)
         {
-            Console.WriteLine($"[UTC → Local] Conversion failed: {e.Message}");
             return utcDateTime.ToLocalTime(); // fallback
         }
     }
@@ -30,7 +29,7 @@ public static class DateTimeTool
     {
         try
         {
-            string ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
+            var ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
             var dateTimeZone = DateTimeZoneProviders.Tzdb[ianaZoneId];
 
             var local = LocalDateTime.FromDateTime(localDateTime);
@@ -43,7 +42,6 @@ public static class DateTimeTool
         }
         catch (Exception e)
         {
-            Console.WriteLine($"[Local → UTC] Conversion failed: {e.Message}");
             return localDateTime.ToUniversalTime(); // fallback
         }
     }
@@ -59,8 +57,7 @@ public static class DateTimeTool
         {
             if (OperatingSystem.IsWindows())
                 return TZConvert.WindowsToIana(windowsTimeZoneId);
-            else
-                return windowsTimeZoneId; // already IANA on macOS/Linux
+            return windowsTimeZoneId; // already IANA on macOS/Linux
         }
         catch
         {

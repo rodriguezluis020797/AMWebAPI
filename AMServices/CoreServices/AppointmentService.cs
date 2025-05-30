@@ -87,7 +87,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
     {
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        
+
         var message =
             $"Your appointment date and/or times with #Name# have changed. " +
             $"New start: {dto.StartDate:M/d/yyyy h:mm tt} - " +
@@ -108,11 +108,8 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
         dto.Validate();
 
-        if (!string.IsNullOrEmpty(dto.ErrorMessage))
-        {
-            return dto;
-        }
-        
+        if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
+
         var timeZoneCodeStr = appointmentModel.Provider.TimeZoneCode.ToString().Replace("_", " ");
         dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
         dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate, timeZoneCodeStr);
@@ -120,13 +117,11 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         var timesChanged = appointmentModel.StartDate != dto.StartDate || appointmentModel.EndDate != dto.EndDate;
 
         if (timesChanged)
-        {
             if (await ConflictsWithExistingAppointment(dto, providerId))
             {
                 dto.ErrorMessage = "This conflicts with a different appointment.";
                 return dto;
             }
-        }
 
         appointmentModel.UpdateRecrodFromDto(dto);
 
@@ -205,17 +200,17 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         });
 
         var timeZoneCodeStr = providerTimeZone.ToString().Replace("_", " ");
-        
+
         var message =
             $"You have a new appointment with #Name# from " +
             $"{dto.StartDate:M/d/yyyy h:mm tt} to {dto.EndDate:M/d/yyyy h:mm tt} {Regex.Replace(providerTimeZone.ToString(), "[^A-Z]", "")}.";
-        
+
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
-        
+
         dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
         dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate, timeZoneCodeStr);
-        
+
         if (await ConflictsWithExistingAppointment(dto, providerId))
             return new AppointmentDTO { ErrorMessage = "This conflicts with a different appointment." };
 
@@ -289,7 +284,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         dto.AppointmentId = encryptedAppointmentId;
         dto.ServiceId = encryptedServiceId;
         dto.ClientId = encryptedClientId;
-        
+
         var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
         dto.StartDate = DateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr);
         dto.EndDate = DateTimeTool.ConvertUtcToLocal(dto.EndDate, timeZoneCodeStr);

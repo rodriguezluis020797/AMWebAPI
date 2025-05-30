@@ -139,33 +139,33 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
     public async Task<ClientNoteDTO> CreateClientNote(ClientNoteDTO dto)
     {
         var response = new ClientNoteDTO();
-        
+
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
-        
+
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
         CryptographyTool.Encrypt(dto.Note, out var encryptedNote);
 
-        var clientNoteModel = new ClientNoteModel(long.Parse(decryptedId),  encryptedNote);
+        var clientNoteModel = new ClientNoteModel(long.Parse(decryptedId), encryptedNote);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
             await db.ClientNotes.AddAsync(clientNoteModel);
             await db.SaveChangesAsync();
         });
-        
+
         return response;
     }
 
     public async Task<List<ClientNoteDTO>> GetClientNotes(ClientDTO dto, string jwt)
     {
         var response = new List<ClientNoteDTO>();
-        
+
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        
+
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
-        
+
         var clientNoteModels = new List<ClientNoteModel>();
         var timeZoneCode = TimeZoneCodeEnum.Select;
 
@@ -176,7 +176,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                 .OrderByDescending(x => x.CreateDate)
                 .AsNoTracking()
                 .ToListAsync();
-            
+
             timeZoneCode = await db.Providers
                 .Where(x => x.ProviderId == providerId)
                 .Select(x => x.TimeZoneCode)
@@ -190,22 +190,20 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
             clientNote.CreateDate = DateTimeTool.ConvertUtcToLocal(clientNote.CreateDate, timeZoneCodeStr);
 
             if (clientNote.UpdateDate.HasValue)
-            {
                 clientNote.UpdateDate = DateTimeTool.ConvertUtcToLocal(clientNote.UpdateDate.Value, timeZoneCodeStr);
-            }
-                
+
             clientNoteDto = new ClientNoteDTO();
             clientNoteDto.CreateRecordFromModel(clientNote);
-            
+
             CryptographyTool.Encrypt(clientNoteDto.ClientNoteId, out var encryptedClientNoteId);
             clientNoteDto.ClientNoteId = encryptedClientNoteId;
-            
+
             CryptographyTool.Encrypt(clientNoteDto.ClientId, out var encryptedClientId);
             clientNoteDto.ClientId = encryptedClientId;
-            
+
             CryptographyTool.Decrypt(clientNoteDto.Note, out var decryptedNote);
             clientNoteDto.Note = decryptedNote;
-            
+
             response.Add(clientNoteDto);
         }
 

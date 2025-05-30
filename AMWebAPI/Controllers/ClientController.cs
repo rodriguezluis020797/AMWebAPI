@@ -134,7 +134,7 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
             logger.LogInfo("-");
         }
     }
-    
+
     [HttpPost]
     public async Task<IActionResult> CreateClientNote([FromBody] ClientNoteDTO dto)
     {

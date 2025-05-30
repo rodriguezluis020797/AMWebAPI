@@ -137,7 +137,8 @@ public class ProviderService(
         }
 
 
-        var providerId = IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        var providerId =
+            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
         var message =
