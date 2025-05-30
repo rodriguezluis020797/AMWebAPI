@@ -158,4 +158,52 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
             logger.LogInfo("-");
         }
     }
+    
+    [HttpPost]
+    public async Task<IActionResult> UpdateClientNote([FromBody] ClientNoteDTO dto)
+    {
+        logger.LogInfo("+");
+        var response = new BaseDTO();
+        try
+        {
+            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+
+            response = await clientService.UpdateClientNote(dto);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+    
+    [HttpPost]
+    public async Task<IActionResult> DeleteClientNote([FromBody] ClientNoteDTO dto)
+    {
+        logger.LogInfo("+");
+        var response = new BaseDTO();
+        try
+        {
+            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+
+            response = await clientService.DeleteClientNote(dto);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
 }
