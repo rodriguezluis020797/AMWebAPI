@@ -1,29 +1,27 @@
-﻿using System;
+﻿#nullable disable
+
 using Microsoft.EntityFrameworkCore.Migrations;
 
-#nullable disable
+namespace AMWebAPI.CoreMigrations;
 
-namespace AMWebAPI.CoreMigrations
+/// <inheritdoc />
+public partial class addDeleteDatetoclientnote : Migration
 {
     /// <inheritdoc />
-    public partial class addDeleteDatetoclientnote : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<DateTime>(
-                name: "DeleteDate",
-                table: "ClientNote",
-                type: "datetime2",
-                nullable: true);
-        }
+        migrationBuilder.AddColumn<DateTime>(
+            "DeleteDate",
+            "ClientNote",
+            "datetime2",
+            nullable: true);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "DeleteDate",
-                table: "ClientNote");
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            "DeleteDate",
+            "ClientNote");
     }
 }

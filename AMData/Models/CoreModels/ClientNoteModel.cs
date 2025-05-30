@@ -16,6 +16,7 @@ public class ClientNoteModel
         UpdateDate = null;
         DeleteDate = null;
     }
+
     [Key] public long ClientNoteId { get; set; }
     [ForeignKey("Client")] public long ClientId { get; set; }
     public string Note { get; set; }
