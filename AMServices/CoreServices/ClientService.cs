@@ -44,7 +44,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         var clientComm = new ClientCommunicationModel(0, message, DateTime.MinValue);
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             using (var trans = await db.Database.BeginTransactionAsync())
             {
@@ -91,7 +91,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         var clientModel = new ClientModel(0, string.Empty, string.Empty, string.Empty, string.Empty);
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             clientModel =
                 await db.Clients
@@ -108,7 +108,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         clientModel.UpdateRecordFromDTO(dto);
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             using (var trans = await db.Database.BeginTransactionAsync())
             {
@@ -150,7 +150,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                 x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId);
         clientModel.DeleteDate = DateTime.UtcNow;
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             db.Clients.Update(clientModel);
             await db.SaveChangesAsync();
@@ -166,7 +166,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         var clients = new List<ClientModel>();
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             clients = await db.Clients
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
@@ -194,7 +194,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         var decryptedId = string.Empty;
         if (!isNewRecord) CryptographyTool.Decrypt(dto.ClientId, out decryptedId);
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
             {
                 if (isNewRecord)
                     exists = await db.Clients.AnyAsync(x =>
@@ -220,36 +220,5 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
             }
         );
         return exists;
-    }
-
-    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
-    {
-        var stopwatch = Stopwatch.StartNew();
-        const int maxRetries = 3;
-        var retryDelay = TimeSpan.FromSeconds(2);
-        var attempt = 0;
-
-        for (attempt = 1; attempt <= maxRetries; attempt++)
-            try
-            {
-                await action();
-                return;
-            }
-            catch (Exception ex)
-            {
-                if (attempt == maxRetries)
-                {
-                    logger.LogError(ex.ToString());
-                    throw;
-                }
-
-                await Task.Delay(retryDelay);
-            }
-            finally
-            {
-                stopwatch.Stop();
-                logger.LogInfo(
-                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
-            }
     }
 }

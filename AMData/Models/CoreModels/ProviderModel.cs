@@ -7,14 +7,12 @@ namespace AMData.Models.CoreModels;
 [Table("Provider")]
 public class ProviderModel
 {
-    public ProviderModel()
-    {
-    }
-
+    public ProviderModel(){}
     public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail,
         string addressLine1, string addressLine2, string city, string zipCode, CountryCodeEnum countryCode,
         StateCodeEnum stateCode, TimeZoneCodeEnum timeZoneCode, string businessName)
     {
+        ProviderId = providerId;
         FirstName = firstName;
         MiddleName = middleName;
         LastName = lastName;
@@ -72,7 +70,7 @@ public class ProviderModel
     [NotMapped] public virtual VerifyProviderEMailRequestModel VerifyProviderEMailRequest { get; set; }
     [NotMapped] public virtual List<ServiceModel> Services { get; set; }
     [NotMapped] public virtual List<ProviderBillingModel> ProviderBillings { get; set; }
-    public List<ResetPasswordRequestModel> ResetPasswordRequests { get; set; }
+    [NotMapped] public List<ResetPasswordRequestModel> ResetPasswordRequests { get; set; }
 
     public void UpdateRecordFromDTO(ProviderDTO dto)
     {

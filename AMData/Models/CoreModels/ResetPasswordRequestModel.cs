@@ -9,7 +9,6 @@ public class ResetPasswordRequestModel
     public ResetPasswordRequestModel()
     {
     }
-
     public ResetPasswordRequestModel(long providerId, string queryGuid)
     {
         ProviderId = providerId;

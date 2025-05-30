@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Text.RegularExpressions;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -30,7 +31,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         var appointmentModels = new List<AppointmentModel>();
         var timeZoneCode = TimeZoneCodeEnum.Select;
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             timeZoneCode = await db.Providers
                 .Where(x => x.ProviderId == providerId)
@@ -56,16 +57,16 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         var response = new List<AppointmentDTO>();
         var appointmentModels = new List<AppointmentModel>();
         var timeZoneCode = TimeZoneCodeEnum.Select;
+        
+        var now = DateTime.UtcNow;
+        var next24Hours = now.AddHours(24);
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             timeZoneCode = await db.Providers
                 .Where(x => x.ProviderId == providerId)
                 .Select(x => x.TimeZoneCode)
                 .FirstOrDefaultAsync();
-
-            var now = DateTime.UtcNow;
-            var next24Hours = now.AddHours(24);
 
             appointmentModels = await db.Appointments
                 .Where(x =>
@@ -75,11 +76,12 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                     x.StartDate <= next24Hours)
                 .Include(x => x.Service)
                 .Include(x => x.Client)
+                .OrderBy(x => x.StartDate)
                 .ToListAsync();
         });
 
         foreach (var appointment in appointmentModels) response.Add(BuildEncryptedDTO(appointment, timeZoneCode));
-
+        
         return response;
     }
 
@@ -88,11 +90,11 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-        var appointmentModel = new AppointmentModel(0, 0, 0, DateTime.MinValue, DateTime.MinValue, string.Empty);
+        var appointmentModel = new AppointmentModel();
 
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             appointmentModel = await db.Appointments
                 .Where(x =>
@@ -104,6 +106,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         dto = TurnAppointmentTimeToUTC(dto, appointmentModel.Provider.TimeZoneCode);
 
         dto.Validate();
+        
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
 
         var timesChanged = appointmentModel.StartDate != dto.StartDate || appointmentModel.EndDate != dto.EndDate;
@@ -111,15 +114,28 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         if (timesChanged && await ConflictsWithExistingAppointment(dto, providerId))
             return new AppointmentDTO { ErrorMessage = "This conflicts with a different appointment." };
 
-        appointmentModel.UpdateRecrodFromDTO(dto);
+        appointmentModel.UpdateRecrodFromDto(dto);
 
-        await ExecuteWithRetryAsync(async () =>
+        var clientComm = new ClientCommunicationModel();
+        
+        if (timesChanged)
+        {
+            var message =
+                $"Your appointment date and/or times with {appointmentModel.Provider.BusinessName} have changed. " +
+                $"New start: {appointmentModel.StartDate:M/d/yyyy h:mm tt} - " +
+                $"New end: {appointmentModel.EndDate:M/d/yyyy h:mm tt}.";
+            clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
+        }
+
+        await db.ExecuteWithRetryAsync(async () =>
         {
             using var transaction = await db.Database.BeginTransactionAsync();
 
+            if (timesChanged)
+            {
+                db.ClientCommunications.Add(clientComm);
+            }
             db.Appointments.Update(appointmentModel);
-
-            // TODO: Add Client Comm if times changed
 
             await db.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -134,18 +150,29 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
+        
+        var appointmentModel = new AppointmentModel();
+        var clientComm = new ClientCommunicationModel();
+        var message = "Your appointment with #Name# on #Date# at #Time# has been canceled.";
 
-        var appointmentModel = await db.Appointments
-            .FirstOrDefaultAsync(x =>
-                x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId));
-
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
+            appointmentModel = await db.Appointments
+                .Where(x => x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId))
+                .Include(x => x.Provider)
+                .FirstOrDefaultAsync();
+            
+            message = message
+                .Replace("#Name#", $"{appointmentModel.Provider.BusinessName}")
+                .Replace("#Date#", $"{appointmentModel.StartDate:M/d/yyyy}")
+                .Replace("#Time#", $"{appointmentModel.StartDate:h:mm tt}");
+            
+            clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
+            
             using var transaction = await db.Database.BeginTransactionAsync();
             appointmentModel.DeleteDate = DateTime.UtcNow;
             db.Appointments.Update(appointmentModel);
-
-            // TODO: Add Client Comm
+            db.ClientCommunications.Add(clientComm);
 
             await db.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -161,7 +188,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
         var providerTimeZone = TimeZoneCodeEnum.Select;
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             providerTimeZone = await db.Providers
                 .Where(x => x.ProviderId == providerId)
@@ -179,22 +206,53 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedServiceId);
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedClientId);
+        
+        
 
         var appointmentModel = new AppointmentModel(
             long.Parse(decryptedServiceId),
             long.Parse(decryptedClientId),
             providerId,
+            dto.Status,
             dto.StartDate,
             dto.EndDate,
-            dto.Notes);
+            dto.Notes, 0);
 
-        await ExecuteWithRetryAsync(async () =>
+        var businessName = string.Empty;
+        
+        var localStart = ConvertUtcToLocal(appointmentModel.StartDate, providerTimeZone);
+        var localEnd = ConvertUtcToLocal(appointmentModel.EndDate, providerTimeZone);
+
+        var message =
+            $"You have a new appointment with #Name# from " +
+            $"{localStart:M/d/yyyy h:mm tt} to {localEnd:M/d/yyyy h:mm tt} {Regex.Replace(providerTimeZone.ToString(), "[^A-Z]", "")}.";
+        
+        var clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
+
+        await db.ExecuteWithRetryAsync(async () =>
         {
+            if (dto.OverridePrice)
+            {
+                appointmentModel.Price = dto.Price;
+            }
+            else
+            {
+                appointmentModel.Price = await db.Services.Where(x => x.ServiceId == appointmentModel.ServiceId)
+                    .Select(x => x.Price)
+                    .FirstOrDefaultAsync();
+            }
+            
             using var transaction = await db.Database.BeginTransactionAsync();
             await db.Appointments.AddAsync(appointmentModel);
-
-            // TODO: Add Client Comm
-
+            
+            businessName = await db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .Select(x => x.BusinessName)
+                .FirstOrDefaultAsync();
+            
+            clientComm.Message = clientComm.Message.Replace("#Name#", businessName);
+            await db.ClientCommunications.AddAsync(clientComm);
+            
             await db.SaveChangesAsync();
             await transaction.CommitAsync();
         });
@@ -204,9 +262,16 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
     private async Task<bool> ConflictsWithExistingAppointment(AppointmentDTO dto, long providerId)
     {
-        return await db.Appointments.AnyAsync(a =>
-            a.StartDate < dto.EndDate && a.EndDate > dto.StartDate && a.ProviderId == providerId &&
-            a.DeleteDate == null);
+        var conflicts = false;
+        await db.ExecuteWithRetryAsync(async ()=>
+        {
+            conflicts = await db.Appointments.Where(a =>
+                    a.StartDate < dto.EndDate && a.EndDate > dto.StartDate && a.ProviderId == providerId &&
+                    a.DeleteDate == null)
+                .AnyAsync();
+        });
+        
+        return conflicts;
     }
 
     private AppointmentDTO BuildEncryptedDTO(AppointmentModel model, TimeZoneCodeEnum timeZoneCode)
@@ -229,104 +294,42 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
     private AppointmentDTO TurnAppointmentTimeToUTC(AppointmentDTO dto, TimeZoneCodeEnum timeZoneCode)
     {
-        // Convert enum (e.g., America_New_York) to time zone ID string (e.g., "America/New York")
         var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
+        
+        var timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timeZoneCodeStr);
 
-        // Try to find the time zone info (consider catching errors for robustness)
-        TimeZoneInfo timeZoneInfo;
-        try
-        {
-            timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timeZoneCodeStr);
-        }
-        catch (TimeZoneNotFoundException ex)
-        {
-            logger.LogError($"{ex}");
-            throw;
-        }
-
-        logger.LogInfo($"Time zone ID: {timeZoneCodeStr}");
-        logger.LogInfo($"Time zone display name: {timeZoneInfo.DisplayName}");
-        logger.LogInfo($"Original StartDate (local naive): {dto.StartDate}");
-        logger.LogInfo($"Original EndDate (local naive): {dto.EndDate}");
-
-        // Ensure the input DateTimes are treated as 'unspecified' local times
         var localStart = DateTime.SpecifyKind(dto.StartDate, DateTimeKind.Unspecified);
         var localEnd = DateTime.SpecifyKind(dto.EndDate, DateTimeKind.Unspecified);
 
-        // Convert to UTC using the time zone (this will handle DST properly)
         dto.StartDate = TimeZoneInfo.ConvertTimeToUtc(localStart, timeZoneInfo);
         dto.EndDate = TimeZoneInfo.ConvertTimeToUtc(localEnd, timeZoneInfo);
-
-        logger.LogInfo($"Converted StartDate (UTC): {dto.StartDate}");
-        logger.LogInfo($"Converted EndDate (UTC): {dto.EndDate}");
 
         return dto;
     }
 
     private AppointmentDTO TurnAppointmentTimeToLocal(AppointmentDTO dto, TimeZoneCodeEnum timeZoneCode)
     {
-        // Convert enum (e.g., America_New_York) to time zone ID string (e.g., "America/New York")
         var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
 
-        // Try to find the time zone info (consider catching errors for robustness)
-        TimeZoneInfo timeZoneInfo;
-        try
-        {
-            timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timeZoneCodeStr);
-        }
-        catch (TimeZoneNotFoundException ex)
-        {
-            logger.LogError($"Failed to find time zone: {ex}");
-            throw;
-        }
+        var timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timeZoneCodeStr);
 
-        logger.LogInfo($"Time zone ID: {timeZoneCodeStr}");
-        logger.LogInfo($"Time zone display name: {timeZoneInfo.DisplayName}");
-        logger.LogInfo($"Original StartDate (UTC): {dto.StartDate}");
-        logger.LogInfo($"Original EndDate (UTC): {dto.EndDate}");
-
-        // Ensure the input DateTimes are treated as UTC
         var utcStart = DateTime.SpecifyKind(dto.StartDate, DateTimeKind.Utc);
         var utcEnd = DateTime.SpecifyKind(dto.EndDate, DateTimeKind.Utc);
 
-        // Convert from UTC to the user's local time zone (handles DST)
         dto.StartDate = TimeZoneInfo.ConvertTimeFromUtc(utcStart, timeZoneInfo);
         dto.EndDate = TimeZoneInfo.ConvertTimeFromUtc(utcEnd, timeZoneInfo);
 
-        logger.LogInfo($"Converted StartDate (local): {dto.StartDate}");
-        logger.LogInfo($"Converted EndDate (local): {dto.EndDate}");
-
         return dto;
     }
-
-    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
+    
+    private DateTime ConvertUtcToLocal(DateTime utcDateTime, TimeZoneCodeEnum timeZoneCode)
     {
-        var stopwatch = Stopwatch.StartNew();
-        const int maxRetries = 3;
-        var retryDelay = TimeSpan.FromSeconds(2);
-        var attempt = 0;
+        var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
+        var timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById(timeZoneCodeStr);
 
-        for (attempt = 1; attempt <= maxRetries; attempt++)
-            try
-            {
-                await action();
-                return;
-            }
-            catch (Exception ex)
-            {
-                if (attempt == maxRetries)
-                {
-                    logger.LogError(ex.ToString());
-                    throw;
-                }
+        var utc = DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc);
+        var localTime = TimeZoneInfo.ConvertTimeFromUtc(utc, timeZoneInfo);
 
-                await Task.Delay(retryDelay);
-            }
-            finally
-            {
-                stopwatch.Stop();
-                logger.LogInfo(
-                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
-            }
+        return localTime;
     }
 }

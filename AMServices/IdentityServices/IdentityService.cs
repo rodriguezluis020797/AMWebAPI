@@ -51,7 +51,7 @@ public class IdentityService(
         var refreshTokenModel = CreateRefreshTokenModel(provider.ProviderId, IdentityTool.GenerateRefreshToken(),
             fingerprintDTO);
 
-        await ExecuteWithRetryAsync(async () =>
+        await coreData.ExecuteWithRetryAsync(async () =>
         {
             await coreData.Sessions.AddAsync(session);
             await coreData.SaveChangesAsync();
@@ -105,7 +105,7 @@ public class IdentityService(
         {
             var currentPassword = new PasswordModel();
 
-            await ExecuteWithRetryAsync(async () =>
+            await coreData.ExecuteWithRetryAsync(async () =>
             {
                 currentPassword = await identityData.Passwords
                     .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
@@ -121,7 +121,7 @@ public class IdentityService(
 
         var recentPasswords = new List<PasswordModel>();
 
-        await ExecuteWithRetryAsync(async () =>
+        await coreData.ExecuteWithRetryAsync(async () =>
         {
             recentPasswords = await identityData.Passwords
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
@@ -142,7 +142,7 @@ public class IdentityService(
             "Your password was recently changed. If you did not request this change, please contact support.",
             DateTime.MinValue);
 
-        await ExecuteWithRetryAsync(async () =>
+        await coreData.ExecuteWithRetryAsync(async () =>
         {
             await identityData.Passwords
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
@@ -166,7 +166,7 @@ public class IdentityService(
         var request = new ResetPasswordRequestModel();
         var recentPasswords = new List<PasswordModel>();
 
-        await ExecuteWithRetryAsync(async () =>
+        await coreData.ExecuteWithRetryAsync(async () =>
         {
             request = await coreData.ResetPasswordRequests
                 .Where(x => x.QueryGuid.Equals(guid) && x.DeleteDate == null)
@@ -197,7 +197,7 @@ public class IdentityService(
             "Your password was recently changed. If you did not request this change, please contact support.",
             DateTime.MinValue);
 
-        await ExecuteWithRetryAsync(async () =>
+        await coreData.ExecuteWithRetryAsync(async () =>
         {
             await identityData.Passwords
                 .Where(x => x.ProviderId == request.ProviderId && x.DeleteDate == null)
@@ -268,7 +268,7 @@ public class IdentityService(
         var response = new BaseDTO();
         var provider = new ProviderModel();
 
-        await ExecuteWithRetryAsync(async () =>
+        await coreData.ExecuteWithRetryAsync(async () =>
         {
             provider = await coreData.Providers
                 .AsNoTracking()
@@ -284,7 +284,7 @@ public class IdentityService(
                       $"Otherwise, please follow this link to reset your password:\n" +
                       $"{config["Environment:AngularURI"]}/reset-password?guid={guid}";
 
-        await ExecuteWithRetryAsync(async () =>
+        await coreData.ExecuteWithRetryAsync(async () =>
         {
             using var trans = await coreData.Database.BeginTransactionAsync();
 
@@ -302,37 +302,6 @@ public class IdentityService(
         });
 
         return response;
-    }
-
-    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
-    {
-        var stopwatch = Stopwatch.StartNew();
-        const int maxRetries = 3;
-        var retryDelay = TimeSpan.FromSeconds(2);
-        var attempt = 0;
-
-        for (attempt = 1; attempt <= maxRetries; attempt++)
-            try
-            {
-                await action();
-                return;
-            }
-            catch (Exception ex)
-            {
-                if (attempt == maxRetries)
-                {
-                    logger.LogError(ex.ToString());
-                    throw;
-                }
-
-                await Task.Delay(retryDelay);
-            }
-            finally
-            {
-                stopwatch.Stop();
-                logger.LogInfo(
-                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
-            }
     }
 
     private string GenerateJwt(long providerId, long sessionId)

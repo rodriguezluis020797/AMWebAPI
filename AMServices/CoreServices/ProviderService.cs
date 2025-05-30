@@ -42,7 +42,7 @@ public class ProviderService(
             return response;
         }
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             if (await db.Providers.AnyAsync(x => x.EMail.Equals(dto.EMail)))
                 response.ErrorMessage = "Provider with given e-mail already exists.\nPlease wait to be given access.";
@@ -54,7 +54,7 @@ public class ProviderService(
             dto.AddressLine1, dto.AddressLine2, dto.City, dto.ZipCode, dto.CountryCode, dto.StateCode,
             dto.TimeZoneCode, dto.BusinessName);
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             using var trans = await db.Database.BeginTransactionAsync();
             await db.Providers.AddAsync(provider);
@@ -87,7 +87,7 @@ public class ProviderService(
         var service = new SessionService();
         var url = string.Empty;
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             provider = await db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
                        ?? throw new ArgumentException(nameof(providerId));
@@ -122,7 +122,7 @@ public class ProviderService(
         var response = new ProviderDTO();
         var existingProviderExists = false;
         var existingeMailRequestExists = false;
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             existingProviderExists = await db.Providers
                 .Where(x => x.EMail == dto.EMail)
@@ -150,7 +150,7 @@ public class ProviderService(
 
         var communication = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             using var trans = await db.Database.BeginTransactionAsync();
 
@@ -182,7 +182,7 @@ public class ProviderService(
 
         var provider = new ProviderModel();
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == providerId)
                        ?? throw new ArgumentException(nameof(providerId));
@@ -205,7 +205,7 @@ public class ProviderService(
             }
         };
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             await customerService.UpdateAsync(provider.PayEngineId, options);
             await db.SaveChangesAsync();
@@ -220,7 +220,7 @@ public class ProviderService(
         {
             var request = new VerifyProviderEMailRequestModel();
 
-            await ExecuteWithRetryAsync(async () =>
+            await db.ExecuteWithRetryAsync(async () =>
             {
                 request = await db.VerifyProviderEMailRequests
                     .FirstOrDefaultAsync(x => x.QueryGuid == guid && x.DeleteDate == null);
@@ -234,7 +234,7 @@ public class ProviderService(
 
             var provider = new ProviderModel();
 
-            await ExecuteWithRetryAsync(async () =>
+            await db.ExecuteWithRetryAsync(async () =>
             {
                 provider = await db.Providers
                     .FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId);
@@ -245,7 +245,7 @@ public class ProviderService(
 
             var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
-            await ExecuteWithRetryAsync(async () =>
+            await db.ExecuteWithRetryAsync(async () =>
             {
                 using var trans = await db.Database
                     .BeginTransactionAsync();
@@ -268,7 +268,7 @@ public class ProviderService(
         {
             var request = new UpdateProviderEMailRequestModel();
 
-            await ExecuteWithRetryAsync(async () =>
+            await db.ExecuteWithRetryAsync(async () =>
             {
                 request = await db.UpdateProviderEMailRequests
                     .FirstOrDefaultAsync(x => x.QueryGuid == guid && x.DeleteDate == null);
@@ -282,7 +282,7 @@ public class ProviderService(
 
             var provider = new ProviderModel();
 
-            await ExecuteWithRetryAsync(async () =>
+            await db.ExecuteWithRetryAsync(async () =>
             {
                 provider = await db.Providers.FirstOrDefaultAsync(x => x.ProviderId == request.ProviderId)
                            ?? throw new Exception(nameof(request.ProviderId));
@@ -290,7 +290,7 @@ public class ProviderService(
 
             var oldEmail = provider.EMail;
 
-            await ExecuteWithRetryAsync(async () =>
+            await db.ExecuteWithRetryAsync(async () =>
             {
                 using var trans = await db.Database.BeginTransactionAsync();
                 
@@ -317,7 +317,7 @@ public class ProviderService(
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             var provider = await db.Providers
                 .Where(x => x.ProviderId == providerId)
@@ -340,7 +340,7 @@ public class ProviderService(
         .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
     ProviderModel provider = null!;
-    await ExecuteWithRetryAsync(async () =>
+    await db.ExecuteWithRetryAsync(async () =>
     {
         provider = await db.Providers
             .Where(x => x.ProviderId == providerId)
@@ -356,7 +356,7 @@ public class ProviderService(
 
     if (utcNow < provider.NextBillingDate)
     {
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             provider.SubscriptionToBeCancelled = false;
             await db.SaveChangesAsync();
@@ -385,7 +385,7 @@ public class ProviderService(
         }
     };
 
-    await ExecuteWithRetryAsync(async () =>
+    await db.ExecuteWithRetryAsync(async () =>
     {
         var capturedPayment = await providerBillingService.CapturePayment(provider.PayEngineId, invoiceItems);
 
@@ -405,34 +405,4 @@ public class ProviderService(
     return response;
 }
     
-    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
-    {
-        var stopwatch = Stopwatch.StartNew();
-        const int maxRetries = 3;
-        var retryDelay = TimeSpan.FromSeconds(2);
-        var attempt = 0;
-
-        for (attempt = 1; attempt <= maxRetries; attempt++)
-            try
-            {
-                await action();
-                return;
-            }
-            catch (Exception ex)
-            {
-                if (attempt == maxRetries)
-                {
-                    logger.LogError(ex.ToString());
-                    throw;
-                }
-
-                await Task.Delay(retryDelay);
-            }
-            finally
-            {
-                stopwatch.Stop();
-                logger.LogInfo(
-                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
-            }
-    }
 }

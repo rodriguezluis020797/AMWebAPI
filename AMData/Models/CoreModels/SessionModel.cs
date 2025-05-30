@@ -6,6 +6,7 @@ namespace AMData.Models.CoreModels;
 [Table("Session")]
 public class SessionModel
 {
+    public SessionModel(){}
     public SessionModel(long providerId)
     {
         ProviderId = providerId;

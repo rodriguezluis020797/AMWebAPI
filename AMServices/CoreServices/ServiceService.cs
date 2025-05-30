@@ -15,6 +15,7 @@ public interface IServiceService
 {
     Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt);
     Task<List<ServiceDTO>> GetServicesAsync(string jwt);
+    Task<ServiceDTO> GetServicePrice(ServiceDTO dto, string jwt);
     Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt);
     Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt);
 }
@@ -37,7 +38,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
             dto.Price
         );
 
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             await db.Services.AddAsync(serviceModel);
             await db.SaveChangesAsync();
@@ -45,15 +46,14 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
 
         return dto;
     }
-
-    // ──────────────────────── Read ────────────────────────
+    
     public async Task<List<ServiceDTO>> GetServicesAsync(string jwt)
     {
         var providerId = IdentityTool
             .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var services = new List<ServiceModel>();
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             services = await db.Services
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
@@ -75,6 +75,25 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         return serviceDTOs;
     }
 
+    public async Task<ServiceDTO> GetServicePrice(ServiceDTO dto, string jwt)
+    {
+        var providerId = IdentityTool
+            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+
+        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
+        var serviceId = long.Parse(decryptedId);
+
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            dto.Price = await db.Services
+                .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
+                .Select(x => x.Price)
+                .FirstOrDefaultAsync();
+        });
+        
+        return dto;
+    }
+
     public async Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt)
     {
         dto.Validate();
@@ -87,7 +106,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         var serviceId = long.Parse(decryptedId);
 
         var serviceModel = new ServiceModel();
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             serviceModel = await db.Services
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
@@ -112,7 +131,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         var serviceId = long.Parse(decryptedId);
         
         var serviceModel = new ServiceModel();
-        await ExecuteWithRetryAsync(async () =>
+        await db.ExecuteWithRetryAsync(async () =>
         {
             serviceModel = await db.Services
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
@@ -125,36 +144,5 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         });
 
         return dto;
-    }
-
-    private async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
-    {
-        var stopwatch = Stopwatch.StartNew();
-        const int maxRetries = 3;
-        var retryDelay = TimeSpan.FromSeconds(2);
-        var attempt = 0;
-
-        for (attempt = 1; attempt <= maxRetries; attempt++)
-            try
-            {
-                await action();
-                return;
-            }
-            catch (Exception ex)
-            {
-                if (attempt == maxRetries)
-                {
-                    logger.LogError(ex.ToString());
-                    throw;
-                }
-
-                await Task.Delay(retryDelay);
-            }
-            finally
-            {
-                stopwatch.Stop();
-                logger.LogInfo(
-                    $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
-            }
     }
 }
