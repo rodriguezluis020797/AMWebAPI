@@ -17,6 +17,8 @@ public interface IClientService
     Task<ClientDTO> UpdateClient(ClientDTO client, string jwt);
     Task<ClientNoteDTO> CreateClientNote(ClientNoteDTO dto);
     Task<List<ClientNoteDTO>> GetClientNotes(ClientDTO dto, string jwt);
+    Task<BaseDTO> UpdateClientNote(ClientNoteDTO dto);
+    Task<BaseDTO> DeleteClientNote(ClientNoteDTO dto);
 }
 
 public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration config) : IClientService
@@ -207,6 +209,47 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
             response.Add(clientNoteDto);
         }
 
+        return response;
+    }
+
+    public async Task<BaseDTO> UpdateClientNote(ClientNoteDTO dto)
+    {
+        var response = new BaseDTO();
+        dto.Validate();
+        if (!string.IsNullOrEmpty(dto.ErrorMessage)) return response;
+
+        CryptographyTool.Decrypt(dto.ClientNoteId, out var decryptedId);
+        CryptographyTool.Encrypt(dto.Note, out var encryptedNote);
+
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            await db.ClientNotes
+                .Where(x => x.ClientNoteId == long.Parse(decryptedId) && x.DeleteDate == null)
+                .ExecuteUpdateAsync(upd =>
+                    upd.SetProperty(x => x.Note, encryptedNote)
+                        .SetProperty(x => x.UpdateDate, DateTime.UtcNow));;
+
+            await db.SaveChangesAsync();
+        });
+        
+        return response;
+    }
+
+    public async Task<BaseDTO> DeleteClientNote(ClientNoteDTO dto)
+    {
+        var response = new BaseDTO();
+
+        CryptographyTool.Decrypt(dto.ClientNoteId, out var decryptedId);
+
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            await db.ClientNotes
+                .Where(x => x.ClientNoteId == long.Parse(decryptedId) && x.DeleteDate == null)
+                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));;
+
+            await db.SaveChangesAsync();
+        });
+        
         return response;
     }
 
