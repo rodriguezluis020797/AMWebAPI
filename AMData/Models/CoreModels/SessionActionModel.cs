@@ -6,7 +6,10 @@ namespace AMData.Models.CoreModels;
 [Table("SessionAction")]
 public class SessionActionModel
 {
-    public SessionActionModel(){}
+    public SessionActionModel()
+    {
+    }
+
     public SessionActionModel(SessionActionEnum sessionAction)
     {
         SessionAction = sessionAction;

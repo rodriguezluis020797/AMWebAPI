@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -28,7 +26,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         if (!string.IsNullOrWhiteSpace(dto.ErrorMessage)) return dto;
 
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var serviceModel = new ServiceModel(
             providerId,
@@ -46,11 +44,11 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
 
         return dto;
     }
-    
+
     public async Task<List<ServiceDTO>> GetServicesAsync(string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var services = new List<ServiceModel>();
         await db.ExecuteWithRetryAsync(async () =>
@@ -78,7 +76,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
     public async Task<ServiceDTO> GetServicePrice(ServiceDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
@@ -90,7 +88,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
                 .Select(x => x.Price)
                 .FirstOrDefaultAsync();
         });
-        
+
         return dto;
     }
 
@@ -100,7 +98,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         if (!string.IsNullOrWhiteSpace(dto.ErrorMessage)) return dto;
 
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
@@ -111,9 +109,9 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
             serviceModel = await db.Services
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
                 .FirstOrDefaultAsync();
-            
+
             serviceModel.UpdateRecordFromDTO(dto);
-            
+
             db.Update(serviceModel);
             await db.SaveChangesAsync();
         });
@@ -121,24 +119,24 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         return dto;
     }
 
-    
+
     public async Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
-        
+
         var serviceModel = new ServiceModel();
         await db.ExecuteWithRetryAsync(async () =>
         {
             serviceModel = await db.Services
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
                 .FirstOrDefaultAsync();
-            
+
             serviceModel.DeleteDate = DateTime.UtcNow;
-            
+
             db.Update(serviceModel);
             await db.SaveChangesAsync();
         });

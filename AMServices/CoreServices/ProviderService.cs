@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using AMData.Models;
+﻿using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.PaymentEngineServices;
@@ -79,7 +77,7 @@ public class ProviderService(
     public async Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
         var provider = new ProviderModel(long.MinValue, string.Empty, string.Empty, string.Empty, string.Empty,
             string.Empty, string.Empty, string.Empty, string.Empty, CountryCodeEnum.Select, StateCodeEnum.Select,
             TimeZoneCodeEnum.Select, string.Empty);
@@ -139,7 +137,7 @@ public class ProviderService(
         }
 
 
-        var providerId = IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        var providerId = IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
         var message =
@@ -178,7 +176,7 @@ public class ProviderService(
         }
 
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var provider = new ProviderModel();
 
@@ -249,17 +247,17 @@ public class ProviderService(
             {
                 using var trans = await db.Database
                     .BeginTransactionAsync();
-                
+
                 db.ProviderCommunications.Add(comm);
-                
+
                 provider.UpdateDate = DateTime.UtcNow;
                 request.DeleteDate = DateTime.UtcNow;
                 provider.EMailVerified = true;
-                
+
                 provider.PayEngineId = await providerBillingService
                     .CreateProviderBillingProfileAsync(provider.EMail, provider.BusinessName, provider.FirstName,
                         provider.MiddleName, provider.LastName);
-                
+
                 await db.SaveChangesAsync();
                 await trans.CommitAsync();
             });
@@ -293,11 +291,11 @@ public class ProviderService(
             await db.ExecuteWithRetryAsync(async () =>
             {
                 using var trans = await db.Database.BeginTransactionAsync();
-                
+
                 provider.UpdateDate = DateTime.UtcNow;
                 provider.EMail = request.NewEMail;
                 request.DeleteDate = DateTime.UtcNow;
-                
+
                 await providerBillingService.UpdateProviderBillingProfile(provider);
 
                 await db.SaveChangesAsync();
@@ -315,7 +313,7 @@ public class ProviderService(
     {
         var response = new BaseDTO();
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -333,76 +331,76 @@ public class ProviderService(
     }
 
     public async Task<BaseDTO> ReActivateSubscriptionAsync(string jwt)
-{
-    var response = new BaseDTO();
-
-    var providerId = IdentityTool
-        .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-
-    ProviderModel provider = null!;
-    await db.ExecuteWithRetryAsync(async () =>
     {
-        provider = await db.Providers
-            .Where(x => x.ProviderId == providerId)
-            .Include(x => x.Clients)
-            .Include(x => x.Communications)
-            .FirstOrDefaultAsync();
-    });
+        var response = new BaseDTO();
 
-    var utcNow = DateTime.UtcNow;
-    var customerTimeZoneName = provider.TimeZoneCode.ToString().Replace("_", " ");
-    var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(customerTimeZoneName);
-    var customerLocalNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
+        var providerId = IdentityTool
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-    if (utcNow < provider.NextBillingDate)
-    {
+        ProviderModel provider = null!;
         await db.ExecuteWithRetryAsync(async () =>
         {
-            provider.SubscriptionToBeCancelled = false;
-            await db.SaveChangesAsync();
+            provider = await db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .Include(x => x.Clients)
+                .Include(x => x.Communications)
+                .FirstOrDefaultAsync();
         });
-        return response;
-    }
 
-    if (!await providerBillingService.IsThereADefaultPaymentMetho(provider.PayEngineId))
-    {
-        response.ErrorMessage = "No Default Payment Method Found";
-        return response;
-    }
+        var utcNow = DateTime.UtcNow;
+        var customerTimeZoneName = provider.TimeZoneCode.ToString().Replace("_", " ");
+        var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(customerTimeZoneName);
+        var customerLocalNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
 
-    var invoiceItems = new List<InvoiceItemCreateOptions>()
-    {
-        new()
+        if (utcNow < provider.NextBillingDate)
         {
-            Customer = provider.PayEngineId,
-            Currency = "usd",
-            Description = $"AM Tech Base Services.",
-            Pricing = new InvoiceItemPricingOptions()
+            await db.ExecuteWithRetryAsync(async () =>
             {
-                Price = "price_1RTrwgPmRnZS7JiXUMMF3sQZ"
-            },
-            Quantity = 1
+                provider.SubscriptionToBeCancelled = false;
+                await db.SaveChangesAsync();
+            });
+            return response;
         }
-    };
 
-    await db.ExecuteWithRetryAsync(async () =>
-    {
-        var capturedPayment = await providerBillingService.CapturePayment(provider.PayEngineId, invoiceItems);
-
-        if (!capturedPayment.Status.Equals("paid"))
+        if (!await providerBillingService.IsThereADefaultPaymentMetho(provider.PayEngineId))
         {
-            response.ErrorMessage = "Unable to process transaction.\nPlease review your payment method.";
+            response.ErrorMessage = "No Default Payment Method Found";
+            return response;
         }
-        else
-        {
-            provider.SubscriptionToBeCancelled = false;
-            provider.UpdateDate = DateTime.UtcNow;
-            provider.NextBillingDate = new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
-            await db.SaveChangesAsync();
-        }
-    });
 
-    return response;
-}
-    
+        var invoiceItems = new List<InvoiceItemCreateOptions>
+        {
+            new()
+            {
+                Customer = provider.PayEngineId,
+                Currency = "usd",
+                Description = "AM Tech Base Services.",
+                Pricing = new InvoiceItemPricingOptions
+                {
+                    Price = "price_1RTrwgPmRnZS7JiXUMMF3sQZ"
+                },
+                Quantity = 1
+            }
+        };
+
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            var capturedPayment = await providerBillingService.CapturePayment(provider.PayEngineId, invoiceItems);
+
+            if (!capturedPayment.Status.Equals("paid"))
+            {
+                response.ErrorMessage = "Unable to process transaction.\nPlease review your payment method.";
+            }
+            else
+            {
+                provider.SubscriptionToBeCancelled = false;
+                provider.UpdateDate = DateTime.UtcNow;
+                provider.NextBillingDate =
+                    new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
+                await db.SaveChangesAsync();
+            }
+        });
+
+        return response;
+    }
 }

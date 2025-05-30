@@ -1,40 +1,38 @@
-﻿using System;
+﻿#nullable disable
+
 using Microsoft.EntityFrameworkCore.Migrations;
 
-#nullable disable
+namespace AMWebAPI.CoreMigrations;
 
-namespace AMWebAPI.CoreMigrations
+/// <inheritdoc />
+public partial class Modifiedprovidermodel : Migration
 {
     /// <inheritdoc />
-    public partial class Modifiedprovidermodel : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "EndOfService",
-                table: "Provider");
+        migrationBuilder.DropColumn(
+            "EndOfService",
+            "Provider");
 
-            migrationBuilder.AddColumn<bool>(
-                name: "SubscriptionToBeCancelled",
-                table: "Provider",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
-        }
+        migrationBuilder.AddColumn<bool>(
+            "SubscriptionToBeCancelled",
+            "Provider",
+            "bit",
+            nullable: false,
+            defaultValue: false);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "SubscriptionToBeCancelled",
-                table: "Provider");
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            "SubscriptionToBeCancelled",
+            "Provider");
 
-            migrationBuilder.AddColumn<DateTime>(
-                name: "EndOfService",
-                table: "Provider",
-                type: "datetime2",
-                nullable: true);
-        }
+        migrationBuilder.AddColumn<DateTime>(
+            "EndOfService",
+            "Provider",
+            "datetime2",
+            nullable: true);
     }
 }

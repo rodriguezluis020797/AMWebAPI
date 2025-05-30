@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -17,6 +15,8 @@ public interface IClientService
     Task<ClientDTO> DeleteClient(ClientDTO dto, string jwt);
     Task<List<ClientDTO>> GetClients(string jwt);
     Task<ClientDTO> UpdateClient(ClientDTO client, string jwt);
+    Task<ClientNoteDTO> CreateClientNote(ClientNoteDTO dto);
+    Task<List<ClientNoteDTO>> GetClientNotes(ClientDTO dto, string jwt);
 }
 
 public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration config) : IClientService
@@ -35,7 +35,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         }
 
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
 
@@ -85,7 +85,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         }
 
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
@@ -136,12 +136,88 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         return response;
     }
 
+    public async Task<ClientNoteDTO> CreateClientNote(ClientNoteDTO dto)
+    {
+        var response = new ClientNoteDTO();
+        
+        dto.Validate();
+        if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
+        
+        CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
+        CryptographyTool.Encrypt(dto.Note, out var encryptedNote);
+
+        var clientNoteModel = new ClientNoteModel(long.Parse(decryptedId),  encryptedNote);
+
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            await db.ClientNotes.AddAsync(clientNoteModel);
+            await db.SaveChangesAsync();
+        });
+        
+        return response;
+    }
+
+    public async Task<List<ClientNoteDTO>> GetClientNotes(ClientDTO dto, string jwt)
+    {
+        var response = new List<ClientNoteDTO>();
+        
+        var providerId = IdentityTool
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
+        CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
+        
+        var clientNoteModels = new List<ClientNoteModel>();
+        var timeZoneCode = TimeZoneCodeEnum.Select;
+
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            clientNoteModels = await db.ClientNotes
+                .Where(x => x.ClientId == long.Parse(decryptedId) && x.DeleteDate == null)
+                .OrderByDescending(x => x.CreateDate)
+                .AsNoTracking()
+                .ToListAsync();
+            
+            timeZoneCode = await db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .Select(x => x.TimeZoneCode)
+                .FirstOrDefaultAsync();
+        });
+
+        var clientNoteDto = new ClientNoteDTO();
+        var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
+        foreach (var clientNote in clientNoteModels)
+        {
+            clientNote.CreateDate = DateTimeTool.ConvertUtcToLocal(clientNote.CreateDate, timeZoneCodeStr);
+
+            if (clientNote.UpdateDate.HasValue)
+            {
+                clientNote.UpdateDate = DateTimeTool.ConvertUtcToLocal(clientNote.UpdateDate.Value, timeZoneCodeStr);
+            }
+                
+            clientNoteDto = new ClientNoteDTO();
+            clientNoteDto.CreateRecordFromModel(clientNote);
+            
+            CryptographyTool.Encrypt(clientNoteDto.ClientNoteId, out var encryptedClientNoteId);
+            clientNoteDto.ClientNoteId = encryptedClientNoteId;
+            
+            CryptographyTool.Encrypt(clientNoteDto.ClientId, out var encryptedClientId);
+            clientNoteDto.ClientId = encryptedClientId;
+            
+            CryptographyTool.Decrypt(clientNoteDto.Note, out var decryptedNote);
+            clientNoteDto.Note = decryptedNote;
+            
+            response.Add(clientNoteDto);
+        }
+
+        return response;
+    }
+
     public async Task<ClientDTO> DeleteClient(ClientDTO dto, string jwt)
     {
         var response = new ClientDTO();
 
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
@@ -162,7 +238,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
     public async Task<List<ClientDTO>> GetClients(string jwt)
     {
         var providerId = IdentityTool
-            .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var clients = new List<ClientModel>();
 

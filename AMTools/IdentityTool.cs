@@ -9,7 +9,7 @@ namespace AMTools;
 
 public static class IdentityTool
 {
-    public static long GetJwtClaimById(string jwToken, string key, string claimValue)
+    public static long GetProviderIdFromJwt(string jwToken, string key, string claimValue)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
         var validationParameters = new TokenValidationParameters

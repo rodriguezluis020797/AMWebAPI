@@ -15,8 +15,10 @@
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.3"/>
+        <PackageReference Include="NodaTime" Version="3.2.2" />
         <PackageReference Include="Stripe.net" Version="48.1.0"/>
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2"/>
+        <PackageReference Include="TimeZoneConverter" Version="7.0.0" />
     </ItemGroup>
 
     <ItemGroup>

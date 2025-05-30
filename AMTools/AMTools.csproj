@@ -20,8 +20,10 @@
 
     <ItemGroup>
         <PackageReference Include="NLog" Version="5.4.0"/>
+        <PackageReference Include="NodaTime" Version="3.2.2" />
         <PackageReference Include="Stripe.net" Version="48.1.0"/>
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.7.0"/>
+        <PackageReference Include="TimeZoneConverter" Version="7.0.0" />
     </ItemGroup>
 
 </Project>

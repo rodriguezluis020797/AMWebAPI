@@ -12,7 +12,7 @@ public class AMCoreData : DbContext
     private readonly IConfiguration _configuration;
     private readonly IAMLogger _logger;
 
-    public AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration,  IAMLogger logger)
+    public AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration, IAMLogger logger)
         : base(options)
     {
         _configuration = configuration;
@@ -22,6 +22,7 @@ public class AMCoreData : DbContext
     public DbSet<AppointmentModel> Appointments { get; init; }
     public DbSet<ClientModel> Clients { get; init; }
     public DbSet<ClientCommunicationModel> ClientCommunications { get; init; }
+    public DbSet<ClientNoteModel> ClientNotes { get; init; }
     public DbSet<ProviderBillingModel> ProviderBillings { get; init; }
     public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
     public DbSet<ProviderModel> Providers { get; init; }
@@ -54,11 +55,18 @@ public class AMCoreData : DbContext
         ConfigureProviderBillingModel(modelBuilder);
         ConffigureVerifyProviderEMailRequestModel(modelBuilder);
         ConffigureResetPasswordRequestsModel(modelBuilder);
+        ConffigureClientNotesModel(modelBuilder);
 
         foreach (var foreignKey in modelBuilder.Model
                      .GetEntityTypes()
                      .SelectMany(e => e.GetForeignKeys()))
             foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
+    }
+
+    private void ConffigureClientNotesModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ClientNoteModel>()
+            .HasKey(x => x.ClientNoteId);
     }
 
     private void ConffigureResetPasswordRequestsModel(ModelBuilder modelBuilder)
@@ -102,6 +110,11 @@ public class AMCoreData : DbContext
 
         modelBuilder.Entity<ClientModel>()
             .HasMany(u => u.Communications)
+            .WithOne(c => c.Client)
+            .HasForeignKey(c => c.ClientId);
+
+        modelBuilder.Entity<ClientModel>()
+            .HasMany(u => u.ClientNotes)
             .WithOne(c => c.Client)
             .HasForeignKey(c => c.ClientId);
     }
@@ -219,7 +232,8 @@ public class AMCoreData : DbContext
             { "Session", "SessionId" },
             { "UpdateProviderEMailRequest", "UpdateProviderEMailRequestId" },
             { "ClientCommunication", "ClientCommunicationId" },
-            { "VerifyProviderEMailRequest", "VerifyProviderEMailRequestId" }
+            { "VerifyProviderEMailRequest", "VerifyProviderEMailRequestId" },
+            { "ClientNote", "ClientNoteId" }
         };
 
         try
@@ -242,7 +256,7 @@ public class AMCoreData : DbContext
             Console.WriteLine(e.ToString());
         }
     }
-    
+
     public async Task ExecuteWithRetryAsync(Func<Task> action, [CallerMemberName] string callerName = "")
     {
         var stopwatch = Stopwatch.StartNew();

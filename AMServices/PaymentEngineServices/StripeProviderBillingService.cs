@@ -2,7 +2,6 @@ using AMData.Models.CoreModels;
 using AMTools.Tools;
 using Microsoft.Extensions.Configuration;
 using Stripe;
-using Stripe.Checkout;
 
 namespace AMServices.PaymentEngineServices;
 
@@ -17,7 +16,7 @@ public interface IProviderBillingService
     Task<bool> IsThereADefaultPaymentMetho(string paymentEngineId);
 }
 
-public class StripeProviderBillingService (IAMLogger logger, IConfiguration config) : IProviderBillingService
+public class StripeProviderBillingService(IAMLogger logger, IConfiguration config) : IProviderBillingService
 {
     public async Task<string> CreateProviderBillingProfileAsync(string eMail, string businessName, string firstName,
         string? middleName, string lastName)
@@ -53,7 +52,7 @@ public class StripeProviderBillingService (IAMLogger logger, IConfiguration conf
                 State = provider.StateCode.ToString().Split('_')[1]
             }
         };
-        
+
         await customerService
             .UpdateAsync(provider.PayEngineId, options);
     }
@@ -62,7 +61,7 @@ public class StripeProviderBillingService (IAMLogger logger, IConfiguration conf
     {
         var invoiceService = new InvoiceService();
         var invoiceItemService = new InvoiceItemService();
-        
+
         var invoice = await invoiceService.CreateAsync(new InvoiceCreateOptions
         {
             Customer = customerPayEngineId,
@@ -73,7 +72,7 @@ public class StripeProviderBillingService (IAMLogger logger, IConfiguration conf
                 PaymentMethodTypes = new List<string> { "card" }
             }
         });
-        
+
         foreach (var item in invoiceItems)
         {
             item.Invoice = invoice.Id;

@@ -7,7 +7,10 @@ namespace AMData.Models.CoreModels;
 [Table("Service")]
 public class ServiceModel
 {
-    public ServiceModel(){}
+    public ServiceModel()
+    {
+    }
+
     public ServiceModel(long providerId, string name, string description, bool allowClientScheduling, decimal price)
     {
         ProviderId = providerId;

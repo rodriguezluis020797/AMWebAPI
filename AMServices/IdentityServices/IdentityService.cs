@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-using System.Runtime.CompilerServices;
-using System.Security.Claims;
+﻿using System.Security.Claims;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
@@ -95,11 +93,11 @@ public class IdentityService(
 
         var providerId =
             IdentityTool
-                .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+                .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
         var sessionId =
             IdentityTool
-                .GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
+                .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
 
         if (!dto.IsTempPassword)
         {
@@ -230,9 +228,9 @@ public class IdentityService(
     public async Task<string> RefreshJWT(string jwt, string refreshToken, FingerprintDTO fingerprintDTO)
     {
         var providerId =
-            IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
         var sessionId =
-            IdentityTool.GetJwtClaimById(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
+            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
 
         var refreshTokenModel = await identityData.RefreshTokens
                                     .Where(x => x.ProviderId == providerId && x.DeleteDate == null &&

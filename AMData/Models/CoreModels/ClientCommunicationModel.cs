@@ -6,7 +6,10 @@ namespace AMData.Models.CoreModels;
 [Table("ClientCommunication")]
 public class ClientCommunicationModel
 {
-    public ClientCommunicationModel(){}
+    public ClientCommunicationModel()
+    {
+    }
+
     public ClientCommunicationModel(long clientId, string message, DateTime sendAfter)
     {
         ClientCommunicationId = 0;

@@ -23,12 +23,12 @@ public class AppointmentDTO : BaseDTO
         ClientId = cIdOutput;
         ErrorMessage = string.IsNullOrEmpty(ClientId) ? "Please select client." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
-        
+
         ValidationTool.ValidateName(ServiceId, out var sIdOutput);
         ServiceId = sIdOutput;
         ErrorMessage = string.IsNullOrEmpty(ServiceId) ? "Please select service." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
-        
+
         //Make sure time is already converted to utc.
         if (StartDate < DateTime.UtcNow)
         {

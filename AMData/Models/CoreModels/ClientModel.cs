@@ -6,7 +6,9 @@ namespace AMData.Models.CoreModels;
 [Table("Client")]
 public class ClientModel
 {
-    public ClientModel(){}
+    public ClientModel()
+    {
+    }
 
     public ClientModel(long providerId, string firstName, string? middleName, string lastName, string phoneNumber)
     {
@@ -32,6 +34,7 @@ public class ClientModel
     [NotMapped] public virtual ProviderModel Provider { get; set; }
     [NotMapped] public virtual List<AppointmentModel> Appointments { get; set; }
     [NotMapped] public virtual List<ClientCommunicationModel> Communications { get; set; }
+    [NotMapped] public virtual List<ClientNoteModel> ClientNotes { get; set; }
 
     public void UpdateRecordFromDTO(ClientDTO dto)
     {

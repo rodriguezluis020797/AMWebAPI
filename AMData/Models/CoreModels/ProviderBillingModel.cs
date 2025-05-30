@@ -6,7 +6,10 @@ namespace AMData.Models.CoreModels;
 [Table("ProviderBilling")]
 public class ProviderBillingModel
 {
-    public ProviderBillingModel(){}
+    public ProviderBillingModel()
+    {
+    }
+
     public ProviderBillingModel(long providerId, long amount, long discountAmount, DateTime dueDate)
     {
         ProviderBillingId = 0;
@@ -19,6 +22,7 @@ public class ProviderBillingModel
         UpdateDate = null;
         DeleteDate = null;
     }
+
     [Key] public long ProviderBillingId { get; set; }
     [ForeignKey("Provider")] public long ProviderId { get; set; }
     public long Amount { get; set; }

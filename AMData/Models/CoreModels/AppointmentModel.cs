@@ -7,8 +7,12 @@ namespace AMData.Models.CoreModels;
 [Table("Appointment")]
 public class AppointmentModel
 {
-    public AppointmentModel(){}
-    public AppointmentModel(long serviceId, long clientId, long providerId, AppointmentStatusEnum status, DateTime startDate, DateTime endDate,
+    public AppointmentModel()
+    {
+    }
+
+    public AppointmentModel(long serviceId, long clientId, long providerId, AppointmentStatusEnum status,
+        DateTime startDate, DateTime endDate,
         string notes, decimal price)
     {
         AppointmentId = 0;
@@ -24,7 +28,8 @@ public class AppointmentModel
         UpdateDate = null;
         DeleteDate = null;
     }
-    [Key] public long AppointmentId { get; set; } = 0;
+
+    [Key] public long AppointmentId { get; set; }
     [ForeignKey("Service")] public long ServiceId { get; set; }
     [ForeignKey("Client")] public long ClientId { get; set; }
     [ForeignKey("Provider")] public long ProviderId { get; set; }
@@ -39,7 +44,7 @@ public class AppointmentModel
     [NotMapped] public virtual ClientModel Client { get; set; }
     [NotMapped] public virtual ProviderModel Provider { get; set; }
     [NotMapped] public virtual ServiceModel Service { get; set; }
-    
+
     public void UpdateRecrodFromDto(AppointmentDTO dto)
     {
         StartDate = dto.StartDate;

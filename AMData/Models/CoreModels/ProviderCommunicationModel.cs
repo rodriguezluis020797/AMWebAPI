@@ -6,7 +6,10 @@ namespace AMData.Models.CoreModels;
 [Table("ProviderCommunication")]
 public class ProviderCommunicationModel
 {
-    public ProviderCommunicationModel(){}
+    public ProviderCommunicationModel()
+    {
+    }
+
     public ProviderCommunicationModel(long providerId, string message, DateTime sendAfter)
     {
         ProviderId = providerId;

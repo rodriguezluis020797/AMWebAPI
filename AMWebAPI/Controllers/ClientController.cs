@@ -110,4 +110,52 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
             logger.LogInfo("-");
         }
     }
+
+    [HttpPost]
+    public async Task<IActionResult> GetClientNotes([FromBody] ClientDTO dto)
+    {
+        logger.LogInfo("+");
+        var response = new List<ClientNoteDTO>();
+        try
+        {
+            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+
+            response = await clientService.GetClientNotes(dto, jwt);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+    
+    [HttpPost]
+    public async Task<IActionResult> CreateClientNote([FromBody] ClientNoteDTO dto)
+    {
+        logger.LogInfo("+");
+        var response = new ClientNoteDTO();
+        try
+        {
+            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+
+            response = await clientService.CreateClientNote(dto);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception e)
+        {
+            logger.LogError(e.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
 }
