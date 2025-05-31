@@ -7,7 +7,7 @@ public class ServiceDTO : BaseDTO
 {
     public string ServiceId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
+    public string? Description { get; set; } = string.Empty;
     public decimal Price { get; set; } = decimal.Zero;
     public bool AllowClientScheduling { get; set; }
 
@@ -24,7 +24,8 @@ public class ServiceDTO : BaseDTO
         ValidationTool.ValidateName(Description, out var dOutput);
         Description = !string.IsNullOrEmpty(dOutput) ? dOutput : null;
 
-        if (Price <= decimal.Zero) ErrorMessage = "Price must be greater than zero";
+        if (Price < decimal.Zero)
+            ErrorMessage = "Price cannot be negative";
     }
 
     public void AssignFromModel(ServiceModel model)

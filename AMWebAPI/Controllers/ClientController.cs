@@ -142,8 +142,6 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
         var response = new ClientNoteDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-
             response = await clientService.CreateClientNote(dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
@@ -166,8 +164,6 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
         var response = new BaseDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-
             response = await clientService.UpdateClientNote(dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
@@ -190,8 +186,6 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
         var response = new BaseDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-
             response = await clientService.DeleteClientNote(dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);

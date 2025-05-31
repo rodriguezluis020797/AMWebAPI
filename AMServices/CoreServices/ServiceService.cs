@@ -28,6 +28,22 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
+        var servicenNameExists = false;
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            if (await db.Services.Where(x => x.ProviderId == providerId && x.Name.ToLower() == dto.Name.ToLower())
+                    .AnyAsync())
+            {
+                servicenNameExists = true;
+            }
+        });
+
+        if (servicenNameExists)
+        {
+            dto.ErrorMessage = "A service with that name already exists.";
+            return dto;
+        }
+
         var serviceModel = new ServiceModel(
             providerId,
             dto.Name,

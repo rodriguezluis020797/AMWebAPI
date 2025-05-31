@@ -9,7 +9,7 @@ public class ClientNoteDTO : BaseDTO
     public string ClientNoteId { get; set; }
     public string ClientId { get; set; }
     public string CreateDate { get; set; }
-    public string UpdateDate { get; set; }
+    public string? UpdateDate { get; set; }
     public string Note { get; set; }
 
     public void Validate()
