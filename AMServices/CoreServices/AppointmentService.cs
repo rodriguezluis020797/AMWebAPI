@@ -40,6 +40,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                 .Where(x => x.ProviderId == providerId && x.DeleteDate == null)
                 .Include(x => x.Service)
                 .Include(x => x.Client)
+                .OrderByDescending(x => x.StartDate)
                 .ToListAsync();
         });
 
@@ -71,7 +72,8 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                     x.ProviderId == providerId &&
                     x.DeleteDate == null &&
                     x.StartDate >= now &&
-                    x.StartDate <= next24Hours)
+                    x.StartDate <= next24Hours &&
+                    x.Status == AppointmentStatusEnum.Scheduled)
                 .Include(x => x.Service)
                 .Include(x => x.Client)
                 .OrderBy(x => x.StartDate)
@@ -88,63 +90,150 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
 
-        var message =
-            $"Your appointment date and/or times with #Name# have changed. " +
-            $"New start: {dto.StartDate:M/d/yyyy h:mm tt} - " +
-            $"New end: {dto.EndDate:M/d/yyyy h:mm tt}.";
+        var message = string.Empty;
 
         var appointmentModel = new AppointmentModel();
+        var clientComm = new ClientCommunicationModel();
 
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
-
+        dto.AppointmentId = decryptedAppointmentId;
+        
+        
+        var providerTimeZone = TimeZoneCodeEnum.Select;
         await db.ExecuteWithRetryAsync(async () =>
         {
-            appointmentModel = await db.Appointments
-                .Where(x =>
-                    x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId))
-                .Include(x => x.Provider)
+            providerTimeZone = await db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .Select(x => x.TimeZoneCode)
                 .FirstOrDefaultAsync();
         });
 
-        dto.Validate();
+        var timeZoneCodeStr = providerTimeZone.ToString().Replace("_", " ");
 
-        if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
+        switch (dto.Status)
+        {
+            case AppointmentStatusEnum.Cancelled:
+                message = "Your appointment with #Name# on #Date# at #Time# has been canceled.";
 
-        var timeZoneCodeStr = appointmentModel.Provider.TimeZoneCode.ToString().Replace("_", " ");
-        dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
-        dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate, timeZoneCodeStr);
+                await db.ExecuteWithRetryAsync(async () =>
+                {
+                    appointmentModel = await db.Appointments
+                        .Where(x => x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId))
+                        .Include(x => x.Provider)
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync();
 
-        var timesChanged = appointmentModel.StartDate != dto.StartDate || appointmentModel.EndDate != dto.EndDate;
+                    var startTimeLocal = DateTimeTool.ConvertUtcToLocal(appointmentModel.StartDate, timeZoneCodeStr);
+                    
+                    message = message
+                        .Replace("#Name#", $"{appointmentModel.Provider.BusinessName}")
+                        .Replace("#Date#", $"{startTimeLocal:M/d/yyyy}")
+                        .Replace("#Time#", $"{startTimeLocal:h:mm tt}");
 
-        if (timesChanged)
-            if (await ConflictsWithExistingAppointment(dto, providerId))
-            {
-                dto.ErrorMessage = "This conflicts with a different appointment.";
+                    clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
+
+                    using var transaction = await db.Database.BeginTransactionAsync();
+                    
+                    await db.Appointments
+                        .Where(x => x.AppointmentId == long.Parse(decryptedAppointmentId))
+                        .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.Status,AppointmentStatusEnum.Cancelled));
+                    
+                    await db.ClientCommunications.AddAsync(clientComm);
+
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
                 return dto;
+            case AppointmentStatusEnum.Completed:
+                var linkUrl = string.Empty;
+                await db.ExecuteWithRetryAsync(async () =>
+                {
+                    message = $"You recently had an appointment with #Name#. " +
+                              $"Please follow this link to give an honest review." +
+                              $"{config["Environment:AngularURI"]!}#Link#";
+                    
+                    appointmentModel = await db.Appointments
+                        .Where(x => x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId))
+                        .Include(x => x.Provider)
+                        .AsNoTracking()
+                        .FirstOrDefaultAsync();
+                    
+                    /*
+                     * TODO:
+                     * Create Customer Review Table
+                     */
+                    message = message
+                        .Replace("#Name#", $"{appointmentModel.Provider.BusinessName}")
+                        .Replace("#Link#", $"{linkUrl}");
+                    
+                    clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.UtcNow.AddHours(1));
+                    
+                    using var transaction = await db.Database.BeginTransactionAsync();
+                    
+                    await db.Appointments
+                        .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.Status, AppointmentStatusEnum.Completed));
+                    await db.ClientCommunications.AddAsync(clientComm);
+                    
+                    await db.SaveChangesAsync();
+                    
+                    await transaction.CommitAsync();
+                });
+            
+                return dto;
+            case AppointmentStatusEnum.Scheduled:
+            {
+                dto.Validate();
+                if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
+        
+                await db.ExecuteWithRetryAsync(async () =>
+                {
+                    appointmentModel = await db.Appointments
+                        .Where(x =>
+                            x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId))
+                        .FirstOrDefaultAsync();
+                });
+                
+                dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
+                dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate, timeZoneCodeStr);
+        
+                var timesChanged = appointmentModel.StartDate != dto.StartDate || appointmentModel.EndDate != dto.EndDate;
+
+                if (timesChanged)
+                {
+                    if (await ConflictsWithExistingAppointment(dto, providerId))
+                    {
+                        dto.ErrorMessage = "This conflicts with a different appointment.";
+                        return dto;
+                    }
+                    
+                    message = $"Your appointment date and/or times with #Name# have changed. " +
+                              $"New start: {DateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr):M/d/yyyy h:mm tt} - " +
+                              $"New end: {DateTimeTool.ConvertUtcToLocal(dto.EndDate, timeZoneCodeStr):M/d/yyyy h:mm tt}.";
+                    clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
+                }
+
+                appointmentModel.UpdateRecrodFromDto(dto);
+
+                await db.ExecuteWithRetryAsync(async () =>
+                {
+                    using var transaction = await db.Database.BeginTransactionAsync();
+
+                    if (timesChanged)
+                    {
+                        db.ClientCommunications.Add(clientComm);
+                    }
+                    
+                    db.Appointments.Update(appointmentModel);
+
+                    await db.SaveChangesAsync();
+                    await transaction.CommitAsync();
+                });
+
+                return new AppointmentDTO();
             }
-
-        appointmentModel.UpdateRecrodFromDto(dto);
-
-        var clientComm = new ClientCommunicationModel();
-
-        if (timesChanged)
-        {
-            message = message.Replace("#Name#", $"{appointmentModel.Provider.BusinessName}");
-            clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
+            default:
+               throw new ApplicationException(nameof(AppointmentStatusEnum));
         }
-
-        await db.ExecuteWithRetryAsync(async () =>
-        {
-            using var transaction = await db.Database.BeginTransactionAsync();
-
-            if (timesChanged) db.ClientCommunications.Add(clientComm);
-            db.Appointments.Update(appointmentModel);
-
-            await db.SaveChangesAsync();
-            await transaction.CommitAsync();
-        });
-
-        return new AppointmentDTO();
     }
 
     public async Task<AppointmentDTO> DeleteAppointmentAsync(AppointmentDTO dto, string jwt)
@@ -155,8 +244,6 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
 
         var appointmentModel = new AppointmentModel();
-        var clientComm = new ClientCommunicationModel();
-        var message = "Your appointment with #Name# on #Date# at #Time# has been canceled.";
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -165,17 +252,10 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                 .Include(x => x.Provider)
                 .FirstOrDefaultAsync();
 
-            message = message
-                .Replace("#Name#", $"{appointmentModel.Provider.BusinessName}")
-                .Replace("#Date#", $"{appointmentModel.StartDate:M/d/yyyy}")
-                .Replace("#Time#", $"{appointmentModel.StartDate:h:mm tt}");
-
-            clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
-
             using var transaction = await db.Database.BeginTransactionAsync();
+            
             appointmentModel.DeleteDate = DateTime.UtcNow;
             db.Appointments.Update(appointmentModel);
-            db.ClientCommunications.Add(clientComm);
 
             await db.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -205,11 +285,11 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
             $"You have a new appointment with #Name# from " +
             $"{dto.StartDate:M/d/yyyy h:mm tt} to {dto.EndDate:M/d/yyyy h:mm tt} {Regex.Replace(providerTimeZone.ToString(), "[^A-Z]", "")}.";
 
-        dto.Validate();
-        if (!string.IsNullOrEmpty(dto.ErrorMessage)) return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
-
         dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
         dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate, timeZoneCodeStr);
+        dto.Validate();
+        
+        if (!string.IsNullOrEmpty(dto.ErrorMessage)) return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
 
         if (await ConflictsWithExistingAppointment(dto, providerId))
             return new AppointmentDTO { ErrorMessage = "This conflicts with a different appointment." };
@@ -261,13 +341,39 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
     private async Task<bool> ConflictsWithExistingAppointment(AppointmentDTO dto, long providerId)
     {
         var conflicts = false;
-        await db.ExecuteWithRetryAsync(async () =>
+
+        try
         {
-            conflicts = await db.Appointments.Where(a =>
-                    a.StartDate < dto.EndDate && a.EndDate > dto.StartDate && a.ProviderId == providerId &&
-                    a.DeleteDate == null)
-                .AnyAsync();
-        });
+            await db.ExecuteWithRetryAsync(async () =>
+            {
+                if (string.IsNullOrEmpty(dto.AppointmentId))
+                {
+                    conflicts = await db.Appointments.Where(a =>
+                            a.StartDate < dto.EndDate &&
+                            a.EndDate > dto.StartDate &&
+                            a.ProviderId == providerId &&
+                             a.Status == AppointmentStatusEnum.Scheduled)
+                        .AnyAsync();
+                }
+                else
+                {
+                    var currentId = long.Parse(dto.AppointmentId);
+                    conflicts = await db.Appointments.Where(a =>
+                            a.StartDate < dto.EndDate &&
+                            a.EndDate > dto.StartDate &&
+                            a.ProviderId == providerId &&
+                            a.DeleteDate == null &&
+                            a.Status == AppointmentStatusEnum.Scheduled &&
+                            a.AppointmentId != currentId)
+                        .AnyAsync();
+                }
+            });
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e.ToString());
+            throw;
+        }
 
         return conflicts;
     }

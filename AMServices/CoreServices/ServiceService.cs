@@ -31,7 +31,8 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         var servicenNameExists = false;
         await db.ExecuteWithRetryAsync(async () =>
         {
-            if (await db.Services.Where(x => x.ProviderId == providerId && x.Name.ToLower() == dto.Name.ToLower())
+            if (await db.Services
+                    .Where(x => x.ProviderId == providerId && x.Name.ToLower().Equals(dto.Name.ToLower()) && x.DeleteDate == null)
                     .AnyAsync())
             {
                 servicenNameExists = true;
@@ -143,19 +144,30 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
-
-        var serviceModel = new ServiceModel();
+        var appoitnmentExists = false;
+        
         await db.ExecuteWithRetryAsync(async () =>
         {
-            serviceModel = await db.Services
+            appoitnmentExists = await db.Appointments
+                .Where(x => x.ServiceId == serviceId && x.DeleteDate == null && x.Status != AppointmentStatusEnum.Scheduled)
+                .AnyAsync();
+
+            if (appoitnmentExists)
+            {
+                return;
+            }
+
+            await db.Services
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
-                .FirstOrDefaultAsync();
+                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-            serviceModel.DeleteDate = DateTime.UtcNow;
-
-            db.Update(serviceModel);
             await db.SaveChangesAsync();
         });
+
+        if (appoitnmentExists)
+        {
+            dto.ErrorMessage = "This service cannot be deleted because it is currently in use.";
+        }
 
         return dto;
     }

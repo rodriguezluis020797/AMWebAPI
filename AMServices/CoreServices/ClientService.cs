@@ -262,16 +262,25 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
-        var clientModel =
-            await db.Clients.FirstOrDefaultAsync(x =>
-                x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId);
-        clientModel.DeleteDate = DateTime.UtcNow;
+        var appointmentExists = false;
 
         await db.ExecuteWithRetryAsync(async () =>
         {
-            db.Clients.Update(clientModel);
+            appointmentExists = await db.Appointments
+                .Where(x => x.ClientId == long.Parse(decryptedId) && x.DeleteDate == null && x.Status != AppointmentStatusEnum.Scheduled)
+                .AnyAsync();
+            
+            await db.Clients.Where(x =>
+                x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId)
+                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+            
             await db.SaveChangesAsync();
         });
+        
+        if (appointmentExists)
+        {
+            response.ErrorMessage = "This client has appointment(s) scheduled. Please cancel the appointment(s) first.";
+        }
 
         return response;
     }
