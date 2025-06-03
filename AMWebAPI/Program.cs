@@ -108,6 +108,7 @@ public class Program
         builder.Services.AddScoped<IProviderService, ProviderService>();
         builder.Services.AddScoped<IServiceService, ServiceService>();
         builder.Services.AddScoped<IClientService, ClientService>();
+        builder.Services.AddScoped<IMetricsService, MetricsService>();
 
         // Data Services
         builder.Services.AddDbContext<AMCoreData>(options =>

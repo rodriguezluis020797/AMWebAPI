@@ -1,0 +1,43 @@
+using AMData.Models.CoreModels;
+
+namespace AMData.Models.DTOModels;
+
+public class MetricsDTO : BaseDTO
+{
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
+    public List<AppointmentDTO> Appointments { get; set; }
+    public Dictionary<string, string> ServiceNames { get; set; }
+    public decimal TotalEarnings { get; set; }
+    public decimal TotalScheduledProjectedEarnings { get; set; }
+    public decimal TotalCompletedEarnings { get; set; }
+
+    public void Validate()
+    {
+        if (EndDate < StartDate) ErrorMessage = "End date must be after start date.";
+    }
+
+    public void CreateNewRecordFromModel(AppointmentModel appointment)
+    {
+        var dto = new AppointmentDTO();
+        dto.CreateNewRecordFromModel(appointment);
+
+        Appointments.Add(dto);
+        if (!ServiceNames.ContainsKey(appointment.Service.ServiceId.ToString()))
+            ServiceNames.Add(appointment.Service.ServiceId.ToString(), appointment.Service.Name);
+    }
+
+    public void CalculateMetrics()
+    {
+        foreach (var appointment in Appointments)
+        {
+            if (appointment.Status == AppointmentStatusEnum.Completed)
+                TotalCompletedEarnings += appointment.Price;
+            else if (appointment.Status == AppointmentStatusEnum.Scheduled)
+                TotalScheduledProjectedEarnings += appointment.Price;
+            else
+                throw new Exception(nameof(appointment.Status));
+            TotalEarnings += appointment.Price;
+        }
+    }
+}

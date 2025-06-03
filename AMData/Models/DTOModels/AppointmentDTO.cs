@@ -35,13 +35,13 @@ public class AppointmentDTO : BaseDTO
             ErrorMessage = "Start date must be in the future.";
             return;
         }
+        */
 
         if (EndDate < StartDate)
         {
             ErrorMessage = "End date must be after start date.";
             return;
         }
-        */
 
         Notes = Notes.Trim();
 
