@@ -156,7 +156,7 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
             logger.LogInfo("-");
         }
     }
-    
+
     [HttpPost]
     public async Task<IActionResult> UpdateClientNote([FromBody] ClientNoteDTO dto)
     {
@@ -178,7 +178,7 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
             logger.LogInfo("-");
         }
     }
-    
+
     [HttpPost]
     public async Task<IActionResult> DeleteClientNote([FromBody] ClientNoteDTO dto)
     {

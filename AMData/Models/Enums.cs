@@ -141,7 +141,7 @@ public enum StateCodeEnum
 
 public enum AppointmentStatusEnum
 {
-    Unknown = 0,
+    Select = 0,
     Scheduled,
     Completed,
     Cancelled

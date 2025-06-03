@@ -36,6 +36,7 @@ public class AppointmentModel
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public string? Notes { get; set; }
+    public bool OverridePrice { get; set; }
     public decimal Price { get; set; }
     public AppointmentStatusEnum Status { get; set; }
     public DateTime CreateDate { get; set; }
@@ -53,5 +54,6 @@ public class AppointmentModel
         Status = dto.Status;
         UpdateDate = DateTime.UtcNow;
         Price = dto.Price;
+        OverridePrice = dto.OverridePrice;
     }
 }

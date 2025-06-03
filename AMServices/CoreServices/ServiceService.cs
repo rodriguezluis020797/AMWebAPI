@@ -32,11 +32,10 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         await db.ExecuteWithRetryAsync(async () =>
         {
             if (await db.Services
-                    .Where(x => x.ProviderId == providerId && x.Name.ToLower().Equals(dto.Name.ToLower()) && x.DeleteDate == null)
+                    .Where(x => x.ProviderId == providerId && x.Name.ToLower().Equals(dto.Name.ToLower()) &&
+                                x.DeleteDate == null)
                     .AnyAsync())
-            {
                 servicenNameExists = true;
-            }
         });
 
         if (servicenNameExists)
@@ -145,17 +144,15 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
         var appoitnmentExists = false;
-        
+
         await db.ExecuteWithRetryAsync(async () =>
         {
             appoitnmentExists = await db.Appointments
-                .Where(x => x.ServiceId == serviceId && x.DeleteDate == null && x.Status != AppointmentStatusEnum.Scheduled)
+                .Where(x => x.ServiceId == serviceId && x.DeleteDate == null &&
+                            x.Status != AppointmentStatusEnum.Scheduled)
                 .AnyAsync();
 
-            if (appoitnmentExists)
-            {
-                return;
-            }
+            if (appoitnmentExists) return;
 
             await db.Services
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
@@ -164,10 +161,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
             await db.SaveChangesAsync();
         });
 
-        if (appoitnmentExists)
-        {
-            dto.ErrorMessage = "This service cannot be deleted because it is currently in use.";
-        }
+        if (appoitnmentExists) dto.ErrorMessage = "This service cannot be deleted because it is currently in use.";
 
         return dto;
     }

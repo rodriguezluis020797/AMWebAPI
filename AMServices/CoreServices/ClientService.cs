@@ -227,11 +227,12 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                 .Where(x => x.ClientNoteId == long.Parse(decryptedId) && x.DeleteDate == null)
                 .ExecuteUpdateAsync(upd =>
                     upd.SetProperty(x => x.Note, encryptedNote)
-                        .SetProperty(x => x.UpdateDate, DateTime.UtcNow));;
+                        .SetProperty(x => x.UpdateDate, DateTime.UtcNow));
+            ;
 
             await db.SaveChangesAsync();
         });
-        
+
         return response;
     }
 
@@ -245,11 +246,12 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         {
             await db.ClientNotes
                 .Where(x => x.ClientNoteId == long.Parse(decryptedId) && x.DeleteDate == null)
-                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));;
+                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+            ;
 
             await db.SaveChangesAsync();
         });
-        
+
         return response;
     }
 
@@ -267,20 +269,19 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         await db.ExecuteWithRetryAsync(async () =>
         {
             appointmentExists = await db.Appointments
-                .Where(x => x.ClientId == long.Parse(decryptedId) && x.DeleteDate == null && x.Status != AppointmentStatusEnum.Scheduled)
+                .Where(x => x.ClientId == long.Parse(decryptedId) && x.DeleteDate == null &&
+                            x.Status != AppointmentStatusEnum.Scheduled)
                 .AnyAsync();
-            
+
             await db.Clients.Where(x =>
-                x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId)
+                    x.ClientId == long.Parse(decryptedId) && x.ProviderId == providerId)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
-            
+
             await db.SaveChangesAsync();
         });
-        
+
         if (appointmentExists)
-        {
             response.ErrorMessage = "This client has appointment(s) scheduled. Please cancel the appointment(s) first.";
-        }
 
         return response;
     }
