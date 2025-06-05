@@ -19,16 +19,9 @@ public class MetricsController(IAMLogger logger, IMetricsService metricsService)
         try
         {
             var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            
-            Console.Clear();
-            Console.WriteLine("incoming " + nameof(dto.StartDate) + ": " + dto.StartDate);
-            Console.WriteLine("incoming" + nameof(dto.EndDate) + ": " + dto.EndDate);
-            
+
             var result = await metricsService.GetMetricsByRange(jwToken, dto);
-            
-            Console.WriteLine();
-            Console.WriteLine("outgoing " + nameof(result.StartDate) + ": " + result.StartDate);
-            Console.WriteLine("outgoing " + nameof(result.EndDate) + ": " + result.EndDate);
+
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
         catch (Exception ex)

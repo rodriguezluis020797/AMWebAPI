@@ -43,14 +43,14 @@ public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration conf
                     .FirstOrDefaultAsync();
             });
 
-        
+
             timeZoneString = providerTimeZone.ToString().Replace("_", " ");
 
             dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneString);
             dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate.AddDays(1), timeZoneString);
-        
+
             dto.Validate();
-        
+
             if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
 
             await db.ExecuteWithRetryAsync(async () =>
@@ -91,14 +91,15 @@ public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration conf
                 CryptographyTool.Encrypt(appDto.ServiceId, out var encryptedText);
                 appDto.ServiceId = encryptedText;
             }
-        
-            foreach(var ServiceName in result.ServiceNames)
+
+            foreach (var ServiceName in result.ServiceNames)
             {
                 CryptographyTool.Encrypt(ServiceName.Value, out var encryptedText);
-                result.ServiceNames[ServiceName.Key] =  encryptedText;
+                result.ServiceNames[ServiceName.Key] = encryptedText;
             }
+
             result.CalculateMetrics();
-        
+
             return result;
         }
         catch (Exception ex)
