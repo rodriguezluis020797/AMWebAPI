@@ -56,6 +56,7 @@ public class AMCoreData : DbContext
         ConffigureVerifyProviderEMailRequestModel(modelBuilder);
         ConffigureResetPasswordRequestsModel(modelBuilder);
         ConffigureClientNotesModel(modelBuilder);
+        ConfigureProviderAlertModel(modelBuilder);
 
         foreach (var foreignKey in modelBuilder.Model
                      .GetEntityTypes()
@@ -63,6 +64,11 @@ public class AMCoreData : DbContext
             foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
     }
 
+    private void ConfigureProviderAlertModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProviderAlertModel>()
+            .HasKey(x => x.ProviderAlertId);
+    }
     private void ConffigureClientNotesModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ClientNoteModel>()
@@ -178,6 +184,11 @@ public class AMCoreData : DbContext
             .HasMany(x => x.ResetPasswordRequests)
             .WithOne(x => x.Provider)
             .HasForeignKey(x => x.ProviderId);
+        
+        modelBuilder.Entity<ProviderModel>()
+            .HasMany(x => x.Alerts)
+            .WithOne(x => x.Provider)
+            .HasForeignKey(x => x.ProviderId);
     }
 
     private static void ConfigureServiceModel(ModelBuilder modelBuilder)
@@ -233,7 +244,8 @@ public class AMCoreData : DbContext
             { "UpdateProviderEMailRequest", "UpdateProviderEMailRequestId" },
             { "ClientCommunication", "ClientCommunicationId" },
             { "VerifyProviderEMailRequest", "VerifyProviderEMailRequestId" },
-            { "ClientNote", "ClientNoteId" }
+            { "ClientNote", "ClientNoteId" },
+            { "ProviderAlert", "ProviderAlertId" }
         };
 
         try
