@@ -6,8 +6,8 @@ public class MetricsDTO : BaseDTO
 {
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
-    public List<AppointmentDTO> Appointments { get; set; }
-    public Dictionary<string, string> ServiceNames { get; set; }
+    public List<AppointmentDTO> Appointments { get; set; } = new List<AppointmentDTO>();
+    public Dictionary<string, string> ServiceNames { get; set; } = new Dictionary<string, string>();
     public decimal TotalEarnings { get; set; }
     public decimal TotalScheduledProjectedEarnings { get; set; }
     public decimal TotalCompletedEarnings { get; set; }
@@ -29,6 +29,9 @@ public class MetricsDTO : BaseDTO
 
     public void CalculateMetrics()
     {
+        TotalCompletedEarnings = 0;
+        TotalScheduledProjectedEarnings = 0;
+        TotalEarnings = 0;
         foreach (var appointment in Appointments)
         {
             if (appointment.Status == AppointmentStatusEnum.Completed)

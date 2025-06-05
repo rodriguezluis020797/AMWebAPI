@@ -355,7 +355,8 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                             a.StartDate < dto.EndDate &&
                             a.EndDate > dto.StartDate &&
                             a.ProviderId == providerId &&
-                            a.Status == AppointmentStatusEnum.Scheduled)
+                            a.Status == AppointmentStatusEnum.Scheduled &&
+                            a.DeleteDate == null)
                         .AnyAsync();
                 }
                 else
@@ -367,6 +368,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                             a.ProviderId == providerId &&
                             a.DeleteDate == null &&
                             a.Status == AppointmentStatusEnum.Scheduled &&
+                            a.DeleteDate == null &&
                             a.AppointmentId != currentId)
                         .AnyAsync();
                 }
