@@ -16,6 +16,7 @@ public interface IProviderService
 {
     Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
     Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl);
+    Task<List<ProviderAlertDTO>> GetProviderAlrtsAsync(string jwt);
     Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> VerifyEMailAsync(string guid, bool verifying);
@@ -113,6 +114,38 @@ public class ProviderService(
         var dto = new ProviderDTO();
         dto.CreateNewRecordFromModel(provider, url);
         return dto;
+    }
+
+    public async Task<List<ProviderAlertDTO>> GetProviderAlrtsAsync(string jwt)
+    {
+        var providerId = IdentityTool
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        var response = new List<ProviderAlertDTO>();
+        var alerts = new List<ProviderAlertModel>();
+
+        /*
+       await db.ExecuteWithRetryAsync(async () =>
+       {
+           alerts = await db.ProviderAlerts
+               .Where(x => x.ProviderId == providerId &&
+                           x.Acknowledged == false)
+               .ToListAsync();
+       });
+        */
+        
+        for (var i = 1; i < 11; i++)
+            alerts.Add(new ProviderAlertModel(providerId, $"Example alert {i}", DateTime.UtcNow));
+
+        foreach (var alert in alerts)
+        {
+            var dto = new ProviderAlertDTO();
+            dto.CreateRecordFromModel(alert);
+            CryptographyTool.Encrypt(dto.ProviderAlertId, out var encryptedText);
+            dto.ProviderAlertId = encryptedText;
+            response.Add(dto);
+        }
+
+        return response;
     }
 
     public async Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt)

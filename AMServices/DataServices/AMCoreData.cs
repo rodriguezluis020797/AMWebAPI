@@ -23,6 +23,8 @@ public class AMCoreData : DbContext
     public DbSet<ClientModel> Clients { get; init; }
     public DbSet<ClientCommunicationModel> ClientCommunications { get; init; }
     public DbSet<ClientNoteModel> ClientNotes { get; init; }
+    public DbSet<ProviderAlertModel> ProviderAlerts { get; init; }
+
     public DbSet<ProviderBillingModel> ProviderBillings { get; init; }
     public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
     public DbSet<ProviderModel> Providers { get; init; }
@@ -69,6 +71,7 @@ public class AMCoreData : DbContext
         modelBuilder.Entity<ProviderAlertModel>()
             .HasKey(x => x.ProviderAlertId);
     }
+
     private void ConffigureClientNotesModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ClientNoteModel>()
@@ -184,7 +187,7 @@ public class AMCoreData : DbContext
             .HasMany(x => x.ResetPasswordRequests)
             .WithOne(x => x.Provider)
             .HasForeignKey(x => x.ProviderId);
-        
+
         modelBuilder.Entity<ProviderModel>()
             .HasMany(x => x.Alerts)
             .WithOne(x => x.Provider)

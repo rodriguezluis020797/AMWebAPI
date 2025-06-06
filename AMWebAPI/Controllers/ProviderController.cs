@@ -58,6 +58,31 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         }
     }
 
+    [HttpGet]
+    public async Task<IActionResult> GetProviderAlerts()
+    {
+        logger.LogInfo("+");
+
+        try
+        {
+            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            if (string.IsNullOrWhiteSpace(jwToken))
+                throw new Exception("JWT token missing from cookies.");
+
+            var alerts = await providerService.GetProviderAlrtsAsync(jwToken);
+            return StatusCode((int)HttpStatusCodeEnum.Success, alerts);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+
     [HttpPost]
     public async Task<IActionResult> UpdateEMail([FromBody] ProviderDTO dto)
     {
