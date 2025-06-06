@@ -16,7 +16,8 @@ public interface IProviderService
 {
     Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
     Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl);
-    Task<List<ProviderAlertDTO>> GetProviderAlrtsAsync(string jwt);
+    Task<List<ProviderAlertDTO>> GetProviderAlertsAsync(string jwt);
+    Task<ProviderAlertDTO> AcknowledgeProviderAlertAsync(ProviderAlertDTO dto);
     Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> UpdateProviderAsync(ProviderDTO dto, string jwt);
     Task<BaseDTO> VerifyEMailAsync(string guid, bool verifying);
@@ -116,25 +117,22 @@ public class ProviderService(
         return dto;
     }
 
-    public async Task<List<ProviderAlertDTO>> GetProviderAlrtsAsync(string jwt)
+    public async Task<List<ProviderAlertDTO>> GetProviderAlertsAsync(string jwt)
     {
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
         var response = new List<ProviderAlertDTO>();
         var alerts = new List<ProviderAlertModel>();
 
-        /*
        await db.ExecuteWithRetryAsync(async () =>
        {
            alerts = await db.ProviderAlerts
                .Where(x => x.ProviderId == providerId &&
-                           x.Acknowledged == false)
+                           x.Acknowledged == false &&
+                           DateTime.UtcNow <= x.AlertAfterDate &&
+                           x.DeleteDate == null)
                .ToListAsync();
        });
-        */
-        
-        for (var i = 1; i < 11; i++)
-            alerts.Add(new ProviderAlertModel(providerId, $"Example alert {i}", DateTime.UtcNow));
 
         foreach (var alert in alerts)
         {
@@ -144,6 +142,23 @@ public class ProviderService(
             dto.ProviderAlertId = encryptedText;
             response.Add(dto);
         }
+
+        return response;
+    }
+
+    public async Task<ProviderAlertDTO> AcknowledgeProviderAlertAsync(ProviderAlertDTO dto)
+    {
+        var response = new ProviderAlertDTO();
+        CryptographyTool.Decrypt(dto.ProviderAlertId, out var decryptedText);
+
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            await db.ProviderAlerts
+                .Where(x => x.ProviderAlertId == long.Parse(decryptedText))
+                .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.Acknowledged, true));
+
+            await db.SaveChangesAsync();
+        });
 
         return response;
     }

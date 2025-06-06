@@ -69,8 +69,33 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
             if (string.IsNullOrWhiteSpace(jwToken))
                 throw new Exception("JWT token missing from cookies.");
 
-            var alerts = await providerService.GetProviderAlrtsAsync(jwToken);
-            return StatusCode((int)HttpStatusCodeEnum.Success, alerts);
+            var response = await providerService.GetProviderAlertsAsync(jwToken);
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> AcknowledgeProviderAlert([FromBody] ProviderAlertDTO dto)
+    {
+        logger.LogInfo("+");
+
+        try
+        {
+            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            if (string.IsNullOrWhiteSpace(jwToken))
+                throw new Exception("JWT token missing from cookies.");
+
+            var response = await providerService.AcknowledgeProviderAlertAsync(dto);
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
         {
