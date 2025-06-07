@@ -1,4 +1,5 @@
-﻿using AMData.Models;
+﻿using System.Text.Json;
+using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.PaymentEngineServices;
@@ -80,18 +81,19 @@ public class ProviderService(
     {
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        var provider = new ProviderModel(long.MinValue, string.Empty, string.Empty, string.Empty, string.Empty,
-            string.Empty, string.Empty, string.Empty, string.Empty, CountryCodeEnum.Select, StateCodeEnum.Select,
-            TimeZoneCodeEnum.Select, string.Empty);
+        var provider = new ProviderModel();
 
         var service = new SessionService();
         var url = string.Empty;
+        
 
         await db.ExecuteWithRetryAsync(async () =>
         {
-            provider = await db.Providers.FirstOrDefaultAsync(u => u.ProviderId == providerId)
+            provider = await db.Providers
+                           .Where(u => u.ProviderId == providerId)
+                           .FirstOrDefaultAsync()
                        ?? throw new ArgumentException(nameof(providerId));
-
+            
             if (generateUrl)
             {
                 var options = new SessionCreateOptions
@@ -107,9 +109,30 @@ public class ProviderService(
             if (provider.DeleteDate != null)
             {
                 provider.DeleteDate = null;
-                db.Providers.Update(provider);
-                await db.SaveChangesAsync();
             }
+            
+            if (provider.LastLogindate == null)
+            {
+                var timeZoneStr = provider.TimeZoneCode.ToString().Replace("_", " ");
+                
+                
+                provider.TrialEndDate = DateTime.UtcNow.AddMonths(1);
+                provider.NextBillingDate = provider.TrialEndDate.AddDays(1);
+                
+                var alert = new ProviderAlertModel(provider.ProviderId, $"Your free trial starts now. It will end on {DateTimeTool.ConvertUtcToLocal(provider.TrialEndDate, timeZoneStr): M/d/yyyy}", DateTime.UtcNow);
+                await db.ProviderAlerts.AddAsync(alert);
+                
+                alert = new ProviderAlertModel(provider.ProviderId, $"Next billing date: {DateTimeTool.ConvertUtcToLocal((DateTime)provider.NextBillingDate, timeZoneStr): M/d/yyyy}", DateTime.UtcNow);
+                await db.ProviderAlerts.AddAsync(alert);
+                
+                alert = new ProviderAlertModel(provider.ProviderId, $"Please add a payment method to continue using services after your trial period is over.\nProfile -> Payment & Invoices", DateTime.UtcNow);
+                await db.ProviderAlerts.AddAsync(alert);
+            }
+            
+            provider.LastLogindate = DateTime.UtcNow;
+            
+            
+            await db.SaveChangesAsync();
         });
 
         var dto = new ProviderDTO();
@@ -129,7 +152,7 @@ public class ProviderService(
            alerts = await db.ProviderAlerts
                .Where(x => x.ProviderId == providerId &&
                            x.Acknowledged == false &&
-                           DateTime.UtcNow <= x.AlertAfterDate &&
+                           DateTime.UtcNow >= x.AlertAfterDate &&
                            x.DeleteDate == null)
                .ToListAsync();
        });
