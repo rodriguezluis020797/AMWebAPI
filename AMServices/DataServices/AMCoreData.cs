@@ -28,6 +28,7 @@ public class AMCoreData : DbContext
     public DbSet<ProviderBillingModel> ProviderBillings { get; init; }
     public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
     public DbSet<ProviderModel> Providers { get; init; }
+    public DbSet<ProviderReviewModel> ProviderReviews { get; init; }
     public DbSet<ServiceModel> Services { get; init; }
     public DbSet<SessionActionModel> SessionActions { get; init; }
     public DbSet<SessionModel> Sessions { get; init; }
@@ -59,11 +60,22 @@ public class AMCoreData : DbContext
         ConffigureResetPasswordRequestsModel(modelBuilder);
         ConffigureClientNotesModel(modelBuilder);
         ConfigureProviderAlertModel(modelBuilder);
+        ConfigureProviderReviewModel(modelBuilder);
 
         foreach (var foreignKey in modelBuilder.Model
                      .GetEntityTypes()
                      .SelectMany(e => e.GetForeignKeys()))
             foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
+    }
+
+    private void ConfigureProviderReviewModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProviderReviewModel>()
+            .HasKey(x => x.ProviderReviewId);
+
+        modelBuilder.Entity<ProviderReviewModel>()
+            .HasIndex(x => x.GuidQuery)
+            .IsUnique();
     }
 
     private void ConfigureProviderAlertModel(ModelBuilder modelBuilder)
@@ -124,6 +136,11 @@ public class AMCoreData : DbContext
 
         modelBuilder.Entity<ClientModel>()
             .HasMany(u => u.ClientNotes)
+            .WithOne(c => c.Client)
+            .HasForeignKey(c => c.ClientId);
+
+        modelBuilder.Entity<ClientModel>()
+            .HasMany(u => u.Reviews)
             .WithOne(c => c.Client)
             .HasForeignKey(c => c.ClientId);
     }
@@ -192,6 +209,11 @@ public class AMCoreData : DbContext
             .HasMany(x => x.Alerts)
             .WithOne(x => x.Provider)
             .HasForeignKey(x => x.ProviderId);
+
+        modelBuilder.Entity<ProviderModel>()
+            .HasMany(x => x.Reviews)
+            .WithOne(x => x.Provider)
+            .HasForeignKey(x => x.ProviderId);
     }
 
     private static void ConfigureServiceModel(ModelBuilder modelBuilder)
@@ -248,7 +270,8 @@ public class AMCoreData : DbContext
             { "ClientCommunication", "ClientCommunicationId" },
             { "VerifyProviderEMailRequest", "VerifyProviderEMailRequestId" },
             { "ClientNote", "ClientNoteId" },
-            { "ProviderAlert", "ProviderAlertId" }
+            { "ProviderAlert", "ProviderAlertId" },
+            { "ProviderReview", "ProviderReviewId" }
         };
 
         try

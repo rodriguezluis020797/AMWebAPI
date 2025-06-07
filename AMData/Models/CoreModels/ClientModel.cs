@@ -35,6 +35,7 @@ public class ClientModel
     [NotMapped] public virtual List<AppointmentModel> Appointments { get; set; }
     [NotMapped] public virtual List<ClientCommunicationModel> Communications { get; set; }
     [NotMapped] public virtual List<ClientNoteModel> ClientNotes { get; set; }
+    [NotMapped] public virtual List<ProviderReviewModel> Reviews { get; set; }
 
     public void UpdateRecordFromDTO(ClientDTO dto)
     {

@@ -33,6 +33,50 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         }
     }
 
+    [HttpPost]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetProviderReviewForSubmission([FromBody] ProviderReviewDTO dto)
+    {
+        logger.LogInfo("+");
+        try
+        {
+            var result = await providerService.GetProviderReviewForSubmissionAsync(dto);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+
+    [HttpPost]
+    [AllowAnonymous]
+    public async Task<IActionResult> UpdateProviderReview([FromBody] ProviderReviewDTO dto)
+    {
+        logger.LogInfo("+");
+        try
+        {
+            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var result = await providerService.UpdateProviderReviewAsync(dto);
+            return StatusCode((int)HttpStatusCodeEnum.Success, result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetProvider([FromQuery] bool generateUrl)
     {

@@ -50,26 +50,18 @@ public class AppointmentDTO : BaseDTO
 
     public void CreateNewRecordFromModel(AppointmentModel model)
     {
-        try
-        {
-            AppointmentId = model.AppointmentId.ToString();
-            ServiceId = model.ServiceId.ToString();
-            ClientId = model.ClientId.ToString();
-            StartDate = model.StartDate;
-            EndDate = model.EndDate;
-            Notes = model.Notes ?? string.Empty;
-            Status = model.Status;
-            ServiceName = model.Service.Name;
-            Price = model.Price;
-            ClientName = string.IsNullOrEmpty(model.Client.MiddleName)
-                ? $"{model.Client.FirstName} {model.Client.LastName}"
-                : $"{model.Client.FirstName} {model.Client.MiddleName} {model.Client.LastName}";
-            OverridePrice = model.OverridePrice;
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine(ex.ToString());
-            throw;
-        }
+        AppointmentId = model.AppointmentId.ToString();
+        ServiceId = model.ServiceId.ToString();
+        ClientId = model.ClientId.ToString();
+        StartDate = model.StartDate;
+        EndDate = model.EndDate;
+        Notes = model.Notes ?? string.Empty;
+        Status = model.Status;
+        ServiceName = model.Service.Name;
+        Price = model.Price;
+        ClientName = string.IsNullOrEmpty(model.Client.MiddleName)
+            ? $"{model.Client.FirstName} {model.Client.LastName}"
+            : $"{model.Client.FirstName} {model.Client.MiddleName} {model.Client.LastName}";
+        OverridePrice = model.OverridePrice;
     }
 }

@@ -145,31 +145,31 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                 });
                 return dto;
             case AppointmentStatusEnum.Completed:
-                var linkUrl = string.Empty;
+
                 await db.ExecuteWithRetryAsync(async () =>
                 {
-                    message = $"You recently had an appointment with #Name#. " +
-                              $"Please follow this link to give an honest review." +
-                              $"{config["Environment:AngularURI"]!}#Link#";
-
                     appointmentModel = await db.Appointments
                         .Where(x => x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId))
                         .Include(x => x.Provider)
                         .AsNoTracking()
                         .FirstOrDefaultAsync();
 
-                    /*
-                     * TODO:
-                     * Create Customer Review Table
-                     */
+                    var providerReview =
+                        new ProviderReviewModel(appointmentModel.ProviderId, appointmentModel.ClientId);
+
+                    message = $"You recently had an appointment with #Name#. " +
+                              $"Please follow this link to give an honest review. " +
+                              $"{config["Environment:AngularURI"]!}/provider-review?guid={providerReview.GuidQuery}";
+
                     message = message
-                        .Replace("#Name#", $"{appointmentModel.Provider.BusinessName}")
-                        .Replace("#Link#", $"{linkUrl}");
+                        .Replace("#Name#", $"{appointmentModel.Provider.BusinessName}");
 
                     clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message,
                         DateTime.UtcNow.AddHours(1));
 
                     using var transaction = await db.Database.BeginTransactionAsync();
+
+                    await db.ProviderReviews.AddAsync(providerReview);
 
                     await db.Appointments
                         .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.Status, AppointmentStatusEnum.Completed));

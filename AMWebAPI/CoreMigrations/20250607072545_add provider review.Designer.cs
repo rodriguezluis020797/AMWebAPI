@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
-    partial class AMCoreDataModelSnapshot : ModelSnapshot
+    [Migration("20250607072545_add provider review")]
+    partial class addproviderreview
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -413,9 +416,6 @@ namespace AMWebAPI.CoreMigrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<long>("ProviderReviewId"));
 
-                    b.Property<long>("ClientId")
-                        .HasColumnType("bigint");
-
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("datetime2");
 
@@ -436,19 +436,14 @@ namespace AMWebAPI.CoreMigrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<bool>("Submitted")
-                        .HasColumnType("bit");
-
                     b.HasKey("ProviderReviewId");
-
-                    b.HasIndex("ClientId");
 
                     b.HasIndex("GuidQuery")
                         .IsUnique();
 
                     b.HasIndex("ProviderId");
 
-                    b.ToTable("ProviderReview");
+                    b.ToTable("ProviderReviewModel");
                 });
 
             modelBuilder.Entity("AMData.Models.CoreModels.ResetPasswordRequestModel", b =>
@@ -723,19 +718,11 @@ namespace AMWebAPI.CoreMigrations
 
             modelBuilder.Entity("AMData.Models.CoreModels.ProviderReviewModel", b =>
                 {
-                    b.HasOne("AMData.Models.CoreModels.ClientModel", "Client")
-                        .WithMany("Reviews")
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("AMData.Models.CoreModels.ProviderModel", "Provider")
                         .WithMany("Reviews")
                         .HasForeignKey("ProviderId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.Navigation("Client");
 
                     b.Navigation("Provider");
                 });
@@ -813,8 +800,6 @@ namespace AMWebAPI.CoreMigrations
                     b.Navigation("ClientNotes");
 
                     b.Navigation("Communications");
-
-                    b.Navigation("Reviews");
                 });
 
             modelBuilder.Entity("AMData.Models.CoreModels.ProviderModel", b =>
