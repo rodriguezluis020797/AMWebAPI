@@ -19,7 +19,7 @@ public interface IProviderService
     Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
     Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl);
     Task<List<ProviderAlertDTO>> GetProviderAlertsAsync(string jwt);
-    Task<ProviderReviewDTO> GetProviderReviewForDisplayAsync(ProviderReviewDTO dto);
+    Task<List<ProviderReviewDTO>> GetProviderReviewsForProviderAsync(string jwt);
     Task<ProviderReviewDTO> GetProviderReviewForSubmissionAsync(ProviderReviewDTO dto);
     Task<BaseDTO> ReActivateSubscriptionAsync(string jwt);
     Task<ProviderDTO> UpdateEMailAsync(ProviderDTO dto, string jwt);
@@ -212,10 +212,51 @@ public class ProviderService(
         return response;
     }
 
-    public Task<ProviderReviewDTO> GetProviderReviewForDisplayAsync(ProviderReviewDTO dto)
+    public async Task<List<ProviderReviewDTO>> GetProviderReviewsForProviderAsync(string jwt)
     {
-        throw new NotImplementedException();
+        
+        var providerId = IdentityTool
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+        
+        var response = new List<ProviderReviewDTO>();
+        var reviews = new List<ProviderReviewModel>();
+        var prividerTimeZone = TimeZoneCodeEnum.Select;
+        var timeZoneStr = string.Empty;
+        
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            reviews = await db.ProviderReviews
+                .Where(x => x.ProviderId == providerId &&
+                            x.Submitted == true &&
+                            x.DeleteDate == null)
+                .Include(x => x.Provider)
+                .Include(x => x.Client)
+                .OrderByDescending(x => x.CreateDate)
+                .ToListAsync();
+
+            prividerTimeZone = await db.Providers
+                .Where(x => x.ProviderId == providerId)
+                .Select(x => x.TimeZoneCode)
+                .FirstOrDefaultAsync();
+        });
+
+        timeZoneStr = prividerTimeZone.ToString().Replace("_", " ");
+        
+        foreach (var review in reviews)
+        { 
+           var dto = new ProviderReviewDTO();
+            dto.CreateNewRecordFromModel(review);
+            
+            CryptographyTool.Encrypt(dto.ProviderReviewId, out var encryptedText);
+            dto.ProviderReviewId = encryptedText;
+            
+            dto.CreateDate = DateTimeTool.ConvertUtcToLocal(dto.CreateDate, timeZoneStr);
+            response.Add(dto);
+        }
+        return response;
     }
+
+
 
     public async Task<ProviderReviewDTO> GetProviderReviewForSubmissionAsync(ProviderReviewDTO dto)
     {
@@ -228,6 +269,7 @@ public class ProviderService(
                 .Where(x => x.GuidQuery.Equals(dto.GuidQuery) &&
                             x.DeleteDate == null)
                 .Include(x => x.Provider)
+                .Include(x => x.Client)
                 .FirstOrDefaultAsync();
         });
 
@@ -446,6 +488,7 @@ public class ProviderService(
             providerReviewModel = await db.ProviderReviews
                 .Where(x => x.GuidQuery.Equals(dto.GuidQuery) &&
                             x.Submitted == false)
+                .Include(x => x.Client)
                 .FirstOrDefaultAsync();
 
             if (providerReviewModel == null)
@@ -468,7 +511,10 @@ public class ProviderService(
 
             await db.SaveChangesAsync();
         });
-
+        response.ClientName = !string.IsNullOrEmpty(providerReviewModel.Client.MiddleName)
+            ? $"{providerReviewModel.Client.FirstName} {providerReviewModel.Client.MiddleName} {providerReviewModel.Client.LastName}"
+            : $"{providerReviewModel.Client.FirstName} {providerReviewModel.Client.LastName}";
+        
         return response;
     }
 

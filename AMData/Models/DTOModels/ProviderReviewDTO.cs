@@ -6,7 +6,9 @@ namespace AMData.Models.DTOModels;
 public class ProviderReviewDTO : BaseDTO
 {
     public string ProviderReviewId { get; set; }
+    public string? ProviderGuid { get; set; }
     public string ProviderName { get; set; }
+    public string ClientName { get; set; }
     public string GuidQuery { get; set; }
     public string ReviewText { get; set; }
     public decimal Rating { get; set; }
@@ -32,5 +34,8 @@ public class ProviderReviewDTO : BaseDTO
         Rating = model.Rating;
         CreateDate = model.CreateDate;
         ProviderName = model.Provider.BusinessName;
+        ClientName = !string.IsNullOrEmpty(model.Client.MiddleName)
+            ? $"{model.Client.FirstName} {model.Client.MiddleName} {model.Client.LastName}"
+            : $"{model.Client.FirstName} {model.Client.LastName}";
     }
 }

@@ -214,6 +214,10 @@ public class AMCoreData : DbContext
             .HasMany(x => x.Reviews)
             .WithOne(x => x.Provider)
             .HasForeignKey(x => x.ProviderId);
+        
+        modelBuilder.Entity<ProviderModel>()
+            .HasIndex(x => x.ProviderGuid)
+            .IsUnique();
     }
 
     private static void ConfigureServiceModel(ModelBuilder modelBuilder)

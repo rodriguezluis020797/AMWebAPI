@@ -1,4 +1,5 @@
-﻿using AMData.Models;
+﻿using System.Text.Json;
+using AMData.Models;
 using AMData.Models.DTOModels;
 using AMServices.CoreServices;
 using AMTools.Tools;
@@ -54,6 +55,29 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
             logger.LogInfo("-");
         }
     }
+    
+    [HttpPost]
+    public async Task<IActionResult> GetProviderReviewsForProvider()
+    {
+        logger.LogInfo("+");
+        try
+        {
+            
+            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            
+            var result = await providerService.GetProviderReviewsForProviderAsync(jwToken);
+            return StatusCode((int)HttpStatusCodeEnum.Success, result);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
 
     [HttpPost]
     [AllowAnonymous]
@@ -62,7 +86,6 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         logger.LogInfo("+");
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
             var result = await providerService.UpdateProviderReviewAsync(dto);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }

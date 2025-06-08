@@ -16,6 +16,7 @@ public class ProviderModel
         StateCodeEnum stateCode, TimeZoneCodeEnum timeZoneCode, string businessName)
     {
         ProviderId = providerId;
+        ProviderGuid = Guid.NewGuid().ToString();
         FirstName = firstName;
         MiddleName = middleName;
         LastName = lastName;
@@ -42,6 +43,7 @@ public class ProviderModel
     }
 
     [Key] public long ProviderId { get; set; }
+    public string? ProviderGuid { get; set; }
     public string FirstName { get; set; }
     public string? MiddleName { get; set; }
     public string LastName { get; set; }
