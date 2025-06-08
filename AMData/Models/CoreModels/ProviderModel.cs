@@ -13,7 +13,7 @@ public class ProviderModel
 
     public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail,
         string addressLine1, string addressLine2, string city, string zipCode, CountryCodeEnum countryCode,
-        StateCodeEnum stateCode, TimeZoneCodeEnum timeZoneCode, string businessName)
+        StateCodeEnum stateCode, TimeZoneCodeEnum timeZoneCode, string businessName, string description)
     {
         ProviderId = providerId;
         ProviderGuid = Guid.NewGuid().ToString();
@@ -40,6 +40,7 @@ public class ProviderModel
         ZipCode = zipCode;
         NextBillingDate = TrialEndDate.AddDays(1);
         SubscriptionToBeCancelled = false;
+        Description = description;
     }
 
     [Key] public long ProviderId { get; set; }
@@ -48,6 +49,7 @@ public class ProviderModel
     public string? MiddleName { get; set; }
     public string LastName { get; set; }
     public string BusinessName { get; set; }
+    public string Description { get; set; }
     public string AddressLine1 { get; set; }
     public string? AddressLine2 { get; set; }
     public string City { get; set; }

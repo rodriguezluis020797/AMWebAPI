@@ -94,7 +94,7 @@ public class ProviderService(
 
         var provider = new ProviderModel(long.MinValue, dto.FirstName, dto.MiddleName, dto.LastName, dto.EMail,
             dto.AddressLine1, dto.AddressLine2, dto.City, dto.ZipCode, dto.CountryCode, dto.StateCode,
-            dto.TimeZoneCode, dto.BusinessName);
+            dto.TimeZoneCode, dto.BusinessName, dto.Description);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
