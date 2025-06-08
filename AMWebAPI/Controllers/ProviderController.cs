@@ -296,4 +296,27 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
             logger.LogInfo("-");
         }
     }
+    
+    [HttpGet]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetProviderPublicView([FromQuery] string guid)
+    {
+        logger.LogInfo("+");
+        var response = new ProviderPublicViewDTO();
+        try
+        {
+            response = await providerService.GetProviderPublicViewAsync(guid);
+
+            return StatusCode((int)HttpStatusCodeEnum.Success, response);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex.ToString());
+            return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+        }
+        finally
+        {
+            logger.LogInfo("-");
+        }
+    }
 }

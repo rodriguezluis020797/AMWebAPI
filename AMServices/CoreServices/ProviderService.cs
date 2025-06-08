@@ -19,6 +19,7 @@ public interface IProviderService
     Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
     Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl);
     Task<List<ProviderAlertDTO>> GetProviderAlertsAsync(string jwt);
+    Task<ProviderPublicViewDTO>  GetProviderPublicViewAsync(string guid);
     Task<List<ProviderReviewDTO>> GetProviderReviewsForProviderAsync(string jwt);
     Task<ProviderReviewDTO> GetProviderReviewForSubmissionAsync(ProviderReviewDTO dto);
     Task<BaseDTO> ReActivateSubscriptionAsync(string jwt);
@@ -209,6 +210,65 @@ public class ProviderService(
             response.Add(dto);
         }
 
+        return response;
+    }
+
+    public async Task<ProviderPublicViewDTO> GetProviderPublicViewAsync(string guid)
+    {
+        /*
+         * TODO:
+         * Optimize the query...
+         */
+        var response = new ProviderPublicViewDTO();
+        var provider = new ProviderModel();
+        var timeZoneStr = string.Empty;
+
+        await db.ExecuteWithRetryAsync(async () =>
+        {
+            provider = await db.Providers
+                .Where(x => x.ProviderGuid.Equals(guid))
+                .AsNoTracking()
+                .FirstOrDefaultAsync();
+
+            if (provider == null)
+            {
+                response.ErrorMessage = "Provider not found";
+                return;
+            }
+            
+            provider.Reviews = await db.ProviderReviews
+                .Where(x => x.ProviderId == provider.ProviderId &&
+                            x.Submitted == true &&
+                            x.DeleteDate == null)
+                .Include(x => x.Client)
+                .OrderByDescending(x => x.CreateDate)
+                .AsNoTracking()
+                .ToListAsync();
+        });
+
+        foreach (var review in provider.Reviews)
+        {
+            review.Provider = new ProviderModel();
+            review.Provider.BusinessName = provider.BusinessName;
+        }
+
+        if (!string.IsNullOrEmpty(response.ErrorMessage))
+        {
+            return response;
+        }
+        
+        timeZoneStr = provider.TimeZoneCode.ToString().Replace("_", " "); 
+        
+        response.CreateNewRecordFromModels(provider);
+
+        foreach (var review in response.ProviderReviews)
+        {
+            review.CreateDate = DateTimeTool.ConvertUtcToLocal(review.CreateDate, timeZoneStr);
+            
+            CryptographyTool.Encrypt(review.ProviderReviewId, out var encryptedText);
+            review.ProviderReviewId = encryptedText;
+        }
+        
         return response;
     }
 
