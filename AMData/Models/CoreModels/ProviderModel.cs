@@ -93,6 +93,7 @@ public class ProviderModel
         StateCode = dto.StateCode;
         TimeZoneCode = dto.TimeZoneCode;
         BusinessName = dto.BusinessName;
+        Description = dto.Description;
         AddressLine1 = dto.AddressLine1;
         AddressLine2 = dto.AddressLine2;
         City = dto.City;

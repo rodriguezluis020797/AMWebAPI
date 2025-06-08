@@ -226,30 +226,59 @@ public class ProviderService(
         await db.ExecuteWithRetryAsync(async () =>
         {
             provider = await db.Providers
-                .Where(x => x.ProviderGuid.Equals(guid))
+                .Where(p => p.ProviderGuid.Equals(guid))
+                .Select(p => new ProviderModel
+                {
+                    ProviderId = p.ProviderId,
+                    ProviderGuid = p.ProviderGuid,
+                    BusinessName = p.BusinessName,
+                    // Add additional mapped ProviderModel fields here...
+
+                    Reviews = p.Reviews
+                        .Where(r => r.Submitted && r.DeleteDate == null)
+                        .OrderByDescending(r => r.CreateDate)
+                        .Select(r => new ProviderReviewModel
+                        {
+                            ProviderReviewId = r.ProviderReviewId,
+                            GuidQuery = r.GuidQuery,
+                            ProviderId = r.ProviderId,
+                            ClientId = r.ClientId,
+                            ReviewText = r.ReviewText,
+                            Rating = r.Rating,
+                            Submitted = r.Submitted,
+                            CreateDate = r.CreateDate,
+                            DeleteDate = r.DeleteDate,
+
+                            // Nested ClientModel (only mapped fields)
+                            Client = new ClientModel
+                            {
+                                ClientId = r.Client.ClientId,
+                                FirstName = r.Client.FirstName,
+                                LastName = r.Client.LastName,
+                                PhoneNumber = r.Client.PhoneNumber
+                                // Add more mapped fields from ClientModel if needed
+                            }
+                        })
+                        .ToList()
+                })
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
             if (provider == null)
             {
                 response.ErrorMessage = "Provider not found";
-                return;
             }
-            
-            provider.Reviews = await db.ProviderReviews
-                .Where(x => x.ProviderId == provider.ProviderId &&
-                            x.Submitted == true &&
-                            x.DeleteDate == null)
-                .Include(x => x.Client)
-                .OrderByDescending(x => x.CreateDate)
-                .AsNoTracking()
-                .ToListAsync();
         });
+
+        if (!string.IsNullOrEmpty(response.ErrorMessage))
+        {
+            return response;
+        }
 
         foreach (var review in provider.Reviews)
         {
             review.Provider = new ProviderModel();
-            review.Provider.BusinessName = provider.BusinessName;
+            review.Provider.BusinessName = string.Empty;
         }
 
         if (!string.IsNullOrEmpty(response.ErrorMessage))
