@@ -19,7 +19,7 @@ public interface IProviderService
     Task<BaseDTO> CreateProviderAsync(ProviderDTO dto);
     Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl);
     Task<List<ProviderAlertDTO>> GetProviderAlertsAsync(string jwt);
-    Task<ProviderPublicViewDTO>  GetProviderPublicViewAsync(string guid);
+    Task<ProviderPublicViewDTO> GetProviderPublicViewAsync(string guid);
     Task<List<ProviderReviewDTO>> GetProviderReviewsForProviderAsync(string jwt);
     Task<ProviderReviewDTO> GetProviderReviewForSubmissionAsync(ProviderReviewDTO dto);
     Task<BaseDTO> ReActivateSubscriptionAsync(string jwt);
@@ -264,16 +264,10 @@ public class ProviderService(
                 .AsNoTracking()
                 .FirstOrDefaultAsync();
 
-            if (provider == null)
-            {
-                response.ErrorMessage = "Provider not found";
-            }
+            if (provider == null) response.ErrorMessage = "Provider not found";
         });
 
-        if (!string.IsNullOrEmpty(response.ErrorMessage))
-        {
-            return response;
-        }
+        if (!string.IsNullOrEmpty(response.ErrorMessage)) return response;
 
         foreach (var review in provider.Reviews)
         {
@@ -281,37 +275,33 @@ public class ProviderService(
             review.Provider.BusinessName = string.Empty;
         }
 
-        if (!string.IsNullOrEmpty(response.ErrorMessage))
-        {
-            return response;
-        }
-        
-        timeZoneStr = provider.TimeZoneCode.ToString().Replace("_", " "); 
-        
+        if (!string.IsNullOrEmpty(response.ErrorMessage)) return response;
+
+        timeZoneStr = provider.TimeZoneCode.ToString().Replace("_", " ");
+
         response.CreateNewRecordFromModels(provider);
 
         foreach (var review in response.ProviderReviews)
         {
             review.CreateDate = DateTimeTool.ConvertUtcToLocal(review.CreateDate, timeZoneStr);
-            
+
             CryptographyTool.Encrypt(review.ProviderReviewId, out var encryptedText);
             review.ProviderReviewId = encryptedText;
         }
-        
+
         return response;
     }
 
     public async Task<List<ProviderReviewDTO>> GetProviderReviewsForProviderAsync(string jwt)
     {
-        
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        
+
         var response = new List<ProviderReviewDTO>();
         var reviews = new List<ProviderReviewModel>();
         var prividerTimeZone = TimeZoneCodeEnum.Select;
         var timeZoneStr = string.Empty;
-        
+
         await db.ExecuteWithRetryAsync(async () =>
         {
             reviews = await db.ProviderReviews
@@ -330,21 +320,21 @@ public class ProviderService(
         });
 
         timeZoneStr = prividerTimeZone.ToString().Replace("_", " ");
-        
+
         foreach (var review in reviews)
-        { 
-           var dto = new ProviderReviewDTO();
+        {
+            var dto = new ProviderReviewDTO();
             dto.CreateNewRecordFromModel(review);
-            
+
             CryptographyTool.Encrypt(dto.ProviderReviewId, out var encryptedText);
             dto.ProviderReviewId = encryptedText;
-            
+
             dto.CreateDate = DateTimeTool.ConvertUtcToLocal(dto.CreateDate, timeZoneStr);
             response.Add(dto);
         }
+
         return response;
     }
-
 
 
     public async Task<ProviderReviewDTO> GetProviderReviewForSubmissionAsync(ProviderReviewDTO dto)
@@ -603,7 +593,7 @@ public class ProviderService(
         response.ClientName = !string.IsNullOrEmpty(providerReviewModel.Client.MiddleName)
             ? $"{providerReviewModel.Client.FirstName} {providerReviewModel.Client.MiddleName} {providerReviewModel.Client.LastName}"
             : $"{providerReviewModel.Client.FirstName} {providerReviewModel.Client.LastName}";
-        
+
         return response;
     }
 

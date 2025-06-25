@@ -80,6 +80,7 @@ public class ProviderModel
     [NotMapped] public List<ResetPasswordRequestModel> ResetPasswordRequests { get; set; }
     [NotMapped] public List<ProviderAlertModel> Alerts { get; set; }
     [NotMapped] public List<ProviderReviewModel> Reviews { get; set; }
+    [NotMapped] public List<ProviderLogPayment> ProviderLogPayments { get; set; }
 
     public void UpdateRecordFromDTO(ProviderDTO dto)
     {

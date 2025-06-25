@@ -29,8 +29,10 @@ internal class Program
         {
             _logger.LogError(ex.ToString());
         }
-
-        _logger.LogInfo("-");
+        finally
+        {
+            _logger.LogInfo("-");
+        }
     }
 
     private static void InitializeConfiguration()

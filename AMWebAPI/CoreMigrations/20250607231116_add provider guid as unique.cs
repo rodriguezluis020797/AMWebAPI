@@ -1,39 +1,38 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace AMWebAPI.CoreMigrations
+namespace AMWebAPI.CoreMigrations;
+
+/// <inheritdoc />
+public partial class addproviderguidasunique : Migration
 {
     /// <inheritdoc />
-    public partial class addproviderguidasunique : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<string>(
-                name: "ProviderGuid",
-                table: "Provider",
-                type: "nvarchar(450)",
-                nullable: true);
+        migrationBuilder.AddColumn<string>(
+            "ProviderGuid",
+            "Provider",
+            "nvarchar(450)",
+            nullable: true);
 
-            migrationBuilder.CreateIndex(
-                name: "IX_Provider_ProviderGuid",
-                table: "Provider",
-                column: "ProviderGuid",
-                unique: true,
-                filter: "[ProviderGuid] IS NOT NULL");
-        }
+        migrationBuilder.CreateIndex(
+            "IX_Provider_ProviderGuid",
+            "Provider",
+            "ProviderGuid",
+            unique: true,
+            filter: "[ProviderGuid] IS NOT NULL");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropIndex(
-                name: "IX_Provider_ProviderGuid",
-                table: "Provider");
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropIndex(
+            "IX_Provider_ProviderGuid",
+            "Provider");
 
-            migrationBuilder.DropColumn(
-                name: "ProviderGuid",
-                table: "Provider");
-        }
+        migrationBuilder.DropColumn(
+            "ProviderGuid",
+            "Provider");
     }
 }

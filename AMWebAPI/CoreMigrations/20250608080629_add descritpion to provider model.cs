@@ -1,29 +1,28 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace AMWebAPI.CoreMigrations
+namespace AMWebAPI.CoreMigrations;
+
+/// <inheritdoc />
+public partial class adddescritpiontoprovidermodel : Migration
 {
     /// <inheritdoc />
-    public partial class adddescritpiontoprovidermodel : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<string>(
-                name: "Description",
-                table: "Provider",
-                type: "nvarchar(max)",
-                nullable: false,
-                defaultValue: "");
-        }
+        migrationBuilder.AddColumn<string>(
+            "Description",
+            "Provider",
+            "nvarchar(max)",
+            nullable: false,
+            defaultValue: "");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "Description",
-                table: "Provider");
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            "Description",
+            "Provider");
     }
 }

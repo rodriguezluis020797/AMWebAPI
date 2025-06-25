@@ -61,11 +61,18 @@ public class AMCoreData : DbContext
         ConffigureClientNotesModel(modelBuilder);
         ConfigureProviderAlertModel(modelBuilder);
         ConfigureProviderReviewModel(modelBuilder);
+        ConfigureProviderLogPaymentModel(modelBuilder);
 
         foreach (var foreignKey in modelBuilder.Model
                      .GetEntityTypes()
                      .SelectMany(e => e.GetForeignKeys()))
             foreignKey.DeleteBehavior = DeleteBehavior.Restrict;
+    }
+
+    private void ConfigureProviderLogPaymentModel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ProviderLogPayment>()
+            .HasKey(x => x.ProviderLogPaymentId);
     }
 
     private void ConfigureProviderReviewModel(ModelBuilder modelBuilder)
@@ -214,10 +221,15 @@ public class AMCoreData : DbContext
             .HasMany(x => x.Reviews)
             .WithOne(x => x.Provider)
             .HasForeignKey(x => x.ProviderId);
-        
+
         modelBuilder.Entity<ProviderModel>()
             .HasIndex(x => x.ProviderGuid)
             .IsUnique();
+
+        modelBuilder.Entity<ProviderModel>()
+            .HasMany(x => x.ProviderLogPayments)
+            .WithOne(x => x.Provider)
+            .HasForeignKey(x => x.ProviderId);
     }
 
     private static void ConfigureServiceModel(ModelBuilder modelBuilder)
@@ -275,7 +287,8 @@ public class AMCoreData : DbContext
             { "VerifyProviderEMailRequest", "VerifyProviderEMailRequestId" },
             { "ClientNote", "ClientNoteId" },
             { "ProviderAlert", "ProviderAlertId" },
-            { "ProviderReview", "ProviderReviewId" }
+            { "ProviderReview", "ProviderReviewId" },
+            { "ProviderLogPayment", "ProviderLogPaymentId" }
         };
 
         try

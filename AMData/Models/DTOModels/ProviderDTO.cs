@@ -49,7 +49,7 @@ public class ProviderDTO : BaseDTO
         PayEngineInfoUrl = payEngineInfoUrl;
         NextBillingDate = provider.NextBillingDate;
         SubscriptionToBeCancelled = provider.SubscriptionToBeCancelled;
-        Description =  provider.Description;
+        Description = provider.Description;
     }
 
     public void Validate()
@@ -59,7 +59,7 @@ public class ProviderDTO : BaseDTO
         BusinessName = bnOutput;
         ErrorMessage = string.IsNullOrEmpty(BusinessName) ? "Please enter business name." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
-        
+
         // Validate Business Description
         ValidationTool.ValidateName(Description, out var bdOutput);
         Description = bdOutput;
