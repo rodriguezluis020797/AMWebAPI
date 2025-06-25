@@ -39,6 +39,8 @@ public class AMDevLogger : IAMLogger
     {
         auditLog.Info(
             $"{DateTime.UtcNow.ToString("O")} | Audit | TID: {Thread.CurrentThread.ManagedThreadId} | {Path.GetFileNameWithoutExtension(path)} | {caller} () | Line: {lineNumber} | {message}");
+        rollingLog.Info(
+            $"{DateTime.UtcNow.ToString("O")} | Audit | TID: {Thread.CurrentThread.ManagedThreadId} | {Path.GetFileNameWithoutExtension(path)} | {caller} () | Line: {lineNumber} | {message}");
     }
 
     public void LogError(string message, [CallerLineNumber] int lineNumber = 0, [CallerFilePath] string path = null,

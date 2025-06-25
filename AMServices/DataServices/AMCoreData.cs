@@ -28,6 +28,7 @@ public class AMCoreData : DbContext
     public DbSet<ProviderBillingModel> ProviderBillings { get; init; }
     public DbSet<ProviderCommunicationModel> ProviderCommunications { get; init; }
     public DbSet<ProviderModel> Providers { get; init; }
+    public DbSet<ProviderLogPayment> ProviderLogPayments { get; init; }
     public DbSet<ProviderReviewModel> ProviderReviews { get; init; }
     public DbSet<ServiceModel> Services { get; init; }
     public DbSet<SessionActionModel> SessionActions { get; init; }

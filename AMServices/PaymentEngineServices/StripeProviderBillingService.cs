@@ -59,6 +59,7 @@ public class StripeProviderBillingService(IAMLogger logger, IConfiguration confi
 
     public async Task<Invoice> CapturePayment(string customerPayEngineId, List<InvoiceItemCreateOptions> invoiceItems)
     {
+        logger.LogAudit($"attempting to capture payment for pay engine id {customerPayEngineId}");
         var invoiceService = new InvoiceService();
         var invoiceItemService = new InvoiceItemService();
 
@@ -79,10 +80,8 @@ public class StripeProviderBillingService(IAMLogger logger, IConfiguration confi
             await invoiceItemService.CreateAsync(item);
         }
 
-        //await Task.Delay(1000);
         var finalizedInvoice = await invoiceService.FinalizeInvoiceAsync(invoice.Id);
-
-        //await Task.Delay(2000);
+        
         return await invoiceService.PayAsync(invoice.Id);
     }
 

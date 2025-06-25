@@ -400,8 +400,8 @@ public class ProviderService(
 
         var utcNow = DateTime.UtcNow;
         var customerTimeZoneName = provider.TimeZoneCode.ToString().Replace("_", " ");
-        var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(customerTimeZoneName);
-        var customerLocalNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
+        //var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(customerTimeZoneName);
+        //var customerLocalNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
 
         if (utcNow < provider.NextBillingDate)
         {
