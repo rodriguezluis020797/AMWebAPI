@@ -22,6 +22,7 @@ public class ClientCommunicationModel
         AttemptThree = null;
         CreateDate = DateTime.UtcNow;
         DeleteDate = null;
+        Paid = false;
     }
 
     [Key] public long ClientCommunicationId { get; set; }
@@ -29,6 +30,7 @@ public class ClientCommunicationModel
     public string Message { get; set; }
     public DateTime SendAfter { get; set; }
     public bool Sent { get; set; }
+    public bool Paid { get; set; }
     public DateTime? AttemptOne { get; set; }
     public DateTime? AttemptTwo { get; set; }
     public DateTime? AttemptThree { get; set; }

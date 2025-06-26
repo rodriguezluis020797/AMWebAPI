@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
-    partial class AMCoreDataModelSnapshot : ModelSnapshot
+    [Migration("20250625230550_add paid field to client communication")]
+    partial class addpaidfieldtoclientcommunication
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -332,14 +335,8 @@ namespace AMWebAPI.CoreMigrations
                     b.Property<long>("ProviderId")
                         .HasColumnType("bigint");
 
-                    b.Property<long>("SMSCount")
-                        .HasColumnType("bigint");
-
                     b.Property<bool>("Success")
                         .HasColumnType("bit");
-
-                    b.Property<long>("TotalPrice")
-                        .HasColumnType("bigint");
 
                     b.HasKey("ProviderLogPaymentId");
 
@@ -422,9 +419,6 @@ namespace AMWebAPI.CoreMigrations
 
                     b.Property<int>("StateCode")
                         .HasColumnType("int");
-
-                    b.Property<bool>("SubscriptionEnded")
-                        .HasColumnType("bit");
 
                     b.Property<bool>("SubscriptionToBeCancelled")
                         .HasColumnType("bit");

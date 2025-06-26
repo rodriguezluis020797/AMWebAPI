@@ -20,7 +20,6 @@ internal class Program
     private static async Task Main(string[] args)
     {
         _logger = new AMDevLogger();
-        _logger.LogInfo("+");
         _logger.LogAudit("+");
 
         try
@@ -37,7 +36,6 @@ internal class Program
         }
         finally
         {
-            _logger.LogInfo("-");
             _logger.LogAudit("-");
         }
     }
@@ -67,7 +65,8 @@ internal class Program
         {
             providersToCharge = await coreData.Providers
                 .Where(x => x.NextBillingDate.HasValue &&
-                            x.NextBillingDate.Value.Date <= DateTime.UtcNow.Date)
+                            x.NextBillingDate.Value.Date <= DateTime.UtcNow.Date &&
+                            x.SubscriptionEnded == false)
                 .Include(x => x.Clients)
                 .ToListAsync();
         });
@@ -80,53 +79,57 @@ internal class Program
         
         _logger.LogAudit($"Accounts to run: {providersToCharge.Count}");
         
-        
-        var success = false;
         var providerComm = new ProviderCommunicationModel();
         var providerLogPayment = new ProviderLogPayment();
         
-        foreach (var payment in providersToCharge)
+        foreach (var provider in providersToCharge)
         {
             try
             {
-                _logger.LogAudit($"Processing Provider Id: {payment.ProviderId}");
+                _logger.LogAudit($"Processing Provider Id: {provider.ProviderId}");
+                
                 var totalSMSMessages = long.MinValue;
-
-                var todayMidnight = payment.NextBillingDate.Value;
-                var oneMonthAgoMidnight = todayMidnight.AddMonths(-1);
-
+                
                 await coreData.ExecuteWithRetryAsync(async () =>
                 {
-                    totalSMSMessages = await coreData.ClientCommunications
-                        .Where(cc =>
-                            coreData.Clients
-                                .Where(c => c.ProviderId == payment.ProviderId)
-                                .Select(c => c.ClientId)
-                                .Contains(cc.ClientId) &&
-                            cc.Sent == true &&
-                            cc.CreateDate >= oneMonthAgoMidnight &&
-                            cc.CreateDate < todayMidnight)
-                        .LongCountAsync();
+                    totalSMSMessages = await (
+                        from cc in coreData.ClientCommunications
+                        join c in coreData.Clients on cc.ClientId equals c.ClientId
+                        where c.ProviderId == provider.ProviderId
+                              && cc.Sent == true
+                              && cc.Paid == false
+                        select cc
+                    ).LongCountAsync();
                 });
-
+                
                 _logger.LogAudit($"Total SMS Messages: {totalSMSMessages}");
+
+                if (provider.SubscriptionToBeCancelled)
+                {
+                    await coreData.ExecuteWithRetryAsync(async () =>
+                    {
+                        await coreData.Providers
+                            .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.SubscriptionEnded, true));
+                    
+                        await coreData.ClientCommunications
+                            .Where(x => provider.NextBillingDate.Value.Date < x.SendAfter)
+                            .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
+
+                        await coreData.SaveChangesAsync(); 
+                    });
+
+                    if (totalSMSMessages < 1)
+                    {
+                        _logger.LogAudit($"Subscription cancelled and no messages to charge for {provider.ProviderId}");
+                        return;
+                    }
+                }
 
                 var invoiceItems = new List<InvoiceItemCreateOptions>
                 {
                     new()
                     {
-                        Customer = payment.PayEngineId,
-                        Currency = "usd",
-                        Description = "AM Tech Base Services",
-                        Pricing = new InvoiceItemPricingOptions
-                        {
-                            Price = "price_1RTrwgPmRnZS7JiXUMMF3sQZ"
-                        },
-                        Quantity = 1
-                    },
-                    new()
-                    {
-                        Customer = payment.PayEngineId,
+                        Customer = provider.PayEngineId,
                         Currency = "usd",
                         Description = "SMS Messages",
                         Pricing = new InvoiceItemPricingOptions
@@ -137,16 +140,32 @@ internal class Program
                     }
                 };
 
-                _logger.LogAudit($"Running payment for provider id {payment.ProviderId} - " +
-                                 $"price id: {invoiceItems.FirstOrDefault().Pricing.Price} - " +
-                                 $"quantity: {invoiceItems.FirstOrDefault().Quantity}");
+                if (!provider.SubscriptionToBeCancelled)
+                {
+                    invoiceItems.Add(
+                        new InvoiceItemCreateOptions
+                        {
+                        Customer = provider.PayEngineId,
+                        Currency = "usd",
+                        Description = "AM Tech Base Services",
+                        Pricing = new InvoiceItemPricingOptions
+                        {
+                            Price = "price_1RTrwgPmRnZS7JiXUMMF3sQZ"
+                        },
+                        Quantity = 1
+                    });
+                }
+
+                invoiceItems = invoiceItems
+                    .OrderBy(x => x.Description, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
 
                 var capturedPayment = new Invoice();
 
                 await coreData.ExecuteWithRetryAsync(async () =>
                 {
                     capturedPayment =
-                        await _providerBillingService.CapturePayment(payment.PayEngineId, invoiceItems);
+                        await _providerBillingService.CapturePayment(provider.PayEngineId, invoiceItems);
                 });
 
                 if (capturedPayment.Status.Equals("paid"))
@@ -154,17 +173,27 @@ internal class Program
                     _logger.LogAudit($"Payment succeeded... sending e-mail");
 
                     providerComm = new ProviderCommunicationModel(
-                        payment.ProviderId,
+                        provider.ProviderId,
                         $"Your payment was successfully processed. " +
-                        $"Your next billing date will be {payment.NextBillingDate?.ToLocalTime().Date:MM/dd/yyyy}",
+                        $"Your next billing date will be {provider.NextBillingDate?.ToLocalTime().Date:MM/dd/yyyy}",
                         DateTime.MinValue);
 
-                    providerLogPayment = new ProviderLogPayment(payment.ProviderId, true, null);
+                    providerLogPayment = new ProviderLogPayment(provider.ProviderId, capturedPayment.AmountPaid, totalSMSMessages, true, null);
 
                     await coreData.ExecuteWithRetryAsync(async () =>
                     {
-                        payment.NextBillingDate = payment.NextBillingDate.Value.AddMonths(1);
-
+                        provider.NextBillingDate = provider.NextBillingDate.Value.AddMonths(1);
+                        
+                        await coreData.ClientCommunications
+                            .Where(cc =>
+                                cc.Sent == true &&
+                                cc.Paid == false &&
+                                coreData.Clients
+                                    .Where(c => c.ProviderId == provider.ProviderId)
+                                    .Select(c => c.ClientId)
+                                    .Contains(cc.ClientId))
+                            .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.Paid, x => true));
+                        
                         await coreData.ProviderLogPayments.AddAsync(providerLogPayment);
                         await coreData.ProviderCommunications.AddAsync(providerComm);
                         await coreData.SaveChangesAsync();
@@ -175,16 +204,15 @@ internal class Program
                     _logger.LogAudit($"Payment failed... sending e-mail");
 
                     providerComm = new ProviderCommunicationModel(
-                        payment.ProviderId,
+                        provider.ProviderId,
                         $"Your payment was not processed successfully. " +
                         $"Please update your payment method to avoid service interruption.",
                         DateTime.MinValue);
 
-                    providerLogPayment = new ProviderLogPayment(payment.ProviderId, false, "");
+                    providerLogPayment = new ProviderLogPayment(provider.ProviderId, 0, 0, false, "Unable to process payment");
 
                     await coreData.ExecuteWithRetryAsync(async () =>
                     {
-
                         await coreData.ProviderLogPayments.AddAsync(providerLogPayment);
                         await coreData.ProviderCommunications.AddAsync(providerComm);
                         await coreData.SaveChangesAsync();
@@ -193,7 +221,7 @@ internal class Program
             }
             catch (Exception ex)
             {
-                providerLogPayment = new ProviderLogPayment(payment.ProviderId, false, ex.Message);
+                providerLogPayment = new ProviderLogPayment(provider.ProviderId, 0, 0, false, ex.Message);
                 await coreData.ExecuteWithRetryAsync(async () =>
                 {
                     await coreData.ProviderLogPayments.AddAsync(providerLogPayment);
@@ -204,8 +232,9 @@ internal class Program
             }
             finally
             {
-                _logger.LogAudit($"Done Processing Provider Id: {payment.ProviderId}");
+                _logger.LogAudit($"Done Processing Provider Id: {provider.ProviderId}");
             }
         }
     }
+    
 }

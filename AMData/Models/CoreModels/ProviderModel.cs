@@ -41,6 +41,7 @@ public class ProviderModel
         NextBillingDate = TrialEndDate.AddDays(1);
         SubscriptionToBeCancelled = false;
         Description = description;
+        SubscriptionEnded = false;
     }
 
     [Key] public long ProviderId { get; set; }
@@ -65,6 +66,7 @@ public class ProviderModel
     public DateTime TrialEndDate { get; set; }
     public bool IsActive { get; set; }
     public bool SubscriptionToBeCancelled { get; set; }
+    public bool SubscriptionEnded { get; set; }
     public DateTime? NextBillingDate { get; set; }
     public DateTime CreateDate { get; set; }
     public DateTime? UpdateDate { get; set; }
