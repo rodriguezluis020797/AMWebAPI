@@ -39,9 +39,8 @@ public class ProviderModel
         City = city;
         ZipCode = zipCode;
         NextBillingDate = TrialEndDate.AddDays(1);
-        SubscriptionToBeCancelled = false;
         Description = description;
-        SubscriptionEnded = false;
+        AccountStatus = AccountStatusEnum.Active;
     }
 
     [Key] public long ProviderId { get; set; }
@@ -60,13 +59,12 @@ public class ProviderModel
     public CountryCodeEnum CountryCode { get; set; }
     public StateCodeEnum StateCode { get; set; }
     public TimeZoneCodeEnum TimeZoneCode { get; set; }
+    public AccountStatusEnum AccountStatus { get; set; }
     public bool AccessGranted { get; set; }
     public DateTime? LastLogindate { get; set; }
     public string? PayEngineId { get; set; }
     public DateTime TrialEndDate { get; set; }
     public bool IsActive { get; set; }
-    public bool SubscriptionToBeCancelled { get; set; }
-    public bool SubscriptionEnded { get; set; }
     public DateTime? NextBillingDate { get; set; }
     public DateTime CreateDate { get; set; }
     public DateTime? UpdateDate { get; set; }

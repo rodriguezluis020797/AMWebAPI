@@ -48,7 +48,7 @@ public class ProviderDTO : BaseDTO
         ZipCode = provider.ZipCode;
         PayEngineInfoUrl = payEngineInfoUrl;
         NextBillingDate = provider.NextBillingDate;
-        SubscriptionToBeCancelled = provider.SubscriptionToBeCancelled;
+        SubscriptionToBeCancelled = provider.AccountStatus == AccountStatusEnum.ToBeDeactivated;
         Description = provider.Description;
     }
 

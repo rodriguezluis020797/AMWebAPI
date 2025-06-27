@@ -29,16 +29,25 @@ public class IdentityService(
 {
     public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
     {
-        var provider = await coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
+        var provider = new ProviderModel();
+        await coreData.ExecuteWithRetryAsync(async () =>
+        {
+            provider = await coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
                        ?? throw new ArgumentException(nameof(dto.EMail));
+        });
 
         if (provider.AccessGranted == false) throw new ArgumentException(nameof(provider.AccessGranted));
 
-        var passwordModel = await identityData.Passwords
-                                .Where(x => x.ProviderId == provider.ProviderId)
-                                .OrderByDescending(x => x.CreateDate)
-                                .FirstOrDefaultAsync()
-                            ?? throw new Exception(nameof(provider.ProviderId));
+        var passwordModel = new PasswordModel();
+        await coreData.ExecuteWithRetryAsync(async () =>
+        {
+            passwordModel = await identityData.Passwords
+                                    .Where(x => x.ProviderId == provider.ProviderId)
+                                    .OrderByDescending(x => x.CreateDate)
+                                    .FirstOrDefaultAsync()
+                                ?? throw new Exception(nameof(provider.ProviderId));
+        });
+        
 
         var hashedPassword = IdentityTool.HashPassword(dto.CurrentPassword, passwordModel.Salt);
         if (!string.Equals(hashedPassword, passwordModel.HashedPassword))
@@ -307,7 +316,7 @@ public class IdentityService(
         var claims = new[]
         {
             new Claim(SessionClaimEnum.ProviderId.ToString(), providerId.ToString()),
-            new Claim(SessionClaimEnum.SessionId.ToString(), sessionId.ToString())
+            new Claim(SessionClaimEnum.SessionId.ToString(), sessionId.ToString()),
         };
 
         return IdentityTool.GenerateJWTToken(

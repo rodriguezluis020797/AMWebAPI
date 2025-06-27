@@ -1,4 +1,5 @@
-﻿using AMData.Models.CoreModels;
+﻿using AMData.Models;
+using AMData.Models.CoreModels;
 using AMServices.PaymentEngineServices;
 using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
@@ -66,12 +67,12 @@ internal class Program
             providersToCharge = await coreData.Providers
                 .Where(x => x.NextBillingDate.HasValue &&
                             x.NextBillingDate.Value.Date <= DateTime.UtcNow.Date &&
-                            x.SubscriptionEnded == false)
+                            x.AccountStatus == AccountStatusEnum.Active || x.AccountStatus == AccountStatusEnum.ToBeDeactivated)
                 .Include(x => x.Clients)
                 .ToListAsync();
         });
 
-        if (providersToCharge.Count == 0)
+        if (providersToCharge == null || providersToCharge.Count == 0)
         {
             _logger.LogAudit("No accounts to run found");
             return;
@@ -104,12 +105,14 @@ internal class Program
                 
                 _logger.LogAudit($"Total SMS Messages: {totalSMSMessages}");
 
-                if (provider.SubscriptionToBeCancelled)
+                if (provider.AccountStatus == AccountStatusEnum.ToBeDeactivated)
                 {
+                    _logger.LogAudit($"Subscription to be cancelled");
                     await coreData.ExecuteWithRetryAsync(async () =>
                     {
                         await coreData.Providers
-                            .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.SubscriptionEnded, true));
+                            .ExecuteUpdateAsync(upd => upd
+                                .SetProperty(x => x.AccountStatus, AccountStatusEnum.Inactive));
                     
                         await coreData.ClientCommunications
                             .Where(x => provider.NextBillingDate.Value.Date < x.SendAfter)
@@ -140,7 +143,7 @@ internal class Program
                     }
                 };
 
-                if (!provider.SubscriptionToBeCancelled)
+                if (provider.AccountStatus != AccountStatusEnum.ToBeDeactivated)
                 {
                     invoiceItems.Add(
                         new InvoiceItemCreateOptions

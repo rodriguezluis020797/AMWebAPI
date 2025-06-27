@@ -65,7 +65,7 @@ public class ProviderService(
                 .Where(x => x.ProviderId == providerId)
                 .FirstOrDefaultAsync();
 
-            provider.SubscriptionToBeCancelled = true;
+            provider.AccountStatus = AccountStatusEnum.ToBeDeactivated;
             provider.UpdateDate = DateTime.UtcNow;
 
             await db.SaveChangesAsync();
@@ -407,7 +407,7 @@ public class ProviderService(
         {
             await db.ExecuteWithRetryAsync(async () =>
             {
-                provider.SubscriptionToBeCancelled = false;
+                provider.AccountStatus = AccountStatusEnum.Active;
                 await db.SaveChangesAsync();
             });
             return response;
@@ -444,7 +444,7 @@ public class ProviderService(
             }
             else
             {
-                provider.SubscriptionToBeCancelled = false;
+                provider.AccountStatus = AccountStatusEnum.Active;
                 provider.UpdateDate = DateTime.UtcNow;
                 provider.NextBillingDate =
                     new DateTime(utcNow.Year, utcNow.Month, utcNow.Day, 0, 0, 0, DateTimeKind.Utc).AddMonths(1);
@@ -635,10 +635,14 @@ public class ProviderService(
                     .BeginTransactionAsync();
 
                 db.ProviderCommunications.Add(comm);
+                
+                
+                request.DeleteDate = DateTime.UtcNow;
 
                 provider.UpdateDate = DateTime.UtcNow;
-                request.DeleteDate = DateTime.UtcNow;
                 provider.EMailVerified = true;
+                provider.TrialEndDate = DateTime.UtcNow.AddDays(14);
+                provider.NextBillingDate = provider.TrialEndDate.AddDays(1);
 
                 provider.PayEngineId = await providerBillingService
                     .CreateProviderBillingProfileAsync(provider.EMail, provider.BusinessName, provider.FirstName,

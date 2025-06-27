@@ -21,6 +21,15 @@ public enum SessionClaimEnum
     RefreshToken
 }
 
+public enum AccountStatusEnum
+{
+    Unknown = 0,
+    Active,
+    ToBeDeactivated,
+    Inactive,
+    Suspended,
+}
+
 public enum SessionActionEnum
 {
     Unknown = 0,

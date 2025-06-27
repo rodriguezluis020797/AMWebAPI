@@ -4,6 +4,7 @@ using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace AMWebAPI.CoreMigrations
 {
     [DbContext(typeof(AMCoreData))]
-    partial class AMCoreDataModelSnapshot : ModelSnapshot
+    [Migration("20250627010336_remove SubscriptionEnded field from provider model")]
+    partial class removeSubscriptionEndedfieldfromprovidermodel
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -425,6 +428,9 @@ namespace AMWebAPI.CoreMigrations
 
                     b.Property<int>("StateCode")
                         .HasColumnType("int");
+
+                    b.Property<bool>("SubscriptionToBeCancelled")
+                        .HasColumnType("bit");
 
                     b.Property<int>("TimeZoneCode")
                         .HasColumnType("int");
