@@ -1,28 +1,27 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace AMWebAPI.CoreMigrations
+namespace AMWebAPI.CoreMigrations;
+
+/// <inheritdoc />
+public partial class addcommentsectionforproviderlogpayment : Migration
 {
     /// <inheritdoc />
-    public partial class addcommentsectionforproviderlogpayment : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<string>(
-                name: "Comment",
-                table: "ProviderLogPayment",
-                type: "nvarchar(max)",
-                nullable: true);
-        }
+        migrationBuilder.AddColumn<string>(
+            "Comment",
+            "ProviderLogPayment",
+            "nvarchar(max)",
+            nullable: true);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "Comment",
-                table: "ProviderLogPayment");
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            "Comment",
+            "ProviderLogPayment");
     }
 }

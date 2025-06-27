@@ -25,7 +25,7 @@ public class ProviderLogPayment
     public long TotalPrice { get; set; }
     public long SMSCount { get; set; }
     public bool Success { get; set; }
-    public string ? Comment { get; set; }
+    public string? Comment { get; set; }
     public DateTime CreateDate { get; set; }
     [NotMapped] public ProviderModel Provider { get; set; }
 }

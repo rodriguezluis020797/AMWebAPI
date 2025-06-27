@@ -1,29 +1,28 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace AMWebAPI.CoreMigrations
+namespace AMWebAPI.CoreMigrations;
+
+/// <inheritdoc />
+public partial class removeSubscriptionEndedfieldfromprovidermodel : Migration
 {
     /// <inheritdoc />
-    public partial class removeSubscriptionEndedfieldfromprovidermodel : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "SubscriptionEnded",
-                table: "Provider");
-        }
+        migrationBuilder.DropColumn(
+            "SubscriptionEnded",
+            "Provider");
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<bool>(
-                name: "SubscriptionEnded",
-                table: "Provider",
-                type: "bit",
-                nullable: false,
-                defaultValue: false);
-        }
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.AddColumn<bool>(
+            "SubscriptionEnded",
+            "Provider",
+            "bit",
+            nullable: false,
+            defaultValue: false);
     }
 }

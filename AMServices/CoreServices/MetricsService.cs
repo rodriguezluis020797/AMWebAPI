@@ -87,7 +87,12 @@ public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration conf
             foreach (var appDto in result.Appointments)
             {
                 appDto.StartDate = DateTimeTool.ConvertUtcToLocal(appDto.StartDate, timeZoneString);
-                appDto.EndDate = DateTimeTool.ConvertUtcToLocal(appDto.EndDate, timeZoneString);
+                if (dto.EndDate != null)
+                {
+                    var dateTimeCopy = appDto.EndDate.Value;
+                    dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTimeCopy, timeZoneString);
+                }
+
                 CryptographyTool.Encrypt(appDto.ServiceId, out var encryptedText);
                 appDto.ServiceId = encryptedText;
             }

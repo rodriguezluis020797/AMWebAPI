@@ -184,7 +184,11 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
             case AppointmentStatusEnum.Scheduled:
             {
                 dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
-                dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate, timeZoneCodeStr);
+                if (dto.EndDate != null)
+                {
+                    var dateTimeCopy = dto.EndDate.Value;
+                    dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTimeCopy, timeZoneCodeStr);
+                }
 
                 dto.Validate();
                 if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
@@ -212,8 +216,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                     }
 
                     message = $"Your appointment date and/or times with #Name# have changed. " +
-                              $"New start: {DateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr):M/d/yyyy h:mm tt} - " +
-                              $"New end: {DateTimeTool.ConvertUtcToLocal(dto.EndDate, timeZoneCodeStr):M/d/yyyy h:mm tt}.";
+                              $"New start: {DateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr):M/d/yyyy h:mm tt}";
                     clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
                 }
 
@@ -289,7 +292,12 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
             $"{dto.StartDate:M/d/yyyy h:mm tt} to {dto.EndDate:M/d/yyyy h:mm tt} {Regex.Replace(providerTimeZone.ToString(), "[^A-Z]", "")}.";
 
         dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
-        dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate, timeZoneCodeStr);
+        if (dto.EndDate != null)
+        {
+            var dateTime = dto.EndDate.Value;
+            dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTime, timeZoneCodeStr);
+        }
+
         dto.Validate();
 
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return new AppointmentDTO { ErrorMessage = dto.ErrorMessage };
@@ -398,7 +406,11 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
         var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
         dto.StartDate = DateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr);
-        dto.EndDate = DateTimeTool.ConvertUtcToLocal(dto.EndDate, timeZoneCodeStr);
+        if (dto.EndDate != null)
+        {
+            var dateTimeCopy = dto.EndDate.Value;
+            dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTimeCopy, timeZoneCodeStr);
+        }
 
         return dto;
     }

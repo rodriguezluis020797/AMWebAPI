@@ -12,7 +12,7 @@ public class AppointmentModel
     }
 
     public AppointmentModel(long serviceId, long clientId, long providerId, AppointmentStatusEnum status,
-        DateTime startDate, DateTime endDate,
+        DateTime startDate, DateTime? endDate,
         string notes, decimal price)
     {
         AppointmentId = 0;
@@ -34,7 +34,7 @@ public class AppointmentModel
     [ForeignKey("Client")] public long ClientId { get; set; }
     [ForeignKey("Provider")] public long ProviderId { get; set; }
     public DateTime StartDate { get; set; }
-    public DateTime EndDate { get; set; }
+    public DateTime? EndDate { get; set; }
     public string? Notes { get; set; }
     public bool OverridePrice { get; set; }
     public decimal Price { get; set; }

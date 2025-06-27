@@ -24,7 +24,7 @@ public class ProviderDTO : BaseDTO
     public bool IsTempPassword { get; set; }
     public string PayEngineInfoUrl { get; set; } = string.Empty;
     public DateTime? NextBillingDate { get; set; }
-    public AccountStatusEnum  AccountStatus { get; set; }
+    public AccountStatusEnum AccountStatus { get; set; }
 
     public void CreateNewRecordFromModel(ProviderModel provider, string payEngineInfoUrl)
     {

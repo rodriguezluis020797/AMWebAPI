@@ -26,9 +26,9 @@ internal class Program
         try
         {
             InitializeConfiguration();
-            
-            _providerBillingService = new StripeProviderBillingService(_logger,  _config);
-            
+
+            _providerBillingService = new StripeProviderBillingService(_logger, _config);
+
             await RunPayments();
         }
         catch (Exception ex)
@@ -46,7 +46,7 @@ internal class Program
         _config = (IConfiguration)new ConfigurationManager()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", false, true);
-        
+
         StripeConfiguration.ApiKey = _config["Stripe:SecretKey"];
     }
 
@@ -65,9 +65,10 @@ internal class Program
         await coreData.ExecuteWithRetryAsync(async () =>
         {
             providersToCharge = await coreData.Providers
-                .Where(x => x.NextBillingDate.HasValue &&
-                            x.NextBillingDate.Value.Date <= DateTime.UtcNow.Date &&
-                            x.AccountStatus == AccountStatusEnum.Active || x.AccountStatus == AccountStatusEnum.ToBeDeactivated)
+                .Where(x => (x.NextBillingDate.HasValue &&
+                             x.NextBillingDate.Value.Date <= DateTime.UtcNow.Date &&
+                             x.AccountStatus == AccountStatusEnum.Active) ||
+                            x.AccountStatus == AccountStatusEnum.ToBeDeactivated)
                 .Include(x => x.Clients)
                 .ToListAsync();
         });
@@ -77,20 +78,19 @@ internal class Program
             _logger.LogAudit("No accounts to run found");
             return;
         }
-        
+
         _logger.LogAudit($"Accounts to run: {providersToCharge.Count}");
-        
+
         var providerComm = new ProviderCommunicationModel();
         var providerLogPayment = new ProviderLogPayment();
-        
+
         foreach (var provider in providersToCharge)
-        {
             try
             {
                 _logger.LogAudit($"Processing Provider Id: {provider.ProviderId}");
-                
+
                 var totalSMSMessages = long.MinValue;
-                
+
                 await coreData.ExecuteWithRetryAsync(async () =>
                 {
                     totalSMSMessages = await (
@@ -102,23 +102,23 @@ internal class Program
                         select cc
                     ).LongCountAsync();
                 });
-                
+
                 _logger.LogAudit($"Total SMS Messages: {totalSMSMessages}");
 
                 if (provider.AccountStatus == AccountStatusEnum.ToBeDeactivated)
                 {
-                    _logger.LogAudit($"Subscription to be cancelled");
+                    _logger.LogAudit("Subscription to be cancelled");
                     await coreData.ExecuteWithRetryAsync(async () =>
                     {
                         await coreData.Providers
                             .ExecuteUpdateAsync(upd => upd
                                 .SetProperty(x => x.AccountStatus, AccountStatusEnum.Inactive));
-                    
+
                         await coreData.ClientCommunications
                             .Where(x => provider.NextBillingDate.Value.Date < x.SendAfter)
                             .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
 
-                        await coreData.SaveChangesAsync(); 
+                        await coreData.SaveChangesAsync();
                     });
 
                     if (totalSMSMessages < 1)
@@ -144,20 +144,18 @@ internal class Program
                 };
 
                 if (provider.AccountStatus != AccountStatusEnum.ToBeDeactivated)
-                {
                     invoiceItems.Add(
                         new InvoiceItemCreateOptions
                         {
-                        Customer = provider.PayEngineId,
-                        Currency = "usd",
-                        Description = "AM Tech Base Services",
-                        Pricing = new InvoiceItemPricingOptions
-                        {
-                            Price = "price_1RTrwgPmRnZS7JiXUMMF3sQZ"
-                        },
-                        Quantity = 1
-                    });
-                }
+                            Customer = provider.PayEngineId,
+                            Currency = "usd",
+                            Description = "AM Tech Base Services",
+                            Pricing = new InvoiceItemPricingOptions
+                            {
+                                Price = "price_1RTrwgPmRnZS7JiXUMMF3sQZ"
+                            },
+                            Quantity = 1
+                        });
 
                 invoiceItems = invoiceItems
                     .OrderBy(x => x.Description, StringComparer.OrdinalIgnoreCase)
@@ -173,7 +171,7 @@ internal class Program
 
                 if (capturedPayment.Status.Equals("paid"))
                 {
-                    _logger.LogAudit($"Payment succeeded... sending e-mail");
+                    _logger.LogAudit("Payment succeeded... sending e-mail");
 
                     providerComm = new ProviderCommunicationModel(
                         provider.ProviderId,
@@ -181,12 +179,13 @@ internal class Program
                         $"Your next billing date will be {provider.NextBillingDate?.ToLocalTime().Date:MM/dd/yyyy}",
                         DateTime.MinValue);
 
-                    providerLogPayment = new ProviderLogPayment(provider.ProviderId, capturedPayment.AmountPaid, totalSMSMessages, true, null);
+                    providerLogPayment = new ProviderLogPayment(provider.ProviderId, capturedPayment.AmountPaid,
+                        totalSMSMessages, true, null);
 
                     await coreData.ExecuteWithRetryAsync(async () =>
                     {
                         provider.NextBillingDate = provider.NextBillingDate.Value.AddMonths(1);
-                        
+
                         await coreData.ClientCommunications
                             .Where(cc =>
                                 cc.Sent == true &&
@@ -196,7 +195,7 @@ internal class Program
                                     .Select(c => c.ClientId)
                                     .Contains(cc.ClientId))
                             .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.Paid, x => true));
-                        
+
                         await coreData.ProviderLogPayments.AddAsync(providerLogPayment);
                         await coreData.ProviderCommunications.AddAsync(providerComm);
                         await coreData.SaveChangesAsync();
@@ -204,7 +203,7 @@ internal class Program
                 }
                 else
                 {
-                    _logger.LogAudit($"Payment failed... sending e-mail");
+                    _logger.LogAudit("Payment failed... sending e-mail");
 
                     providerComm = new ProviderCommunicationModel(
                         provider.ProviderId,
@@ -212,7 +211,8 @@ internal class Program
                         $"Please update your payment method to avoid service interruption.",
                         DateTime.MinValue);
 
-                    providerLogPayment = new ProviderLogPayment(provider.ProviderId, 0, 0, false, "Unable to process payment");
+                    providerLogPayment =
+                        new ProviderLogPayment(provider.ProviderId, 0, 0, false, "Unable to process payment");
 
                     await coreData.ExecuteWithRetryAsync(async () =>
                     {
@@ -230,14 +230,12 @@ internal class Program
                     await coreData.ProviderLogPayments.AddAsync(providerLogPayment);
                     await coreData.SaveChangesAsync();
                 });
-                _logger.LogAudit($"Error Processing Provider");
-                _logger.LogError($"{ex.ToString()}");
+                _logger.LogAudit("Error Processing Provider");
+                _logger.LogError($"{ex}");
             }
             finally
             {
                 _logger.LogAudit($"Done Processing Provider Id: {provider.ProviderId}");
             }
-        }
     }
-    
 }

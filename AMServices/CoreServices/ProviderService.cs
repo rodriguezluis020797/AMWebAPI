@@ -635,8 +635,8 @@ public class ProviderService(
                     .BeginTransactionAsync();
 
                 db.ProviderCommunications.Add(comm);
-                
-                
+
+
                 request.DeleteDate = DateTime.UtcNow;
 
                 provider.UpdateDate = DateTime.UtcNow;

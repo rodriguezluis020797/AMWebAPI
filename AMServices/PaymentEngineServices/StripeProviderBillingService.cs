@@ -81,7 +81,7 @@ public class StripeProviderBillingService(IAMLogger logger, IConfiguration confi
         }
 
         var finalizedInvoice = await invoiceService.FinalizeInvoiceAsync(invoice.Id);
-        
+
         return await invoiceService.PayAsync(invoice.Id);
     }
 

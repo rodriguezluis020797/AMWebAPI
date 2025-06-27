@@ -27,7 +27,7 @@ public enum AccountStatusEnum
     Active,
     ToBeDeactivated,
     Inactive,
-    Suspended,
+    Suspended
 }
 
 public enum SessionActionEnum

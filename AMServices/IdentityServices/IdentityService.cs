@@ -42,12 +42,12 @@ public class IdentityService(
         await coreData.ExecuteWithRetryAsync(async () =>
         {
             passwordModel = await identityData.Passwords
-                                    .Where(x => x.ProviderId == provider.ProviderId)
-                                    .OrderByDescending(x => x.CreateDate)
-                                    .FirstOrDefaultAsync()
-                                ?? throw new Exception(nameof(provider.ProviderId));
+                                .Where(x => x.ProviderId == provider.ProviderId)
+                                .OrderByDescending(x => x.CreateDate)
+                                .FirstOrDefaultAsync()
+                            ?? throw new Exception(nameof(provider.ProviderId));
         });
-        
+
 
         var hashedPassword = IdentityTool.HashPassword(dto.CurrentPassword, passwordModel.Salt);
         if (!string.Equals(hashedPassword, passwordModel.HashedPassword))
@@ -75,7 +75,7 @@ public class IdentityService(
             await Task.WhenAll(deleteOldTokens, addNewToken);
             await identityData.SaveChangesAsync();
         });
-        
+
         logger.LogAudit(
             $"Provider Id: {provider.ProviderId} - Login details: IP = {fingerprintDTO.IPAddress} - User Agent = {fingerprintDTO.UserAgent} - Platform = {fingerprintDTO.Platform} - Language = {fingerprintDTO.Language}");
 
@@ -86,7 +86,7 @@ public class IdentityService(
             ProviderDto = new ProviderDTO
             {
                 IsSpecialCase = passwordModel.Temporary,
-                AccountStatus = provider.AccountStatus,
+                AccountStatus = provider.AccountStatus
             },
             Jwt = GenerateJwt(provider.ProviderId, session.SessionId),
             RefreshToken = encryptedRefreshToken
@@ -316,7 +316,7 @@ public class IdentityService(
         var claims = new[]
         {
             new Claim(SessionClaimEnum.ProviderId.ToString(), providerId.ToString()),
-            new Claim(SessionClaimEnum.SessionId.ToString(), sessionId.ToString()),
+            new Claim(SessionClaimEnum.SessionId.ToString(), sessionId.ToString())
         };
 
         return IdentityTool.GenerateJWTToken(

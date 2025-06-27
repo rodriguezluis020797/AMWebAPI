@@ -1,40 +1,39 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿#nullable disable
 
-#nullable disable
+using Microsoft.EntityFrameworkCore.Migrations;
 
-namespace AMWebAPI.CoreMigrations
+namespace AMWebAPI.CoreMigrations;
+
+/// <inheritdoc />
+public partial class addfieldstoproviderpaymentlog : Migration
 {
     /// <inheritdoc />
-    public partial class addfieldstoproviderpaymentlog : Migration
+    protected override void Up(MigrationBuilder migrationBuilder)
     {
-        /// <inheritdoc />
-        protected override void Up(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.AddColumn<long>(
-                name: "SMSCount",
-                table: "ProviderLogPayment",
-                type: "bigint",
-                nullable: false,
-                defaultValue: 0L);
+        migrationBuilder.AddColumn<long>(
+            "SMSCount",
+            "ProviderLogPayment",
+            "bigint",
+            nullable: false,
+            defaultValue: 0L);
 
-            migrationBuilder.AddColumn<long>(
-                name: "TotalPrice",
-                table: "ProviderLogPayment",
-                type: "bigint",
-                nullable: false,
-                defaultValue: 0L);
-        }
+        migrationBuilder.AddColumn<long>(
+            "TotalPrice",
+            "ProviderLogPayment",
+            "bigint",
+            nullable: false,
+            defaultValue: 0L);
+    }
 
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropColumn(
-                name: "SMSCount",
-                table: "ProviderLogPayment");
+    /// <inheritdoc />
+    protected override void Down(MigrationBuilder migrationBuilder)
+    {
+        migrationBuilder.DropColumn(
+            "SMSCount",
+            "ProviderLogPayment");
 
-            migrationBuilder.DropColumn(
-                name: "TotalPrice",
-                table: "ProviderLogPayment");
-        }
+        migrationBuilder.DropColumn(
+            "TotalPrice",
+            "ProviderLogPayment");
     }
 }

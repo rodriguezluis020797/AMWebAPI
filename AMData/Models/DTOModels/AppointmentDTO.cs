@@ -13,7 +13,8 @@ public class AppointmentDTO : BaseDTO
     public bool OverridePrice { get; set; }
     public decimal Price { get; set; } = decimal.Zero;
     public DateTime StartDate { get; set; }
-    public DateTime EndDate { get; set; }
+    public bool SetEndDate { get; set; }
+    public DateTime? EndDate { get; set; }
     public string Notes { get; set; } = string.Empty;
     public AppointmentStatusEnum Status { get; set; } = AppointmentStatusEnum.Select;
 
@@ -37,7 +38,7 @@ public class AppointmentDTO : BaseDTO
         }
         */
 
-        if (EndDate < StartDate)
+        if (EndDate < StartDate && SetEndDate)
         {
             ErrorMessage = "End date must be after start date.";
             return;
@@ -55,6 +56,7 @@ public class AppointmentDTO : BaseDTO
         ClientId = model.ClientId.ToString();
         StartDate = model.StartDate;
         EndDate = model.EndDate;
+        SetEndDate = EndDate != null;
         Notes = model.Notes ?? string.Empty;
         Status = model.Status;
         ServiceName = model.Service.Name;
