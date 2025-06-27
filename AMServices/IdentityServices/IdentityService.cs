@@ -75,10 +75,9 @@ public class IdentityService(
             await Task.WhenAll(deleteOldTokens, addNewToken);
             await identityData.SaveChangesAsync();
         });
-
-        logger.LogAudit($"Provider Id: {provider.ProviderId}");
+        
         logger.LogAudit(
-            $"Login details: IP={fingerprintDTO.IPAddress}, UA={fingerprintDTO.UserAgent}, Platform={fingerprintDTO.Platform}, Language={fingerprintDTO.Language}");
+            $"Provider Id: {provider.ProviderId} - Login details: IP = {fingerprintDTO.IPAddress} - User Agent = {fingerprintDTO.UserAgent} - Platform = {fingerprintDTO.Platform} - Language = {fingerprintDTO.Language}");
 
         CryptographyTool.Encrypt(refreshTokenModel.Token, out var encryptedRefreshToken);
 
@@ -86,7 +85,8 @@ public class IdentityService(
         {
             ProviderDto = new ProviderDTO
             {
-                IsSpecialCase = passwordModel.Temporary
+                IsSpecialCase = passwordModel.Temporary,
+                AccountStatus = provider.AccountStatus,
             },
             Jwt = GenerateJwt(provider.ProviderId, session.SessionId),
             RefreshToken = encryptedRefreshToken
@@ -386,4 +386,5 @@ public class LogInAsyncResponse
     public string Jwt { get; set; } = string.Empty;
     public string RefreshToken { get; set; } = string.Empty;
     public ProviderDTO ProviderDto { get; set; } = new();
+    public AccountStatusEnum AccountStatus { get; set; } = AccountStatusEnum.Unknown;
 }
