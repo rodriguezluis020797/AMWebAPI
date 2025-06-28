@@ -1,4 +1,5 @@
-﻿using AMTools.Tools;
+﻿using AMData.Models.CoreModels;
+using AMTools.Tools;
 using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -18,20 +19,17 @@ internal class Program
     private static async Task Main(string[] args)
     {
         _logger = new AMDevLogger();
-        _logger.LogInfo("+");
-
-        try
+        InitializeConfiguration();
+        while (true)
         {
-            InitializeConfiguration();
-            await ProcessCommunicationsAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex.ToString());
-        }
-        finally
-        {
-            _logger.LogInfo("-");
+            try
+            {
+                await ProcessCommunicationsAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.ToString());
+            }
         }
     }
 
@@ -50,37 +48,51 @@ internal class Program
 
         await using var coreData = new AMCoreData(options, _config, _logger);
 
-        // Run both queries in parallel
-        var providerCommTask = await coreData.ProviderCommunications
-            .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
-            .Include(x => x.Provider)
-            .AsNoTracking()
-            .ToListAsync();
+        while (true)
+        {
+            var providerCommTask = new List<ProviderCommunicationModel>();
+            var clientCommTask = new List<ClientCommunicationModel>();
 
-        var clientCommTask = await coreData.ClientCommunications
-            .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
-            .Include(x => x.Client)
-            .AsNoTracking()
-            .ToListAsync();
+            await coreData.ExecuteWithRetryAsync(async () =>
+            {
+                // Run both queries in parallel
+                providerCommTask = await coreData.ProviderCommunications
+                    .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
+                    .Include(x => x.Provider)
+                    .AsNoTracking()
+                    .ToListAsync();
 
-        // Create and run send tasks in parallel
-        var emailTasks = providerCommTask
-            .Select(comm => new AMProviderEmail { Communication = comm })
-            .Select(email => SendEmailAsyncHelper(email)) // no need to wrap with Task.Run
-            .ToList();
+                clientCommTask = await coreData.ClientCommunications
+                    .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
+                    .Include(x => x.Client)
+                    .AsNoTracking()
+                    .ToListAsync();
+            });
 
-        var smsTasks = clientCommTask
-            .Select(comm => new AMClientSMS { Communication = comm })
-            .Select(sms => SendSmsAsyncHelper(sms))
-            .ToList();
-
-        var allEmailResults = await Task.WhenAll(emailTasks);
-        var allSmsResults = await Task.WhenAll(smsTasks);
-
-        // Process all results sequentially (or in parallel again if you like)
-        foreach (var result in allEmailResults) await HandleEmailResultAsync(result, coreData);
-
-        foreach (var result in allSmsResults) await HandleSmsResultAsync(result, coreData);
+            if (providerCommTask.Count != 0)
+            {
+                _logger.LogInfo($"Found {providerCommTask.Count} provider communications");
+                var emailTasks = providerCommTask
+                    .Select(comm => new AMProviderEmail { Communication = comm })
+                    .Select(email => SendEmailAsyncHelper(email)) // no need to wrap with Task.Run
+                    .ToList();
+                var allEmailResults = await Task.WhenAll(emailTasks);
+                foreach (var result in allEmailResults) await HandleEmailResultAsync(result, coreData);
+            }
+            
+            if (clientCommTask.Count != 0)
+            {
+                _logger.LogInfo($"Found {clientCommTask.Count} client communications");
+               var smsTasks = clientCommTask
+                    .Select(comm => new AMClientSMS { Communication = comm })
+                    .Select(sms => SendSmsAsyncHelper(sms))
+                    .ToList();
+                var allSmsResults = await Task.WhenAll(smsTasks);
+                foreach (var result in allSmsResults) await HandleSmsResultAsync(result, coreData);
+            }
+            
+            Thread.Sleep(2000);
+        }
     }
 
     private static async Task<AMProviderEmail> SendEmailAsyncHelper(AMProviderEmail email)
@@ -108,11 +120,16 @@ internal class Program
     {
         try
         {
-            var comm = await coreData.ProviderCommunications
-                .Where(x => x.ProviderCommunicationId == result.Communication.ProviderCommunicationId)
-                .Include(x => x.Provider)
-                .FirstOrDefaultAsync();
+            var comm = new ProviderCommunicationModel();
 
+            await coreData.ExecuteWithRetryAsync(async () =>
+            {
+                comm = await coreData.ProviderCommunications
+                    .Where(x => x.ProviderCommunicationId == result.Communication.ProviderCommunicationId)
+                    .Include(x => x.Provider)
+                    .FirstOrDefaultAsync();
+            });
+            
             if (comm == null) throw new ArgumentException(nameof(comm));
 
             if (comm.AttemptOne == null) comm.AttemptOne = DateTime.UtcNow;
@@ -125,7 +142,6 @@ internal class Program
                 comm.Sent = true;
                 message =
                     $"Sent communication ID {comm.ProviderCommunicationId} to {comm.Provider.EMail} (Provider ID {comm.Provider.ProviderId})";
-                _logger.LogInfo(message);
                 _logger.LogAudit(message);
             }
             else
@@ -135,8 +151,11 @@ internal class Program
                 _logger.LogError(message);
             }
 
-            coreData.ProviderCommunications.Update(comm);
-            await coreData.SaveChangesAsync();
+            coreData.ExecuteWithRetryAsync(async () =>
+            {
+                coreData.ProviderCommunications.Update(comm);
+                await coreData.SaveChangesAsync();
+            });
         }
         catch (Exception ex)
         {
@@ -164,10 +183,14 @@ internal class Program
     {
         try
         {
-            var comm = await coreData.ClientCommunications
-                .Where(x => x.ClientCommunicationId == result.Communication.ClientCommunicationId)
-                .Include(x => x.Client)
-                .FirstOrDefaultAsync();
+            var comm = new ClientCommunicationModel();
+            await coreData.ExecuteWithRetryAsync(async () =>
+            {
+                comm = await coreData.ClientCommunications
+                    .Where(x => x.ClientCommunicationId == result.Communication.ClientCommunicationId)
+                    .Include(x => x.Client)
+                    .FirstOrDefaultAsync();
+            });
 
             if (comm == null) throw new ArgumentException(nameof(comm));
 
@@ -181,7 +204,6 @@ internal class Program
                 comm.Sent = true;
                 message =
                     $"Sent communication ID {comm.ClientCommunicationId} to +1{comm.Client.PhoneNumber} (Client ID {comm.Client.ClientId})";
-                _logger.LogInfo(message);
                 _logger.LogAudit(message);
             }
             else
@@ -191,8 +213,11 @@ internal class Program
                 _logger.LogError(message);
             }
 
-            coreData.ClientCommunications.Update(comm);
-            await coreData.SaveChangesAsync();
+            await coreData.ExecuteWithRetryAsync(async () =>
+            {
+                coreData.ClientCommunications.Update(comm);
+                await coreData.SaveChangesAsync();
+            });
         }
         catch (Exception ex)
         {
