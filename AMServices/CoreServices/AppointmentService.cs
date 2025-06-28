@@ -370,15 +370,32 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                 else
                 {
                     var currentId = long.Parse(dto.AppointmentId);
-                    conflicts = await db.Appointments.Where(a =>
-                            a.StartDate < dto.EndDate &&
-                            a.EndDate > dto.StartDate &&
-                            a.ProviderId == providerId &&
-                            a.DeleteDate == null &&
-                            a.Status == AppointmentStatusEnum.Scheduled &&
-                            a.DeleteDate == null &&
-                            a.AppointmentId != currentId)
-                        .AnyAsync();
+                    if (dto.EndDate != null)
+                    {
+                        conflicts = await db.Appointments.Where(a =>
+                                a.StartDate < dto.EndDate &&
+                                a.EndDate > dto.StartDate &&
+                                a.ProviderId == providerId &&
+                                a.DeleteDate == null &&
+                                a.Status == AppointmentStatusEnum.Scheduled &&
+                                a.DeleteDate == null &&
+                                a.AppointmentId != currentId)
+                            .AnyAsync();
+                    }
+                    else
+                    {
+                        var start = dto.StartDate;
+                        var end = dto.StartDate.AddMinutes(1);
+
+                        conflicts = await db.Appointments.Where(a =>
+                                a.StartDate >= start &&
+                                a.StartDate < end &&
+                                a.ProviderId == providerId &&
+                                a.DeleteDate == null &&
+                                a.Status == AppointmentStatusEnum.Scheduled &&
+                                a.AppointmentId != currentId)
+                            .AnyAsync();
+                    }
                 }
             });
         }
@@ -409,7 +426,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         if (dto.EndDate != null)
         {
             var dateTimeCopy = dto.EndDate.Value;
-            dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTimeCopy, timeZoneCodeStr);
+            dto.EndDate = DateTimeTool.ConvertUtcToLocal(dateTimeCopy, timeZoneCodeStr);
         }
 
         return dto;

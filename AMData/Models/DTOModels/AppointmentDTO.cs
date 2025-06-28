@@ -38,7 +38,7 @@ public class AppointmentDTO : BaseDTO
         }
         */
 
-        if (EndDate < StartDate && SetEndDate)
+        if (EndDate != null && EndDate < StartDate)
         {
             ErrorMessage = "End date must be after start date.";
             return;
