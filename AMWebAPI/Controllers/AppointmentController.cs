@@ -19,7 +19,7 @@ public class AppointmentController(IAMLogger logger, IAppointmentService appoint
 
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -45,7 +45,7 @@ public class AppointmentController(IAMLogger logger, IAppointmentService appoint
 
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -71,7 +71,7 @@ public class AppointmentController(IAMLogger logger, IAppointmentService appoint
 
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -97,7 +97,7 @@ public class AppointmentController(IAMLogger logger, IAppointmentService appoint
 
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -123,7 +123,7 @@ public class AppointmentController(IAMLogger logger, IAppointmentService appoint
 
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 

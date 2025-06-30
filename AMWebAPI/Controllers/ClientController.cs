@@ -10,21 +10,22 @@ namespace AMWebAPI.Controllers;
 [ApiController]
 [Route("api/[controller]/[action]")]
 [Authorize]
-public class ClientController(IAMLogger logger, IConfiguration configuration, IClientService clientService)
+public class ClientController(IAMLogger logger, IClientService clientService)
     : ControllerBase
 {
-    private readonly IConfiguration _configuration = configuration;
 
     [HttpPost]
     public async Task<IActionResult> CreateClient([FromBody] ClientDTO dto)
     {
         logger.LogInfo("+");
-        var response = new ClientDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-
-            response = await clientService.CreateClient(dto, jwt);
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
+            
+            var response = await clientService.CreateClient(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -43,12 +44,14 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
     public async Task<IActionResult> DeleteClient([FromBody] ClientDTO dto)
     {
         logger.LogInfo("+");
-        var response = new ClientDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-
-            response = await clientService.DeleteClient(dto, jwt);
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
+            
+            var response = await clientService.DeleteClient(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -67,12 +70,14 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
     public async Task<IActionResult> GetClients()
     {
         logger.LogInfo("+");
-        var response = new List<ClientDTO>();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
 
-            response = await clientService.GetClients(jwt);
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
+            
+            var response = await clientService.GetClients(jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -91,12 +96,14 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
     public async Task<IActionResult> UpdateClient([FromBody] ClientDTO dto)
     {
         logger.LogInfo("+");
-        var response = new ClientDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-
-            response = await clientService.UpdateClient(dto, jwt);
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
+            
+            var response = await clientService.UpdateClient(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -115,12 +122,14 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
     public async Task<IActionResult> GetClientNotes([FromBody] ClientDTO dto)
     {
         logger.LogInfo("+");
-        var response = new List<ClientNoteDTO>();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            response = await clientService.GetClientNotes(dto, jwt);
+            var response = await clientService.GetClientNotes(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -139,10 +148,9 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
     public async Task<IActionResult> CreateClientNote([FromBody] ClientNoteDTO dto)
     {
         logger.LogInfo("+");
-        var response = new ClientNoteDTO();
         try
         {
-            response = await clientService.CreateClientNote(dto);
+            var response = await clientService.CreateClientNote(dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -161,10 +169,9 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
     public async Task<IActionResult> UpdateClientNote([FromBody] ClientNoteDTO dto)
     {
         logger.LogInfo("+");
-        var response = new BaseDTO();
         try
         {
-            response = await clientService.UpdateClientNote(dto);
+            var response = await clientService.UpdateClientNote(dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
@@ -183,10 +190,9 @@ public class ClientController(IAMLogger logger, IConfiguration configuration, IC
     public async Task<IActionResult> DeleteClientNote([FromBody] ClientNoteDTO dto)
     {
         logger.LogInfo("+");
-        var response = new BaseDTO();
         try
         {
-            response = await clientService.DeleteClientNote(dto);
+            var response = await clientService.DeleteClientNote(dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }

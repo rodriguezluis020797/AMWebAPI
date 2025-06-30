@@ -18,9 +18,12 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         logger.LogInfo("+");
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            var result = await serviceService.CreateServiceAsync(dto, jwToken);
+            var result = await serviceService.CreateServiceAsync(dto, jwt);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
         catch (Exception ex)
@@ -40,9 +43,12 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         logger.LogInfo("+");
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
 
-            var result = await serviceService.GetServicesAsync(jwToken);
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
+            
+            var result = await serviceService.GetServicesAsync(jwt);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
         catch (Exception ex)
@@ -62,9 +68,12 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         logger.LogInfo("+");
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            var result = await serviceService.GetServicePrice(dto, jwToken);
+            var result = await serviceService.GetServicePrice(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
@@ -85,9 +94,12 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         logger.LogInfo("+");
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            var result = await serviceService.UpdateServiceAsync(dto, jwToken);
+            var result = await serviceService.UpdateServiceAsync(dto, jwt);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
         catch (Exception ex)
@@ -107,9 +119,12 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         logger.LogInfo("+");
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            var result = await serviceService.DeleteServiceAsync(dto, jwToken);
+            var result = await serviceService.DeleteServiceAsync(dto, jwt);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
         catch (Exception ex)

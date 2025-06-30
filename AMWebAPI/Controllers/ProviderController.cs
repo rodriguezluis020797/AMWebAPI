@@ -61,9 +61,12 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         logger.LogInfo("+");
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-
-            var result = await providerService.GetProviderReviewsForProviderAsync(jwToken);
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
+            
+            var result = await providerService.GetProviderReviewsForProviderAsync(jwt);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
         catch (Exception ex)
@@ -105,7 +108,8 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
 
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwToken = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
             if (string.IsNullOrWhiteSpace(jwToken))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -130,7 +134,7 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
 
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwToken = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
             if (string.IsNullOrWhiteSpace(jwToken))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -155,7 +159,7 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
 
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwToken = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
             if (string.IsNullOrWhiteSpace(jwToken))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -177,23 +181,26 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
     public async Task<IActionResult> UpdateEMail([FromBody] ProviderDTO dto)
     {
         logger.LogInfo("+");
-        var response = new ProviderDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            response = await providerService.UpdateEMailAsync(dto, jwt);
+            var response = await providerService.UpdateEMailAsync(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (ArgumentException)
         {
-            return StatusCode((int)HttpStatusCodeEnum.BadCredentials, response);
+            return StatusCode((int)HttpStatusCodeEnum.BadCredentials);
         }
         catch (Exception ex)
         {
             logger.LogError(ex.ToString());
-            return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
@@ -207,8 +214,11 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         logger.LogInfo("+");
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
+            
             var response = await providerService.UpdateProviderAsync(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
@@ -229,17 +239,16 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
     public async Task<IActionResult> VerifyEMail([FromQuery] string guid, [FromQuery] bool verifying)
     {
         logger.LogInfo("+");
-        var response = new BaseDTO();
         try
         {
-            response = await providerService.VerifyEMailAsync(guid, verifying);
+            var response = await providerService.VerifyEMailAsync(guid, verifying);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
         {
             logger.LogError(ex.ToString());
-            return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
@@ -251,19 +260,22 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
     public async Task<IActionResult> CancelSubscription()
     {
         logger.LogInfo("+");
-        var response = new BaseDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            response = await providerService.CancelSubscriptionAsync(jwt);
+            var response = await providerService.CancelSubscriptionAsync(jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
         {
             logger.LogError(ex.ToString());
-            return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
@@ -275,19 +287,22 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
     public async Task<IActionResult> ReActivateSubscription()
     {
         logger.LogInfo("+");
-        var response = new BaseDTO();
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            response = await providerService.ReActivateSubscriptionAsync(jwt);
+            var response = await providerService.ReActivateSubscriptionAsync(jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
         {
             logger.LogError(ex.ToString());
-            return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {
@@ -300,17 +315,16 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
     public async Task<IActionResult> GetProviderPublicView([FromQuery] string guid)
     {
         logger.LogInfo("+");
-        var response = new ProviderPublicViewDTO();
         try
         {
-            response = await providerService.GetProviderPublicViewAsync(guid);
+            var response = await providerService.GetProviderPublicViewAsync(guid);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
         }
         catch (Exception ex)
         {
             logger.LogError(ex.ToString());
-            return StatusCode((int)HttpStatusCodeEnum.ServerError, response);
+            return StatusCode((int)HttpStatusCodeEnum.ServerError);
         }
         finally
         {

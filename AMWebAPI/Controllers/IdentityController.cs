@@ -24,8 +24,8 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
             Expires = DateTime.UtcNow.AddMinutes(-1)
         };
 
-        var jwtKey = SessionClaimEnum.JWToken.ToString();
-        var refreshKey = SessionClaimEnum.RefreshToken.ToString();
+        const string jwtKey = nameof(SessionClaimEnum.JWToken);
+        const string refreshKey = nameof(SessionClaimEnum.RefreshToken);
 
         Response.Cookies.Append(jwtKey, string.Empty, expiredOptions);
         Response.Cookies.Append(refreshKey, string.Empty, expiredOptions);
@@ -37,10 +37,10 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
     {
         return new FingerprintDTO
         {
-            IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString(),
-            Language = Request.Headers["X-Fingerprint-Language"],
-            Platform = Request.Headers["X-Fingerprint-Platform"],
-            UserAgent = Request.Headers["X-Fingerprint-UA"]
+            IPAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown",
+            Language = Request.Headers["X-Fingerprint-Language"].ToString(),
+            Platform = Request.Headers["X-Fingerprint-Platform"].ToString(),
+            UserAgent = Request.Headers["X-Fingerprint-UA"].ToString()
         };
     }
 
@@ -52,11 +52,11 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
 
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            var refreshToken = Request.Cookies[nameof(SessionClaimEnum.RefreshToken)];
             fingerprint.Validate();
 
-            if (string.IsNullOrEmpty(jwt) && string.IsNullOrEmpty(refreshToken))
+            if (string.IsNullOrEmpty(jwt) || string.IsNullOrEmpty(refreshToken))
                 return StatusCode((int)HttpStatusCodeEnum.NotLoggedIn);
 
             var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
@@ -128,15 +128,17 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
 
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
-            var refreshToken = Request.Cookies[SessionClaimEnum.RefreshToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            var refreshToken = Request.Cookies[nameof(SessionClaimEnum.RefreshToken)];
             fingerprint.Validate();
 
-            if ((string.IsNullOrEmpty(jwt) && string.IsNullOrEmpty(refreshToken)) || !IdentityTool.IsTheJWTExpired(jwt))
+            if (!string.IsNullOrEmpty(jwt) &&
+                !string.IsNullOrEmpty(refreshToken) &&
+                !IdentityTool.IsTheJWTExpired(jwt))
                 return StatusCode((int)HttpStatusCodeEnum.Success);
 
-            var newJwt = await identityService.RefreshJWT(jwt, refreshToken, fingerprint);
-            SetAuthCookies(newJwt, refreshToken);
+            var newJwt = await identityService.RefreshJWT(jwt!, refreshToken!, fingerprint);
+            SetAuthCookies(newJwt, refreshToken!);
 
 
             return StatusCode((int)HttpStatusCodeEnum.Success);
@@ -196,11 +198,11 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
             HttpOnly = true,
             Secure = true,
             SameSite = SameSiteMode.None,
-            Expires = DateTime.UtcNow.AddDays(int.Parse(configuration["CookieSettings:CookieExperationDays"]!))
+            Expires = DateTime.UtcNow.AddDays(int.Parse(configuration["CookieSettings:CookieExpirationDays"]!))
         };
 
-        Response.Cookies.Append(SessionClaimEnum.JWToken.ToString(), jwt, options);
-        Response.Cookies.Append(SessionClaimEnum.RefreshToken.ToString(), refreshToken, options);
+        Response.Cookies.Append(nameof(SessionClaimEnum.JWToken), jwt, options);
+        Response.Cookies.Append(nameof(SessionClaimEnum.RefreshToken), refreshToken, options);
     }
 
     [HttpPost]
@@ -211,7 +213,7 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
 
         try
         {
-            var jwt = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
             if (string.IsNullOrWhiteSpace(jwt)) throw new Exception("JWT token missing.");
 
             result = await identityService.UpdatePasswordAsync(dto, jwt);

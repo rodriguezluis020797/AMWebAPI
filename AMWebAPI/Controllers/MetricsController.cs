@@ -18,9 +18,12 @@ public class MetricsController(IAMLogger logger, IMetricsService metricsService)
         logger.LogInfo("+");
         try
         {
-            var jwToken = Request.Cookies[SessionClaimEnum.JWToken.ToString()];
+            var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
+            
+            if (string.IsNullOrWhiteSpace(jwt))
+                throw new Exception("JWT token missing from cookies.");
 
-            var result = await metricsService.GetMetricsByRange(jwToken, dto);
+            var result = await metricsService.GetMetricsByRange(jwt, dto);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }

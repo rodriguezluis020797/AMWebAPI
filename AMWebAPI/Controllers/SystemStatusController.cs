@@ -11,12 +11,9 @@ public class SystemStatusController(ISystemStatusService systemStatusService) : 
     [HttpGet]
     public async Task<IActionResult> FullSystemCheck()
     {
-        var result = await systemStatusService.IsFullSystemActive();
-
         return StatusCode(
             Convert.ToInt32(await systemStatusService.IsFullSystemActive()
                 ? HttpStatusCodeEnum.Success
-                : HttpStatusCodeEnum.ServerError),
-            result);
+                : HttpStatusCodeEnum.ServerError));
     }
 }
