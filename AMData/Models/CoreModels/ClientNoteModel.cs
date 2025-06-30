@@ -9,7 +9,6 @@ public class ClientNoteModel
 {
     public ClientNoteModel(long clientId, string note)
     {
-        ClientNoteId = 0;
         ClientId = clientId;
         Note = note;
         CreateDate = DateTime.UtcNow;

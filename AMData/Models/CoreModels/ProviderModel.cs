@@ -11,11 +11,10 @@ public class ProviderModel
     {
     }
 
-    public ProviderModel(long providerId, string firstName, string? middleName, string lastName, string eMail,
+    public ProviderModel(string firstName, string? middleName, string lastName, string eMail,
         string addressLine1, string addressLine2, string city, string zipCode, CountryCodeEnum countryCode,
         StateCodeEnum stateCode, TimeZoneCodeEnum timeZoneCode, string businessName, string description)
     {
-        ProviderId = providerId;
         ProviderGuid = Guid.NewGuid().ToString();
         FirstName = firstName;
         MiddleName = middleName;

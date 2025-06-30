@@ -15,7 +15,6 @@ public class AppointmentModel
         DateTime startDate, DateTime? endDate,
         string notes, decimal price)
     {
-        AppointmentId = 0;
         ServiceId = serviceId;
         ClientId = clientId;
         ProviderId = providerId;

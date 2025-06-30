@@ -12,7 +12,6 @@ public class ClientCommunicationModel
 
     public ClientCommunicationModel(long clientId, string message, DateTime sendAfter)
     {
-        ClientCommunicationId = 0;
         ClientId = clientId;
         Message = message;
         SendAfter = sendAfter;

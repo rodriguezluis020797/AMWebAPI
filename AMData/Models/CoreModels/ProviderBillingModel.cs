@@ -12,7 +12,6 @@ public class ProviderBillingModel
 
     public ProviderBillingModel(long providerId, long amount, long discountAmount, DateTime dueDate)
     {
-        ProviderBillingId = 0;
         ProviderId = providerId;
         Amount = amount;
         DiscountAmount = discountAmount;

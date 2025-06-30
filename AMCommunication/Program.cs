@@ -21,7 +21,6 @@ internal class Program
         _logger = new AMDevLogger();
         InitializeConfiguration();
         while (true)
-        {
             try
             {
                 await ProcessCommunicationsAsync();
@@ -30,7 +29,6 @@ internal class Program
             {
                 _logger.LogError(ex.ToString());
             }
-        }
     }
 
     private static void InitializeConfiguration()
@@ -57,13 +55,15 @@ internal class Program
             {
                 // Run both queries in parallel
                 providerCommTask = await coreData.ProviderCommunications
-                    .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
+                    .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow &&
+                                !x.Sent)
                     .Include(x => x.Provider)
                     .AsNoTracking()
                     .ToListAsync();
 
                 clientCommTask = await coreData.ClientCommunications
-                    .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow && !x.Sent)
+                    .Where(x => x.DeleteDate == null && x.AttemptThree == null && x.SendAfter < DateTime.UtcNow &&
+                                !x.Sent)
                     .Include(x => x.Client)
                     .AsNoTracking()
                     .ToListAsync();
@@ -79,18 +79,18 @@ internal class Program
                 var allEmailResults = await Task.WhenAll(emailTasks);
                 foreach (var result in allEmailResults) await HandleEmailResultAsync(result, coreData);
             }
-            
+
             if (clientCommTask.Count != 0)
             {
                 _logger.LogInfo($"Found {clientCommTask.Count} client communications");
-               var smsTasks = clientCommTask
+                var smsTasks = clientCommTask
                     .Select(comm => new AMClientSMS { Communication = comm })
                     .Select(sms => SendSmsAsyncHelper(sms))
                     .ToList();
                 var allSmsResults = await Task.WhenAll(smsTasks);
                 foreach (var result in allSmsResults) await HandleSmsResultAsync(result, coreData);
             }
-            
+
             Thread.Sleep(2000);
         }
     }
@@ -129,7 +129,7 @@ internal class Program
                     .Include(x => x.Provider)
                     .FirstOrDefaultAsync();
             });
-            
+
             if (comm == null) throw new ArgumentException(nameof(comm));
 
             if (comm.AttemptOne == null) comm.AttemptOne = DateTime.UtcNow;

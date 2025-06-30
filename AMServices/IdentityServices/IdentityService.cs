@@ -32,9 +32,10 @@ public class IdentityService(
         var provider = new ProviderModel();
         await coreData.ExecuteWithRetryAsync(async () =>
         {
-            provider = await coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail)
-                       ?? throw new ArgumentException(nameof(dto.EMail));
+            provider = await coreData.Providers.FirstOrDefaultAsync(x => x.EMail == dto.EMail);
         });
+
+        if (provider == null) throw new ArgumentException(nameof(dto.EMail));
 
         if (provider.AccessGranted == false) throw new ArgumentException(nameof(provider.AccessGranted));
 
