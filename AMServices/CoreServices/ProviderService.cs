@@ -104,7 +104,7 @@ public class ProviderService(
 
             var emailReq = new VerifyProviderEMailRequestModel(provider.ProviderId);
             var message =
-                $"Thank you for joining AM Tech!\nPlease verify your email:\n{config["Environment:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&verifying=true";
+                $"Thank you for joining AM Tech!\nPlease verify your email:\n{config["URIs:AngularURI"]}/verify-email?guid={emailReq.QueryGuid}&verifying=true";
             var comm = new ProviderCommunicationModel(provider.ProviderId, message, DateTime.MinValue);
 
             await db.VerifyProviderEMailRequests.AddAsync(emailReq);
@@ -484,7 +484,7 @@ public class ProviderService(
         var message =
             $"There has been a request to change your E-Mail.\n" +
             $"If this was not you, please change your password.\n" +
-            $"Otherwise, verify here: {config["Environment:AngularURI"]}/verify-email?guid={request.QueryGuid}&verifying=false\n" +
+            $"Otherwise, verify here: {config["URIs:AngularURI"]}/verify-email?guid={request.QueryGuid}&verifying=false\n" +
             $"New E-Mail: {request.NewEMail}";
 
         var communication = new ProviderCommunicationModel(providerId, message, DateTime.MinValue);

@@ -290,7 +290,7 @@ public class IdentityService(
         var message = $"A password reset has been requested for your account.\n" +
                       $"If you did not request this change, please disregard this e-mail.\n" +
                       $"Otherwise, please follow this link to reset your password:\n" +
-                      $"{config["Environment:AngularURI"]}/reset-password?guid={guid}";
+                      $"{config["URIs:AngularURI"]}/reset-password?guid={guid}";
 
         await coreData.ExecuteWithRetryAsync(async () =>
         {

@@ -159,7 +159,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
                     message = $"You recently had an appointment with #Name#. " +
                               $"Please follow this link to give an honest review. " +
-                              $"{config["Environment:AngularURI"]!}/provider-review?guid={providerReview.GuidQuery}";
+                              $"{config["URIs:AngularURI"]!}/provider-review?guid={providerReview.GuidQuery}";
 
                     message = message
                         .Replace("#Name#", $"{appointmentModel.Provider.BusinessName}");
