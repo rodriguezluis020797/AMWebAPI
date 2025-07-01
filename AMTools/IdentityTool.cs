@@ -42,14 +42,14 @@ public static class IdentityTool
 
     public static string GenerateRandomPassword()
     {
-        var length = 12;
+        const int length = 12;
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
         StringBuilder result = new(length);
         var data = new byte[length];
 
         using (var rng = RandomNumberGenerator.Create())
         {
-            rng.GetBytes(data); // Fill byte array with cryptographically strong random bytes
+            rng.GetBytes(data);
         }
 
         for (var i = 0; i < length; i++) result.Append(chars[data[i] % chars.Length]); // Map byte to a valid character
@@ -60,10 +60,8 @@ public static class IdentityTool
     public static string HashPassword(string password, string salt)
     {
         var saltByte = Convert.FromBase64String(salt);
-        using (var pbkdf2 = new Rfc2898DeriveBytes(password, saltByte, 100000, HashAlgorithmName.SHA256))
-        {
-            return Convert.ToBase64String(pbkdf2.GetBytes(32));
-        }
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, saltByte, 100000, HashAlgorithmName.SHA256);
+        return Convert.ToBase64String(pbkdf2.GetBytes(32));
     }
 
     public static string GenerateRefreshToken()

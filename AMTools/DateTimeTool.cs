@@ -8,8 +8,6 @@ public static class DateTimeTool
 {
     public static DateTime ConvertUtcToLocal(DateTime utcDateTime, string timeZoneCodeStr)
     {
-        try
-        {
             var ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
             var dateTimeZone = DateTimeZoneProviders.Tzdb[ianaZoneId];
 
@@ -18,37 +16,23 @@ public static class DateTimeTool
 
             // Convert to DateTime with Local kind (local time)
             return zonedDateTime.ToDateTimeUnspecified().SpecifyKind(DateTimeKind.Local);
-        }
-        catch (Exception e)
-        {
-            return utcDateTime.ToLocalTime(); // fallback
-        }
     }
 
     public static DateTime ConvertLocalToUtc(DateTime localDateTime, string timeZoneCodeStr)
     {
-        try
-        {
-            var ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
+        var ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
             var dateTimeZone = DateTimeZoneProviders.Tzdb[ianaZoneId];
 
             var local = LocalDateTime.FromDateTime(localDateTime);
-
-            // Safely map local time to zoned time even if ambiguous or skipped (DST)
             var zoned = dateTimeZone.ResolveLocal(local, Resolvers.LenientResolver);
 
             // Convert to UTC DateTime with DateTimeKind.Utc
             return zoned.ToDateTimeUtc();
-        }
-        catch (Exception e)
-        {
-            return localDateTime.ToUniversalTime(); // fallback
-        }
     }
 
     private static string GetIanaTimeZoneId(string windowsTimeZoneId)
     {
-        windowsTimeZoneId = windowsTimeZoneId?.Trim();
+        windowsTimeZoneId = windowsTimeZoneId.Trim();
 
         if (string.IsNullOrWhiteSpace(windowsTimeZoneId))
             throw new ArgumentException("Time zone ID is null or empty");

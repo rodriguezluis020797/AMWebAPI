@@ -6,5 +6,5 @@ namespace AMCommunication;
 public class AMProviderEmail
 {
     public ProviderCommunicationModel Communication { get; set; }
-    public Response Response { get; set; } = default!;
+    public Response Response { get; set; }
 }

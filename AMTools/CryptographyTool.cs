@@ -1,7 +1,7 @@
 ﻿using System.Security.Cryptography;
 using System.Text;
 
-namespace AMTools.Tools;
+namespace AMTools;
 
 public static class CryptographyTool
 {
