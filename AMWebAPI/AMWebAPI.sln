@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMUserAcceptance", "..\AMUs
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMProviderBillingProcessor", "..\AMProviderBillingProcessor\AMProviderBillingProcessor.csproj", "{F8FCCCF5-13D7-471E-A140-977AFC94D93A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AMDatabaseBackup", "..\AMDatabaseBackup\AMDatabaseBackup.csproj", "{F82610F8-8E40-4F46-908F-60F5184948E6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{F8FCCCF5-13D7-471E-A140-977AFC94D93A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F8FCCCF5-13D7-471E-A140-977AFC94D93A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F8FCCCF5-13D7-471E-A140-977AFC94D93A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F82610F8-8E40-4F46-908F-60F5184948E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F82610F8-8E40-4F46-908F-60F5184948E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F82610F8-8E40-4F46-908F-60F5184948E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F82610F8-8E40-4F46-908F-60F5184948E6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
