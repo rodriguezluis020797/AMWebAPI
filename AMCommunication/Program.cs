@@ -18,7 +18,6 @@ internal class Program
 
     private static async Task Main(string[] args)
     {
-        _logger = new AMDevLogger();
         InitializeConfiguration();
         while (true)
             try
@@ -33,6 +32,7 @@ internal class Program
 
     private static void InitializeConfiguration()
     {
+        _logger = new AMDevLogger();
         _config = (IConfiguration)new ConfigurationManager()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", false, true);

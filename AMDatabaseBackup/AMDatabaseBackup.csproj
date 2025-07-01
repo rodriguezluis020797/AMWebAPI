@@ -12,9 +12,13 @@
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
-    
+
     <ItemGroup>
         <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\AMTools\AMTools.csproj"/>
     </ItemGroup>
 
 </Project>

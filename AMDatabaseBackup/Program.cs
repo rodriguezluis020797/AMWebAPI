@@ -1,24 +1,31 @@
 ﻿using System.IO.Compression;
 using System.Text.Json;
+using AMTools;
 using Microsoft.Data.SqlClient;
 
 namespace AMDatabaseBackup;
 
 public class BackupConfig
 {
-    public string BackupDirectory { get; set; } = string.Empty;
-    public Dictionary<string, string> Databases { get; set; } = new();
+    public string BackupDirectory { get; init; } = string.Empty;
+    public Dictionary<string, string> Databases { get; init; } = new();
 }
 
 internal static class Program
 {
-    private static void Main(string[] args)
+    private static AMDevLogger _logger = null!;
+
+    private static void Main()
     {
+        _logger = new AMDevLogger();
+
+        _logger.LogInfo("+");
+
         var config = LoadConfig("appsettings.json");
 
         foreach (var (databaseName, connectionString) in config.Databases)
         {
-            var timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+            var timestamp = DateTime.UtcNow.ToString("O");
             var backupFilePath = Path.Combine(config.BackupDirectory, $"{databaseName}_{timestamp}.bak");
             var backupSql = $"""
 
@@ -46,18 +53,20 @@ internal static class Program
                     }
 
                     File.Delete(backupFilePath);
-                    Console.WriteLine($"ackup completed and zipped: {zipPath}");
+                    _logger.LogInfo($"Backup completed and zipped: {zipPath}");
                 }
                 else
                 {
-                    Console.WriteLine($"Backup completed but file not found: {backupFilePath}");
+                    _logger.LogError($"Backup completed but file not found: {backupFilePath}");
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Backup failed for {databaseName}: {ex.Message}");
+                _logger.LogError($"Backup failed for {databaseName}: {ex}");
             }
         }
+
+        _logger.LogInfo("-");
     }
 
     private static BackupConfig LoadConfig(string path)
