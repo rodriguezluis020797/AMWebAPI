@@ -65,10 +65,7 @@ public class ProviderService(
                 .Where(x => x.ProviderId == providerId)
                 .FirstOrDefaultAsync();
 
-            if (provider == null)
-            {
-                throw new Exception("Provider not found");
-            }
+            if (provider == null) throw new Exception("Provider not found");
 
             provider.AccountStatus = AccountStatusEnum.ToBeDeactivated;
             provider.UpdateDate = DateTime.UtcNow;
@@ -270,12 +267,10 @@ public class ProviderService(
         if (!string.IsNullOrEmpty(response.ErrorMessage)) return response;
 
         foreach (var review in provider.Reviews)
-        {
             review.Provider = new ProviderModel
             {
                 BusinessName = string.Empty
             };
-        }
 
         if (!string.IsNullOrEmpty(response.ErrorMessage)) return response;
 
@@ -399,11 +394,8 @@ public class ProviderService(
                 .FirstOrDefaultAsync();
         });
 
-        if (provider == null)
-        {
-            throw new Exception("Provider not found");
-        }
-        
+        if (provider == null) throw new Exception("Provider not found");
+
         var utcNow = DateTime.UtcNow;
         //var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(customerTimeZoneName);
         //var customerLocalNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
@@ -584,8 +576,9 @@ public class ProviderService(
             }
 
             providerReviewModel.UpdateRecordFromDto(dto);
-            
-            var providerAlert = new ProviderAlertModel(providerReviewModel.ProviderId, "You have a new review! Go to your metrics to see it.", DateTime.UtcNow);
+
+            var providerAlert = new ProviderAlertModel(providerReviewModel.ProviderId,
+                "You have a new review! Go to your metrics to see it.", DateTime.UtcNow);
 
             db.ProviderAlerts.Add(providerAlert);
 

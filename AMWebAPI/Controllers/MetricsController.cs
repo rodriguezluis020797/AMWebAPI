@@ -2,7 +2,6 @@ using AMData.Models;
 using AMData.Models.DTOModels;
 using AMServices.CoreServices;
 using AMTools;
-using AMTools.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,7 +19,7 @@ public class MetricsController(IAMLogger logger, IMetricsService metricsService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 

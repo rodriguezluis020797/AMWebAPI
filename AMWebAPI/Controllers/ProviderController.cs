@@ -2,7 +2,6 @@
 using AMData.Models.DTOModels;
 using AMServices.CoreServices;
 using AMTools;
-using AMTools.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -63,10 +62,10 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
-            
+
             var result = await providerService.GetProviderReviewsForProviderAsync(jwt);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
@@ -110,7 +109,7 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         try
         {
             var jwToken = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwToken))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -185,8 +184,8 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
-            
+
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -216,10 +215,10 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
-            
+
             var response = await providerService.UpdateProviderAsync(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
@@ -264,8 +263,8 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
-            
+
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -291,8 +290,8 @@ public class ProviderController(IAMLogger logger, IProviderService providerServi
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
-            
+
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 

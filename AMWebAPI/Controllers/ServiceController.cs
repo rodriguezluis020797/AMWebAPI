@@ -2,7 +2,6 @@ using AMData.Models;
 using AMData.Models.DTOModels;
 using AMServices.CoreServices;
 using AMTools;
-using AMTools.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -20,7 +19,7 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -48,7 +47,7 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
 
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
-            
+
             var result = await serviceService.GetServicesAsync(jwt);
             return StatusCode((int)HttpStatusCodeEnum.Success, result);
         }
@@ -70,7 +69,7 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -96,7 +95,7 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 
@@ -121,7 +120,7 @@ public class ServiceController(IAMLogger logger, IServiceService serviceService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 

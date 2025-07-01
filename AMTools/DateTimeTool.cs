@@ -8,26 +8,26 @@ public static class DateTimeTool
 {
     public static DateTime ConvertUtcToLocal(DateTime utcDateTime, string timeZoneCodeStr)
     {
-            var ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
-            var dateTimeZone = DateTimeZoneProviders.Tzdb[ianaZoneId];
+        var ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
+        var dateTimeZone = DateTimeZoneProviders.Tzdb[ianaZoneId];
 
-            var instant = Instant.FromDateTimeUtc(DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc));
-            var zonedDateTime = instant.InZone(dateTimeZone);
+        var instant = Instant.FromDateTimeUtc(DateTime.SpecifyKind(utcDateTime, DateTimeKind.Utc));
+        var zonedDateTime = instant.InZone(dateTimeZone);
 
-            // Convert to DateTime with Local kind (local time)
-            return zonedDateTime.ToDateTimeUnspecified().SpecifyKind(DateTimeKind.Local);
+        // Convert to DateTime with Local kind (local time)
+        return zonedDateTime.ToDateTimeUnspecified().SpecifyKind(DateTimeKind.Local);
     }
 
     public static DateTime ConvertLocalToUtc(DateTime localDateTime, string timeZoneCodeStr)
     {
         var ianaZoneId = GetIanaTimeZoneId(timeZoneCodeStr);
-            var dateTimeZone = DateTimeZoneProviders.Tzdb[ianaZoneId];
+        var dateTimeZone = DateTimeZoneProviders.Tzdb[ianaZoneId];
 
-            var local = LocalDateTime.FromDateTime(localDateTime);
-            var zoned = dateTimeZone.ResolveLocal(local, Resolvers.LenientResolver);
+        var local = LocalDateTime.FromDateTime(localDateTime);
+        var zoned = dateTimeZone.ResolveLocal(local, Resolvers.LenientResolver);
 
-            // Convert to UTC DateTime with DateTimeKind.Utc
-            return zoned.ToDateTimeUtc();
+        // Convert to UTC DateTime with DateTimeKind.Utc
+        return zoned.ToDateTimeUtc();
     }
 
     private static string GetIanaTimeZoneId(string windowsTimeZoneId)

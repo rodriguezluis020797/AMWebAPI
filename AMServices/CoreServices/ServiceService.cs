@@ -3,7 +3,6 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
 using AMTools;
-using AMTools.Tools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -125,10 +124,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
                 .FirstOrDefaultAsync();
 
-            if (serviceModel == null)
-            {
-                throw new Exception("Service not found");
-            }
+            if (serviceModel == null) throw new Exception("Service not found");
 
             serviceModel.UpdateRecordFromDTO(dto);
 

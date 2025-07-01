@@ -4,7 +4,6 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
 using AMTools;
-using AMTools.Tools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -87,7 +86,6 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        
 
         var appointmentModel = new AppointmentModel();
         var clientComm = new ClientCommunicationModel();
@@ -120,10 +118,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
                         .AsNoTracking()
                         .FirstOrDefaultAsync();
 
-                    if (appointmentModel == null)
-                    {
-                        throw new Exception("Appointment could not be found.");
-                    }
+                    if (appointmentModel == null) throw new Exception("Appointment could not be found.");
 
                     var startTimeLocal = DateTimeTool.ConvertUtcToLocal(appointmentModel.StartDate, timeZoneCodeStr);
 
@@ -155,11 +150,8 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
                         .Include(x => x.Provider)
                         .AsNoTracking()
                         .FirstOrDefaultAsync();
-                    
-                    if (appointmentModel == null)
-                    {
-                        throw new Exception("Appointment could not be found.");
-                    }
+
+                    if (appointmentModel == null) throw new Exception("Appointment could not be found.");
 
                     var providerReview =
                         new ProviderReviewModel(appointmentModel.ProviderId, appointmentModel.ClientId);
@@ -263,11 +255,8 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
                 .Where(x => x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId))
                 .Include(x => x.Provider)
                 .FirstOrDefaultAsync();
-            
-            if (appointmentModel == null)
-            {
-                throw new Exception("Appointment could not be found.");
-            }
+
+            if (appointmentModel == null) throw new Exception("Appointment could not be found.");
 
             await using var transaction = await db.Database.BeginTransactionAsync();
 

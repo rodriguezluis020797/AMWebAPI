@@ -2,7 +2,6 @@
 using AMData.Models.DTOModels;
 using AMServices.CoreServices;
 using AMTools;
-using AMTools.Tools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +13,6 @@ namespace AMWebAPI.Controllers;
 public class ClientController(IAMLogger logger, IClientService clientService)
     : ControllerBase
 {
-
     [HttpPost]
     public async Task<IActionResult> CreateClient([FromBody] ClientDTO dto)
     {
@@ -22,10 +20,10 @@ public class ClientController(IAMLogger logger, IClientService clientService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
-            
+
             var response = await clientService.CreateClient(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
@@ -48,10 +46,10 @@ public class ClientController(IAMLogger logger, IClientService clientService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
-            
+
             var response = await clientService.DeleteClient(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
@@ -77,7 +75,7 @@ public class ClientController(IAMLogger logger, IClientService clientService)
 
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
-            
+
             var response = await clientService.GetClients(jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
@@ -100,10 +98,10 @@ public class ClientController(IAMLogger logger, IClientService clientService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
-            
+
             var response = await clientService.UpdateClient(dto, jwt);
 
             return StatusCode((int)HttpStatusCodeEnum.Success, response);
@@ -126,7 +124,7 @@ public class ClientController(IAMLogger logger, IClientService clientService)
         try
         {
             var jwt = Request.Cookies[nameof(SessionClaimEnum.JWToken)];
-            
+
             if (string.IsNullOrWhiteSpace(jwt))
                 throw new Exception("JWT token missing from cookies.");
 

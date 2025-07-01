@@ -3,7 +3,6 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
 using AMTools;
-using AMTools.Tools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -85,7 +84,7 @@ public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsServ
             foreach (var appDto in result.Appointments)
             {
                 appDto.StartDate = DateTimeTool.ConvertUtcToLocal(appDto.StartDate, timeZoneString);
-                
+
                 if (appDto.EndDate != null)
                 {
                     var dateTimeCopy = appDto.EndDate.Value;
