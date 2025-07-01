@@ -16,7 +16,7 @@ namespace AMWebAPI;
 
 public class Program
 {
-    static readonly string basePath = AppContext.BaseDirectory;
+    //static readonly string basePath = AppContext.BaseDirectory;
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
@@ -46,8 +46,8 @@ public class Program
     private static void ConfigureConfiguration(WebApplicationBuilder builder)
     {
         builder.Configuration
-            //.SetBasePath(Directory.GetCurrentDirectory())
-            .SetBasePath(basePath)
+            .SetBasePath(Directory.GetCurrentDirectory())
+            //.SetBasePath(basePath)
             .AddJsonFile("appsettings.json", false, true)
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", false, true)
             .AddEnvironmentVariables();
