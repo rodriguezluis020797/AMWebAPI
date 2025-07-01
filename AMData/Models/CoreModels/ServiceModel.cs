@@ -11,7 +11,7 @@ public class ServiceModel
     {
     }
 
-    public ServiceModel(long providerId, string name, string description, bool allowClientScheduling, decimal price)
+    public ServiceModel(long providerId, string name, string? description, bool allowClientScheduling, decimal price)
     {
         ProviderId = providerId;
         Name = name;

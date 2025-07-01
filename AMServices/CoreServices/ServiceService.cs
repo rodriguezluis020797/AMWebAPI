@@ -1,9 +1,9 @@
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
+using AMServices.DataServices;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -18,7 +18,7 @@ public interface IServiceService
     Task<ServiceDTO> UpdateServiceAsync(ServiceDTO dto, string jwt);
 }
 
-public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration config) : IServiceService
+public class ServiceService(AMCoreData db, IConfiguration config) : IServiceService
 {
     public async Task<ServiceDTO> CreateServiceAsync(ServiceDTO dto, string jwt)
     {
@@ -26,19 +26,19 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         if (!string.IsNullOrWhiteSpace(dto.ErrorMessage)) return dto;
 
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        var servicenNameExists = false;
+        var serviceNameExists = false;
         await db.ExecuteWithRetryAsync(async () =>
         {
             if (await db.Services
                     .Where(x => x.ProviderId == providerId && x.Name.ToLower().Equals(dto.Name.ToLower()) &&
                                 x.DeleteDate == null)
                     .AnyAsync())
-                servicenNameExists = true;
+                serviceNameExists = true;
         });
 
-        if (servicenNameExists)
+        if (serviceNameExists)
         {
             dto.ErrorMessage = "A service with that name already exists.";
             return dto;
@@ -47,7 +47,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         var serviceModel = new ServiceModel(
             providerId,
             dto.Name,
-            dto.Description,
+            dto.Description ?? null,
             dto.AllowClientScheduling,
             dto.Price
         );
@@ -64,7 +64,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
     public async Task<List<ServiceDTO>> GetServicesAsync(string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var services = new List<ServiceModel>();
         await db.ExecuteWithRetryAsync(async () =>
@@ -92,7 +92,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
     public async Task<ServiceDTO> GetServicePrice(ServiceDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
@@ -114,17 +114,21 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
         if (!string.IsNullOrWhiteSpace(dto.ErrorMessage)) return dto;
 
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
 
-        var serviceModel = new ServiceModel();
         await db.ExecuteWithRetryAsync(async () =>
         {
-            serviceModel = await db.Services
+            var serviceModel = await db.Services
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
                 .FirstOrDefaultAsync();
+
+            if (serviceModel == null)
+            {
+                throw new Exception("Service not found");
+            }
 
             serviceModel.UpdateRecordFromDTO(dto);
 
@@ -139,20 +143,20 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
     public async Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
         var serviceId = long.Parse(decryptedId);
-        var appoitnmentExists = false;
+        var appointmentExists = false;
 
         await db.ExecuteWithRetryAsync(async () =>
         {
-            appoitnmentExists = await db.Appointments
+            appointmentExists = await db.Appointments
                 .Where(x => x.ServiceId == serviceId && x.DeleteDate == null &&
                             x.Status != AppointmentStatusEnum.Scheduled)
                 .AnyAsync();
 
-            if (appoitnmentExists) return;
+            if (appointmentExists) return;
 
             await db.Services
                 .Where(x => x.ProviderId == providerId && x.ServiceId == serviceId)
@@ -161,7 +165,7 @@ public class ServiceService(IAMLogger logger, AMCoreData db, IConfiguration conf
             await db.SaveChangesAsync();
         });
 
-        if (appoitnmentExists) dto.ErrorMessage = "This service cannot be deleted because it is currently in use.";
+        if (appointmentExists) dto.ErrorMessage = "This service cannot be deleted because it is currently in use.";
 
         return dto;
     }

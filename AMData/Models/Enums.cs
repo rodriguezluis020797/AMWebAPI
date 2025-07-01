@@ -18,7 +18,7 @@ public enum SessionClaimEnum
     ProviderId,
     SessionId,
     JWToken,
-    RefreshToken
+    RefreshToken,
 }
 
 public enum AccountStatusEnum

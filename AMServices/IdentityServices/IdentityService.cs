@@ -3,9 +3,9 @@ using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMData.Models.IdentityModels;
+using AMServices.DataServices;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -13,7 +13,7 @@ namespace AMServices.IdentityServices;
 
 public interface IIdentityService
 {
-    Task<LogInAsyncResponse> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDto);
+    Task<LogInResponseDTO> LogInAsync(ProviderDTO providerDto, FingerprintDTO fingerprintDto);
     Task<BaseDTO> UpdatePasswordAsync(ProviderDTO providerDto, string jwt);
     Task<BaseDTO> ResetPasswordRequestAsync(ProviderDTO providerDto);
     Task<BaseDTO> ResetPasswordAsync(ProviderDTO providerDto, string guid);
@@ -27,7 +27,7 @@ public class IdentityService(
     IConfiguration config)
     : IIdentityService
 {
-    public async Task<LogInAsyncResponse> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
+    public async Task<LogInResponseDTO> LogInAsync(ProviderDTO dto, FingerprintDTO fingerprintDTO)
     {
         var provider = new ProviderModel();
         await coreData.ExecuteWithRetryAsync(async () =>
@@ -82,7 +82,7 @@ public class IdentityService(
 
         CryptographyTool.Encrypt(refreshTokenModel.Token, out var encryptedRefreshToken);
 
-        return new LogInAsyncResponse
+        return new LogInResponseDTO
         {
             ProviderDto = new ProviderDTO
             {
@@ -90,7 +90,8 @@ public class IdentityService(
                 AccountStatus = provider.AccountStatus
             },
             Jwt = GenerateJwt(provider.ProviderId, session.SessionId),
-            RefreshToken = encryptedRefreshToken
+            RefreshToken = encryptedRefreshToken,
+            AccountStatus = provider.AccountStatus
         };
     }
 
@@ -103,11 +104,11 @@ public class IdentityService(
 
         var providerId =
             IdentityTool
-                .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+                .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var sessionId =
             IdentityTool
-                .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
+                .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.SessionId));
 
         if (!dto.IsTempPassword)
         {
@@ -144,8 +145,10 @@ public class IdentityService(
         var newPassword =
             new PasswordModel(providerId, false, IdentityTool.HashPassword(dto.NewPassword, salt), salt);
 
-        var sessionAction = new SessionActionModel(SessionActionEnum.ChangePassword);
-        sessionAction.SessionId = sessionId;
+        var sessionAction = new SessionActionModel(SessionActionEnum.ChangePassword)
+        {
+            SessionId = sessionId
+        };
         var providerComm = new ProviderCommunicationModel(providerId,
             "Your password was recently changed. If you did not request this change, please contact support.",
             DateTime.MinValue);
@@ -238,9 +241,9 @@ public class IdentityService(
     public async Task<string> RefreshJWT(string jwt, string refreshToken, FingerprintDTO fingerprintDTO)
     {
         var providerId =
-            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var sessionId =
-            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.SessionId.ToString());
+            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.SessionId));
 
         var refreshTokenModel = await identityData.RefreshTokens
                                     .Where(x => x.ProviderId == providerId && x.DeleteDate == null &&
@@ -294,7 +297,7 @@ public class IdentityService(
 
         await coreData.ExecuteWithRetryAsync(async () =>
         {
-            using var trans = await coreData.Database.BeginTransactionAsync();
+            await using var trans = await coreData.Database.BeginTransactionAsync();
 
             await coreData.ResetPasswordRequests
                 .Where(x => x.ProviderId == provider.ProviderId && x.DeleteDate == null)
@@ -316,8 +319,8 @@ public class IdentityService(
     {
         var claims = new[]
         {
-            new Claim(SessionClaimEnum.ProviderId.ToString(), providerId.ToString()),
-            new Claim(SessionClaimEnum.SessionId.ToString(), sessionId.ToString())
+            new Claim(nameof(SessionClaimEnum.ProviderId), providerId.ToString()),
+            new Claim(nameof(SessionClaimEnum.SessionId), sessionId.ToString())
         };
 
         return IdentityTool.GenerateJWTToken(
@@ -382,10 +385,10 @@ public class IdentityService(
     }
 }
 
-public class LogInAsyncResponse
+public class LogInResponseDTO
 {
-    public string Jwt { get; set; } = string.Empty;
-    public string RefreshToken { get; set; } = string.Empty;
-    public ProviderDTO ProviderDto { get; set; } = new();
-    public AccountStatusEnum AccountStatus { get; set; } = AccountStatusEnum.Unknown;
+    public string Jwt { get; init; } = string.Empty;
+    public string RefreshToken { get; init; } = string.Empty;
+    public ProviderDTO ProviderDto { get; init; } = new();
+    public AccountStatusEnum AccountStatus { get; init; } = AccountStatusEnum.Unknown;
 }

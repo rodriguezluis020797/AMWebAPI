@@ -1,10 +1,10 @@
 ﻿using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
+using AMServices.DataServices;
 using AMServices.PaymentEngineServices;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Stripe;
@@ -57,13 +57,18 @@ public class ProviderService(
     {
         var response = new BaseDTO();
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         await db.ExecuteWithRetryAsync(async () =>
         {
             var provider = await db.Providers
                 .Where(x => x.ProviderId == providerId)
                 .FirstOrDefaultAsync();
+
+            if (provider == null)
+            {
+                throw new Exception("Provider not found");
+            }
 
             provider.AccountStatus = AccountStatusEnum.ToBeDeactivated;
             provider.UpdateDate = DateTime.UtcNow;
@@ -98,7 +103,7 @@ public class ProviderService(
 
         await db.ExecuteWithRetryAsync(async () =>
         {
-            using var trans = await db.Database.BeginTransactionAsync();
+            await using var trans = await db.Database.BeginTransactionAsync();
             await db.Providers.AddAsync(provider);
             await db.SaveChangesAsync();
 
@@ -121,7 +126,7 @@ public class ProviderService(
     public async Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var provider = new ProviderModel();
 
         var service = new SessionService();
@@ -187,7 +192,7 @@ public class ProviderService(
     public async Task<List<ProviderAlertDTO>> GetProviderAlertsAsync(string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var response = new List<ProviderAlertDTO>();
         var alerts = new List<ProviderAlertModel>();
 
@@ -215,18 +220,13 @@ public class ProviderService(
 
     public async Task<ProviderPublicViewDTO> GetProviderPublicViewAsync(string guid)
     {
-        /*
-         * TODO:
-         * Optimize the query...
-         */
         var response = new ProviderPublicViewDTO();
         var provider = new ProviderModel();
-        var timeZoneStr = string.Empty;
 
         await db.ExecuteWithRetryAsync(async () =>
         {
             provider = await db.Providers
-                .Where(p => p.ProviderGuid.Equals(guid))
+                .Where(p => p.ProviderGuid!.Equals(guid))
                 .Select(p => new ProviderModel
                 {
                     ProviderId = p.ProviderId,
@@ -271,13 +271,15 @@ public class ProviderService(
 
         foreach (var review in provider.Reviews)
         {
-            review.Provider = new ProviderModel();
-            review.Provider.BusinessName = string.Empty;
+            review.Provider = new ProviderModel
+            {
+                BusinessName = string.Empty
+            };
         }
 
         if (!string.IsNullOrEmpty(response.ErrorMessage)) return response;
 
-        timeZoneStr = provider.TimeZoneCode.ToString().Replace("_", " ");
+        var timeZoneStr = provider.TimeZoneCode.ToString().Replace("_", " ");
 
         response.CreateNewRecordFromModels(provider);
 
@@ -295,12 +297,11 @@ public class ProviderService(
     public async Task<List<ProviderReviewDTO>> GetProviderReviewsForProviderAsync(string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var response = new List<ProviderReviewDTO>();
         var reviews = new List<ProviderReviewModel>();
-        var prividerTimeZone = TimeZoneCodeEnum.Select;
-        var timeZoneStr = string.Empty;
+        var providerTimeZone = TimeZoneCodeEnum.Select;
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -313,13 +314,13 @@ public class ProviderService(
                 .OrderByDescending(x => x.CreateDate)
                 .ToListAsync();
 
-            prividerTimeZone = await db.Providers
+            providerTimeZone = await db.Providers
                 .Where(x => x.ProviderId == providerId)
                 .Select(x => x.TimeZoneCode)
                 .FirstOrDefaultAsync();
         });
 
-        timeZoneStr = prividerTimeZone.ToString().Replace("_", " ");
+        var timeZoneStr = providerTimeZone.ToString().Replace("_", " ");
 
         foreach (var review in reviews)
         {
@@ -386,9 +387,9 @@ public class ProviderService(
         var response = new BaseDTO();
 
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        ProviderModel provider = null!;
+        var provider = new ProviderModel();
         await db.ExecuteWithRetryAsync(async () =>
         {
             provider = await db.Providers
@@ -398,8 +399,12 @@ public class ProviderService(
                 .FirstOrDefaultAsync();
         });
 
+        if (provider == null)
+        {
+            throw new Exception("Provider not found");
+        }
+        
         var utcNow = DateTime.UtcNow;
-        var customerTimeZoneName = provider.TimeZoneCode.ToString().Replace("_", " ");
         //var customerTimeZone = TimeZoneInfo.FindSystemTimeZoneById(customerTimeZoneName);
         //var customerLocalNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, customerTimeZone);
 
@@ -413,7 +418,7 @@ public class ProviderService(
             return response;
         }
 
-        if (!await providerBillingService.IsThereADefaultPaymentMetho(provider.PayEngineId))
+        if (!await providerBillingService.IsThereADefaultPaymentMetho(provider.PayEngineId!))
         {
             response.ErrorMessage = "No Default Payment Method Found";
             return response;
@@ -436,7 +441,7 @@ public class ProviderService(
 
         await db.ExecuteWithRetryAsync(async () =>
         {
-            var capturedPayment = await providerBillingService.CapturePayment(provider.PayEngineId, invoiceItems);
+            var capturedPayment = await providerBillingService.CapturePayment(provider.PayEngineId!, invoiceItems);
 
             if (!capturedPayment.Status.Equals("paid"))
             {
@@ -459,18 +464,18 @@ public class ProviderService(
     {
         var response = new ProviderDTO();
         var existingProviderExists = false;
-        var existingeMailRequestExists = false;
+        var existingEMailRequestExists = false;
         await db.ExecuteWithRetryAsync(async () =>
         {
             existingProviderExists = await db.Providers
                 .Where(x => x.EMail == dto.EMail)
                 .AnyAsync();
 
-            existingeMailRequestExists = await db.UpdateProviderEMailRequests
+            existingEMailRequestExists = await db.UpdateProviderEMailRequests
                 .Where(x => x.NewEMail == dto.EMail && x.DeleteDate == null)
                 .AnyAsync();
         });
-        if (!ValidationTool.IsValidEmail(dto.EMail) || existingProviderExists || existingeMailRequestExists)
+        if (!ValidationTool.IsValidEmail(dto.EMail) || existingProviderExists || existingEMailRequestExists)
         {
             response.ErrorMessage = "Provider with given e-mail already exists or e-mail is not in valid format.";
             return response;
@@ -478,7 +483,7 @@ public class ProviderService(
 
 
         var providerId =
-            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
         var message =
@@ -491,7 +496,7 @@ public class ProviderService(
 
         await db.ExecuteWithRetryAsync(async () =>
         {
-            using var trans = await db.Database.BeginTransactionAsync();
+            await using var trans = await db.Database.BeginTransactionAsync();
 
             await db.UpdateProviderEMailRequests
                 .Where(x => x.ProviderId == providerId)
@@ -517,7 +522,7 @@ public class ProviderService(
         }
 
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var provider = new ProviderModel();
 
@@ -556,8 +561,6 @@ public class ProviderService(
     {
         var response = new ProviderReviewDTO();
         var providerReviewModel = new ProviderReviewModel();
-        var providerAlert = new ProviderAlertModel();
-        var message = string.Empty;
 
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
@@ -581,10 +584,8 @@ public class ProviderService(
             }
 
             providerReviewModel.UpdateRecordFromDto(dto);
-
-            message = "You have a new review! Go to your metrics to see it.";
-
-            providerAlert = new ProviderAlertModel(providerReviewModel.ProviderId, message, DateTime.UtcNow);
+            
+            var providerAlert = new ProviderAlertModel(providerReviewModel.ProviderId, "You have a new review! Go to your metrics to see it.", DateTime.UtcNow);
 
             db.ProviderAlerts.Add(providerAlert);
 
@@ -631,7 +632,7 @@ public class ProviderService(
 
             await db.ExecuteWithRetryAsync(async () =>
             {
-                using var trans = await db.Database
+                await using var trans = await db.Database
                     .BeginTransactionAsync();
 
                 db.ProviderCommunications.Add(comm);
@@ -680,7 +681,7 @@ public class ProviderService(
 
             await db.ExecuteWithRetryAsync(async () =>
             {
-                using var trans = await db.Database.BeginTransactionAsync();
+                await using var trans = await db.Database.BeginTransactionAsync();
 
                 provider.UpdateDate = DateTime.UtcNow;
                 provider.EMail = request.NewEMail;

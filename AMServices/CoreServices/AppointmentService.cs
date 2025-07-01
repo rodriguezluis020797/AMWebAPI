@@ -2,9 +2,9 @@ using System.Text.RegularExpressions;
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
+using AMServices.DataServices;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -19,12 +19,12 @@ public interface IAppointmentService
     Task<AppointmentDTO> DeleteAppointmentAsync(AppointmentDTO model, string jwt);
 }
 
-public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration config) : IAppointmentService
+public class AppointmentService(AMCoreData db, IConfiguration config) : IAppointmentService
 {
     public async Task<List<AppointmentDTO>> GetAllAppointmentsAsync(string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var response = new List<AppointmentDTO>();
         var appointmentModels = new List<AppointmentModel>();
         var timeZoneCode = TimeZoneCodeEnum.Select;
@@ -52,8 +52,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
     public async Task<List<AppointmentDTO>> GetUpcomingAppointmentsAsync(string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
-        var response = new List<AppointmentDTO>();
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var appointmentModels = new List<AppointmentModel>();
         var timeZoneCode = TimeZoneCodeEnum.Select;
 
@@ -80,17 +79,15 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                 .ToListAsync();
         });
 
-        foreach (var appointment in appointmentModels) response.Add(BuildEncryptedDTO(appointment, timeZoneCode));
-
-        return response;
+        return appointmentModels.Select(appointment => BuildEncryptedDTO(appointment, timeZoneCode)).ToList();
     }
 
     public async Task<AppointmentDTO> UpdateAppointmentAsync(AppointmentDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        var message = string.Empty;
+        
 
         var appointmentModel = new AppointmentModel();
         var clientComm = new ClientCommunicationModel();
@@ -113,7 +110,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
         switch (dto.Status)
         {
             case AppointmentStatusEnum.Cancelled:
-                message = "Your appointment with #Name# on #Date# at #Time# has been canceled.";
+                var message = "Your appointment with #Name# on #Date# at #Time# has been canceled.";
 
                 await db.ExecuteWithRetryAsync(async () =>
                 {
@@ -122,6 +119,11 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                         .Include(x => x.Provider)
                         .AsNoTracking()
                         .FirstOrDefaultAsync();
+
+                    if (appointmentModel == null)
+                    {
+                        throw new Exception("Appointment could not be found.");
+                    }
 
                     var startTimeLocal = DateTimeTool.ConvertUtcToLocal(appointmentModel.StartDate, timeZoneCodeStr);
 
@@ -132,7 +134,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
                     clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
 
-                    using var transaction = await db.Database.BeginTransactionAsync();
+                    await using var transaction = await db.Database.BeginTransactionAsync();
 
                     await db.Appointments
                         .Where(x => x.AppointmentId == long.Parse(decryptedAppointmentId))
@@ -153,6 +155,11 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                         .Include(x => x.Provider)
                         .AsNoTracking()
                         .FirstOrDefaultAsync();
+                    
+                    if (appointmentModel == null)
+                    {
+                        throw new Exception("Appointment could not be found.");
+                    }
 
                     var providerReview =
                         new ProviderReviewModel(appointmentModel.ProviderId, appointmentModel.ClientId);
@@ -167,7 +174,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                     clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message,
                         DateTime.UtcNow.AddHours(1));
 
-                    using var transaction = await db.Database.BeginTransactionAsync();
+                    await using var transaction = await db.Database.BeginTransactionAsync();
 
                     await db.ProviderReviews.AddAsync(providerReview);
 
@@ -224,7 +231,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
                 await db.ExecuteWithRetryAsync(async () =>
                 {
-                    using var transaction = await db.Database.BeginTransactionAsync();
+                    await using var transaction = await db.Database.BeginTransactionAsync();
 
                     if (timesChanged) db.ClientCommunications.Add(clientComm);
 
@@ -236,6 +243,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
 
                 return new AppointmentDTO();
             }
+            case AppointmentStatusEnum.Select:
             default:
                 dto.ErrorMessage = "Please select appointment status.";
                 return dto;
@@ -245,20 +253,23 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
     public async Task<AppointmentDTO> DeleteAppointmentAsync(AppointmentDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
 
-        var appointmentModel = new AppointmentModel();
-
         await db.ExecuteWithRetryAsync(async () =>
         {
-            appointmentModel = await db.Appointments
+            var appointmentModel = await db.Appointments
                 .Where(x => x.ProviderId == providerId && x.AppointmentId == long.Parse(decryptedAppointmentId))
                 .Include(x => x.Provider)
                 .FirstOrDefaultAsync();
+            
+            if (appointmentModel == null)
+            {
+                throw new Exception("Appointment could not be found.");
+            }
 
-            using var transaction = await db.Database.BeginTransactionAsync();
+            await using var transaction = await db.Database.BeginTransactionAsync();
 
             appointmentModel.DeleteDate = DateTime.UtcNow;
             db.Appointments.Update(appointmentModel);
@@ -273,7 +284,7 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
     public async Task<AppointmentDTO> CreateAppointmentAsync(AppointmentDTO dto, string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var providerTimeZone = TimeZoneCodeEnum.Select;
 
@@ -318,7 +329,6 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
             dto.EndDate,
             dto.Notes, 0);
 
-        var businessName = string.Empty;
 
         var clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
 
@@ -331,10 +341,10 @@ public class AppointmentService(IAMLogger logger, AMCoreData db, IConfiguration 
                     .Select(x => x.Price)
                     .FirstOrDefaultAsync();
 
-            using var transaction = await db.Database.BeginTransactionAsync();
+            await using var transaction = await db.Database.BeginTransactionAsync();
             await db.Appointments.AddAsync(appointmentModel);
 
-            businessName = await db.Providers
+            var businessName = await db.Providers
                 .Where(x => x.ProviderId == providerId)
                 .Select(x => x.BusinessName)
                 .FirstOrDefaultAsync();

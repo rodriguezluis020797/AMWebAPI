@@ -1,8 +1,8 @@
 ﻿using AMData.Models;
 using AMData.Models.CoreModels;
+using AMServices.DataServices;
 using AMServices.PaymentEngineServices;
 using AMTools.Tools;
-using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Stripe;
@@ -27,7 +27,7 @@ internal class Program
         {
             InitializeConfiguration();
 
-            _providerBillingService = new StripeProviderBillingService(_logger, _config);
+            _providerBillingService = new StripeProviderBillingService(_logger);
 
             await RunPayments();
         }

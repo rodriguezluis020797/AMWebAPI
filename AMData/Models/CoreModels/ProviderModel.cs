@@ -12,7 +12,7 @@ public class ProviderModel
     }
 
     public ProviderModel(string firstName, string? middleName, string lastName, string eMail,
-        string addressLine1, string addressLine2, string city, string zipCode, CountryCodeEnum countryCode,
+        string addressLine1, string? addressLine2, string city, string zipCode, CountryCodeEnum countryCode,
         StateCodeEnum stateCode, TimeZoneCodeEnum timeZoneCode, string businessName, string description)
     {
         ProviderGuid = Guid.NewGuid().ToString();

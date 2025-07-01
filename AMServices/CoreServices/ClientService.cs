@@ -1,9 +1,9 @@
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
+using AMServices.DataServices;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -21,7 +21,7 @@ public interface IClientService
     Task<BaseDTO> DeleteClientNote(ClientNoteDTO dto);
 }
 
-public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration config) : IClientService
+public class ClientService(AMCoreData db, IConfiguration config) : IClientService
 {
     public async Task<ClientDTO> CreateClient(ClientDTO dto, string jwt)
     {
@@ -37,36 +37,34 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         }
 
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
 
-        var message = "Your phone number is now being used by #ProviderName# to send you automated SMS messages.\n" +
-                      "Reply with 'Stop' to stop all further communication from this service.";
-
-        var clientComm = new ClientCommunicationModel(0, message, DateTime.MinValue);
+        var clientComm = new ClientCommunicationModel(0,
+            "Your phone number is now being used by #ProviderName# to send you automated SMS messages.\n" +
+            "Reply with 'Stop' to stop all further communication from this service."
+            , DateTime.MinValue);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
-            using (var trans = await db.Database.BeginTransactionAsync())
+            await using var trans = await db.Database.BeginTransactionAsync();
+            try
             {
-                try
-                {
-                    await db.Clients.AddAsync(clientModel);
-                    await db.SaveChangesAsync();
+                await db.Clients.AddAsync(clientModel);
+                await db.SaveChangesAsync();
 
-                    clientComm.ClientId = clientModel.ClientId;
+                clientComm.ClientId = clientModel.ClientId;
 
-                    await db.ClientCommunications.AddAsync(clientComm);
-                    await db.SaveChangesAsync();
+                await db.ClientCommunications.AddAsync(clientComm);
+                await db.SaveChangesAsync();
 
-                    await trans.CommitAsync();
-                }
-                catch (Exception ex)
-                {
-                    await trans.RollbackAsync();
-                    throw;
-                }
+                await trans.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await trans.RollbackAsync();
+                throw;
             }
         });
 
@@ -87,7 +85,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         }
 
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
@@ -112,26 +110,24 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
 
         await db.ExecuteWithRetryAsync(async () =>
         {
-            using (var trans = await db.Database.BeginTransactionAsync())
+            await using var trans = await db.Database.BeginTransactionAsync();
+            try
             {
-                try
+                if (addCom)
                 {
-                    if (addCom)
-                    {
-                        clientComm.ClientId = clientModel.ClientId;
-                        await db.ClientCommunications.AddAsync(clientComm);
-                        await db.SaveChangesAsync();
-                    }
-
-                    db.Clients.Update(clientModel);
+                    clientComm.ClientId = clientModel.ClientId;
+                    await db.ClientCommunications.AddAsync(clientComm);
                     await db.SaveChangesAsync();
-                    await trans.CommitAsync();
                 }
-                catch (Exception ex)
-                {
-                    await trans.RollbackAsync();
-                    throw;
-                }
+
+                db.Clients.Update(clientModel);
+                await db.SaveChangesAsync();
+                await trans.CommitAsync();
+            }
+            catch (Exception)
+            {
+                await trans.RollbackAsync();
+                throw;
             }
         });
 
@@ -164,7 +160,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         var response = new List<ClientNoteDTO>();
 
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
@@ -185,7 +181,6 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                 .FirstOrDefaultAsync();
         });
 
-        var clientNoteDto = new ClientNoteDTO();
         var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
         foreach (var clientNote in clientNoteModels)
         {
@@ -194,7 +189,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
             if (clientNote.UpdateDate.HasValue)
                 clientNote.UpdateDate = DateTimeTool.ConvertUtcToLocal(clientNote.UpdateDate.Value, timeZoneCodeStr);
 
-            clientNoteDto = new ClientNoteDTO();
+            var clientNoteDto = new ClientNoteDTO();
             clientNoteDto.CreateRecordFromModel(clientNote);
 
             CryptographyTool.Encrypt(clientNoteDto.ClientNoteId, out var encryptedClientNoteId);
@@ -228,7 +223,6 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
                 .ExecuteUpdateAsync(upd =>
                     upd.SetProperty(x => x.Note, encryptedNote)
                         .SetProperty(x => x.UpdateDate, DateTime.UtcNow));
-            ;
 
             await db.SaveChangesAsync();
         });
@@ -247,7 +241,6 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
             await db.ClientNotes
                 .Where(x => x.ClientNoteId == long.Parse(decryptedId) && x.DeleteDate == null)
                 .ExecuteUpdateAsync(upd => upd.SetProperty(x => x.DeleteDate, DateTime.UtcNow));
-            ;
 
             await db.SaveChangesAsync();
         });
@@ -260,7 +253,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
         var response = new ClientDTO();
 
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         CryptographyTool.Decrypt(dto.ClientId, out var decryptedId);
 
@@ -289,7 +282,7 @@ public class ClientService(IAMLogger logger, AMCoreData db, IConfiguration confi
     public async Task<List<ClientDTO>> GetClients(string jwt)
     {
         var providerId = IdentityTool
-            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+            .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var clients = new List<ClientModel>();
 

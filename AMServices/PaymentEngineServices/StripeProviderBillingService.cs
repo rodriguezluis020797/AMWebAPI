@@ -1,6 +1,5 @@
 using AMData.Models.CoreModels;
 using AMTools.Tools;
-using Microsoft.Extensions.Configuration;
 using Stripe;
 
 namespace AMServices.PaymentEngineServices;
@@ -16,7 +15,7 @@ public interface IProviderBillingService
     Task<bool> IsThereADefaultPaymentMetho(string paymentEngineId);
 }
 
-public class StripeProviderBillingService(IAMLogger logger, IConfiguration config) : IProviderBillingService
+public class StripeProviderBillingService(IAMLogger logger) : IProviderBillingService
 {
     public async Task<string> CreateProviderBillingProfileAsync(string eMail, string businessName, string firstName,
         string? middleName, string lastName)
@@ -70,7 +69,7 @@ public class StripeProviderBillingService(IAMLogger logger, IConfiguration confi
             CollectionMethod = "charge_automatically",
             PaymentSettings = new InvoicePaymentSettingsOptions
             {
-                PaymentMethodTypes = new List<string> { "card" }
+                PaymentMethodTypes = ["card"]
             }
         });
 
@@ -80,7 +79,7 @@ public class StripeProviderBillingService(IAMLogger logger, IConfiguration confi
             await invoiceItemService.CreateAsync(item);
         }
 
-        var finalizedInvoice = await invoiceService.FinalizeInvoiceAsync(invoice.Id);
+        await invoiceService.FinalizeInvoiceAsync(invoice.Id);
 
         return await invoiceService.PayAsync(invoice.Id);
     }

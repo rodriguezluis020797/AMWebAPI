@@ -5,20 +5,11 @@ using AMTools.Tools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
-namespace AMWebAPI.Services.DataServices;
+namespace AMServices.DataServices;
 
-public class AMCoreData : DbContext
+public class AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration, IAMLogger logger)
+    : DbContext(options)
 {
-    private readonly IConfiguration _configuration;
-    private readonly IAMLogger _logger;
-
-    public AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration, IAMLogger logger)
-        : base(options)
-    {
-        _configuration = configuration;
-        _logger = logger;
-    }
-
     public DbSet<AppointmentModel> Appointments { get; init; }
     public DbSet<ClientModel> Clients { get; init; }
     public DbSet<ClientCommunicationModel> ClientCommunications { get; init; }
@@ -40,7 +31,7 @@ public class AMCoreData : DbContext
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
         optionsBuilder.UseSqlServer(
-            _configuration.GetConnectionString("CoreConnectionString"),
+            configuration.GetConnectionString("CoreConnectionString"),
             sqlOptions => sqlOptions.MigrationsAssembly("AMWebAPI")
         );
     }
@@ -57,9 +48,9 @@ public class AMCoreData : DbContext
         ConfigureSessionModel(modelBuilder);
         ConfigureUpdateProviderEMailRequestModel(modelBuilder);
         ConfigureProviderBillingModel(modelBuilder);
-        ConffigureVerifyProviderEMailRequestModel(modelBuilder);
-        ConffigureResetPasswordRequestsModel(modelBuilder);
-        ConffigureClientNotesModel(modelBuilder);
+        ConfigureVerifyProviderEMailRequestModel(modelBuilder);
+        ConfigureResetPasswordRequestsModel(modelBuilder);
+        ConfigureClientNotesModel(modelBuilder);
         ConfigureProviderAlertModel(modelBuilder);
         ConfigureProviderReviewModel(modelBuilder);
         ConfigureProviderLogPaymentModel(modelBuilder);
@@ -86,25 +77,25 @@ public class AMCoreData : DbContext
             .IsUnique();
     }
 
-    private void ConfigureProviderAlertModel(ModelBuilder modelBuilder)
+    private static void ConfigureProviderAlertModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ProviderAlertModel>()
             .HasKey(x => x.ProviderAlertId);
     }
 
-    private void ConffigureClientNotesModel(ModelBuilder modelBuilder)
+    private static void ConfigureClientNotesModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ClientNoteModel>()
             .HasKey(x => x.ClientNoteId);
     }
 
-    private void ConffigureResetPasswordRequestsModel(ModelBuilder modelBuilder)
+    private static void ConfigureResetPasswordRequestsModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ResetPasswordRequestModel>()
             .HasKey(x => x.ResetPasswordId);
     }
 
-    private void ConffigureVerifyProviderEMailRequestModel(ModelBuilder modelBuilder)
+    private static void ConfigureVerifyProviderEMailRequestModel(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<VerifyProviderEMailRequestModel>()
             .HasKey(x => x.VerifyProviderEMailRequestId);
@@ -318,9 +309,8 @@ public class AMCoreData : DbContext
         var stopwatch = Stopwatch.StartNew();
         const int maxRetries = 3;
         var retryDelay = TimeSpan.FromSeconds(2);
-        var attempt = 0;
 
-        for (attempt = 1; attempt <= maxRetries; attempt++)
+        for (var attempt = 1; attempt <= maxRetries; attempt++)
             try
             {
                 await action();
@@ -330,7 +320,7 @@ public class AMCoreData : DbContext
             {
                 if (attempt == maxRetries)
                 {
-                    _logger.LogError(ex.ToString());
+                    logger.LogError(ex.ToString());
                     throw;
                 }
 
@@ -339,7 +329,7 @@ public class AMCoreData : DbContext
             finally
             {
                 stopwatch.Stop();
-                _logger.LogInfo(
+                logger.LogInfo(
                     $"{callerName}: {nameof(ExecuteWithRetryAsync)} took {stopwatch.ElapsedMilliseconds} ms with {attempt} attempt(s).");
             }
     }

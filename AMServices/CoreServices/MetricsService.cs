@@ -1,9 +1,9 @@
 using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
+using AMServices.DataServices;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -14,7 +14,7 @@ public interface IMetricsService
     public Task<MetricsDTO> GetMetricsByRange(string jwt, MetricsDTO dto);
 }
 
-public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration config) : IMetricsService
+public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsService
 {
     public async Task<MetricsDTO> GetMetricsByRange(string jwt, MetricsDTO dto)
     {
@@ -27,13 +27,11 @@ public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration conf
             };
 
             var providerId = IdentityTool
-                .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, SessionClaimEnum.ProviderId.ToString());
+                .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
             var appointments = new List<AppointmentModel>();
             var services = new List<ServiceModel>();
-            var serviceIds = new List<long>();
             var providerTimeZone = TimeZoneCodeEnum.Select;
-            var timeZoneString = string.Empty;
 
             await db.ExecuteWithRetryAsync(async () =>
             {
@@ -44,7 +42,7 @@ public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration conf
             });
 
 
-            timeZoneString = providerTimeZone.ToString().Replace("_", " ");
+            var timeZoneString = providerTimeZone.ToString().Replace("_", " ");
 
             dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneString);
             dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate.AddDays(1), timeZoneString);
@@ -66,7 +64,7 @@ public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration conf
                     .AsNoTracking()
                     .ToListAsync();
 
-                serviceIds = appointments
+                var serviceIds = appointments
                     .Select(x => x.ServiceId)
                     .Distinct()
                     .ToList();
@@ -78,7 +76,7 @@ public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration conf
             });
 
             appointments
-                .ForEach(a => a.Service = services.FirstOrDefault(s => s.ServiceId == a.ServiceId));
+                .ForEach(a => a.Service = services.FirstOrDefault(s => s.ServiceId == a.ServiceId)!);
 
             foreach (var appointment in appointments) result.CreateNewRecordFromModel(appointment);
 
@@ -87,7 +85,8 @@ public class MetricsService(IAMLogger logger, AMCoreData db, IConfiguration conf
             foreach (var appDto in result.Appointments)
             {
                 appDto.StartDate = DateTimeTool.ConvertUtcToLocal(appDto.StartDate, timeZoneString);
-                if (dto.EndDate != null)
+                
+                if (appDto.EndDate != null)
                 {
                     var dateTimeCopy = appDto.EndDate.Value;
                     dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTimeCopy, timeZoneString);

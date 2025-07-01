@@ -1,8 +1,8 @@
 ﻿using AMData.Models.CoreModels;
 using AMData.Models.IdentityModels;
+using AMServices.DataServices;
 using AMTools;
 using AMTools.Tools;
-using AMWebAPI.Services.DataServices;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
