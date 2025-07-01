@@ -16,6 +16,7 @@ namespace AMWebAPI;
 
 public class Program
 {
+    static readonly string basePath = AppContext.BaseDirectory;
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
@@ -45,7 +46,8 @@ public class Program
     private static void ConfigureConfiguration(WebApplicationBuilder builder)
     {
         builder.Configuration
-            .SetBasePath(Directory.GetCurrentDirectory())
+            //.SetBasePath(Directory.GetCurrentDirectory())
+            .SetBasePath(basePath)
             .AddJsonFile("appsettings.json", false, true)
             .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", false, true)
             .AddEnvironmentVariables();
@@ -135,14 +137,7 @@ public class Program
 
         builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.None);
 
-        switch (builder.Environment.EnvironmentName)
-        {
-            case "Development":
-                builder.Services.AddSingleton<IAMLogger, AMDevLogger>();
-                break;
-            default:
-                throw new ArgumentException($"Unknown environment: {builder.Environment.EnvironmentName}");
-        }
+        builder.Services.AddSingleton<IAMLogger, AMDevLogger>();
     }
 
     private static void ConfigureMiddleware(WebApplication app)
