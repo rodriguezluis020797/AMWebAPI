@@ -350,11 +350,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
 
     private async Task<bool> ConflictsWithExistingAppointment(AppointmentDTO dto, long providerId)
     {
-        var conflicts = false;
-
-        try
-        {
-            await db.ExecuteWithRetryAsync(async () =>
+        var conflicts = false; await db.ExecuteWithRetryAsync(async () =>
             {
                 if (string.IsNullOrEmpty(dto.AppointmentId))
                 {
@@ -397,12 +393,6 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
                     }
                 }
             });
-        }
-        catch (Exception e)
-        {
-            Console.WriteLine(e.ToString());
-            throw;
-        }
 
         return conflicts;
     }

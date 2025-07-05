@@ -17,9 +17,7 @@ public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsServ
 {
     public async Task<MetricsDTO> GetMetricsByRange(string jwt, MetricsDTO dto)
     {
-        try
-        {
-            var result = new MetricsDTO
+        var result = new MetricsDTO
             {
                 StartDate = dto.StartDate,
                 EndDate = dto.EndDate
@@ -88,7 +86,7 @@ public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsServ
                 if (appDto.EndDate != null)
                 {
                     var dateTimeCopy = appDto.EndDate.Value;
-                    dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTimeCopy, timeZoneString);
+                    dto.EndDate = DateTimeTool.ConvertUtcToLocal(dateTimeCopy, timeZoneString);
                 }
 
                 CryptographyTool.Encrypt(appDto.ServiceId, out var encryptedText);
@@ -104,11 +102,5 @@ public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsServ
             result.CalculateMetrics();
 
             return result;
-        }
-        catch (Exception ex)
-        {
-            Console.Write(ex.ToString());
-            throw;
-        }
     }
 }

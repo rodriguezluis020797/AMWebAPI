@@ -34,12 +34,20 @@ public class MetricsDTO : BaseDTO
         TotalEarnings = 0;
         foreach (var appointment in Appointments)
         {
-            if (appointment.Status == AppointmentStatusEnum.Completed)
-                TotalCompletedEarnings += appointment.Price;
-            else if (appointment.Status == AppointmentStatusEnum.Scheduled)
-                TotalScheduledProjectedEarnings += appointment.Price;
-            else
-                throw new Exception(nameof(appointment.Status));
+            switch (appointment.Status)
+            {
+                case AppointmentStatusEnum.Completed:
+                    TotalCompletedEarnings += appointment.Price;
+                    break;
+                case AppointmentStatusEnum.Scheduled:
+                    TotalScheduledProjectedEarnings += appointment.Price;
+                    break;
+                case AppointmentStatusEnum.Select:
+                case AppointmentStatusEnum.Cancelled:
+                default:
+                    throw new Exception(nameof(appointment.Status));
+            }
+
             TotalEarnings += appointment.Price;
         }
     }

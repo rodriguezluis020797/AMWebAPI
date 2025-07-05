@@ -229,6 +229,7 @@ public class ProviderService(
                     ProviderId = p.ProviderId,
                     ProviderGuid = p.ProviderGuid,
                     BusinessName = p.BusinessName,
+                    TimeZoneCode = p.TimeZoneCode,
                     // Add additional mapped ProviderModel fields here...
 
                     Reviews = p.Reviews
