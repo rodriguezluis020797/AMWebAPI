@@ -19,6 +19,7 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
+        builder.Host.UseWindowsService();
         ConfigureConfiguration(builder);
         ConfigureServices(builder);
         ConfigureEnvironmentLogging(builder);
