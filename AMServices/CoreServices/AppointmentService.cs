@@ -4,9 +4,9 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
 using AMTools;
-using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using MCCDotnetTools;
 
 namespace AMServices.CoreServices;
 
@@ -91,7 +91,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         var appointmentModel = new AppointmentModel();
         var clientComm = new ClientCommunicationModel();
 
-        CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
         dto.AppointmentId = decryptedAppointmentId;
 
 
@@ -121,7 +121,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
 
                     if (appointmentModel == null) throw new Exception("Appointment could not be found.");
 
-                    var startTimeLocal = DateTimeTool.ConvertUtcToLocal(appointmentModel.StartDate, timeZoneCodeStr);
+                    var startTimeLocal = MCCDateTimeTool.ConvertUtcToLocal(appointmentModel.StartDate, timeZoneCodeStr);
 
                     message = message
                         .Replace("#Name#", $"{appointmentModel.Provider.BusinessName}")
@@ -183,11 +183,11 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
                 return dto;
             case AppointmentStatusEnum.Scheduled:
             {
-                dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
+                dto.StartDate = MCCDateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
                 if (dto.EndDate != null)
                 {
                     var dateTimeCopy = dto.EndDate.Value;
-                    dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTimeCopy, timeZoneCodeStr);
+                    dto.EndDate = MCCDateTimeTool.ConvertLocalToUtc(dateTimeCopy, timeZoneCodeStr);
                 }
 
                 dto.Validate();
@@ -216,7 +216,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
                     }
 
                     message = $"Your appointment date and/or times with #Name# have changed. " +
-                              $"New start: {DateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr):M/d/yyyy h:mm tt}";
+                              $"New start: {MCCDateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr):M/d/yyyy h:mm tt}";
                     clientComm = new ClientCommunicationModel(appointmentModel.ClientId, message, DateTime.MinValue);
                 }
 
@@ -248,7 +248,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -292,11 +292,11 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
             $"You have a new appointment with #Name# from " +
             $"{dto.StartDate:M/d/yyyy h:mm tt} to {dto.EndDate:M/d/yyyy h:mm tt} {Regex.Replace(providerTimeZone.ToString(), "[^A-Z]", "")}.";
 
-        dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
+        dto.StartDate = MCCDateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneCodeStr);
         if (dto.EndDate != null)
         {
             var dateTime = dto.EndDate.Value;
-            dto.EndDate = DateTimeTool.ConvertLocalToUtc(dateTime, timeZoneCodeStr);
+            dto.EndDate = MCCDateTimeTool.ConvertLocalToUtc(dateTime, timeZoneCodeStr);
         }
 
         dto.Validate();
@@ -306,8 +306,8 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         if (await ConflictsWithExistingAppointment(dto, providerId))
             return new AppointmentDTO { ErrorMessage = "This conflicts with a different appointment." };
 
-        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedServiceId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
-        CryptographyTool.Decrypt(dto.ClientId, out var decryptedClientId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ServiceId, out var decryptedServiceId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ClientId, out var decryptedClientId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
 
         var appointmentModel = new AppointmentModel(
@@ -403,20 +403,20 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         var dto = new AppointmentDTO();
         dto.CreateNewRecordFromModel(model);
 
-        CryptographyTool.Encrypt(dto.AppointmentId, out var encryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
-        CryptographyTool.Encrypt(dto.ServiceId, out var encryptedServiceId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
-        CryptographyTool.Encrypt(dto.ClientId, out var encryptedClientId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Encrypt(dto.AppointmentId, out var encryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Encrypt(dto.ServiceId, out var encryptedServiceId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Encrypt(dto.ClientId, out var encryptedClientId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         dto.AppointmentId = encryptedAppointmentId;
         dto.ServiceId = encryptedServiceId;
         dto.ClientId = encryptedClientId;
 
         var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
-        dto.StartDate = DateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr);
+        dto.StartDate = MCCDateTimeTool.ConvertUtcToLocal(dto.StartDate, timeZoneCodeStr);
         if (dto.EndDate != null)
         {
             var dateTimeCopy = dto.EndDate.Value;
-            dto.EndDate = DateTimeTool.ConvertUtcToLocal(dateTimeCopy, timeZoneCodeStr);
+            dto.EndDate = MCCDateTimeTool.ConvertUtcToLocal(dateTimeCopy, timeZoneCodeStr);
         }
 
         return dto;

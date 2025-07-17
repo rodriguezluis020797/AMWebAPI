@@ -42,8 +42,8 @@ public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsServ
 
             var timeZoneString = providerTimeZone.ToString().Replace("_", " ");
 
-            dto.StartDate = DateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneString);
-            dto.EndDate = DateTimeTool.ConvertLocalToUtc(dto.EndDate.AddDays(1), timeZoneString);
+            dto.StartDate = MCCDateTimeTool.ConvertLocalToUtc(dto.StartDate, timeZoneString);
+            dto.EndDate = MCCDateTimeTool.ConvertLocalToUtc(dto.EndDate.AddDays(1), timeZoneString);
 
             dto.Validate();
 
@@ -82,21 +82,21 @@ public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsServ
 
             foreach (var appDto in result.Appointments)
             {
-                appDto.StartDate = DateTimeTool.ConvertUtcToLocal(appDto.StartDate, timeZoneString);
+                appDto.StartDate = MCCDateTimeTool.ConvertUtcToLocal(appDto.StartDate, timeZoneString);
 
                 if (appDto.EndDate != null)
                 {
                     var dateTimeCopy = appDto.EndDate.Value;
-                    dto.EndDate = DateTimeTool.ConvertUtcToLocal(dateTimeCopy, timeZoneString);
+                    dto.EndDate = MCCDateTimeTool.ConvertUtcToLocal(dateTimeCopy, timeZoneString);
                 }
 
-                CryptographyTool.Encrypt(appDto.ServiceId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+                MCCCryptographyTool.Encrypt(appDto.ServiceId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
                 appDto.ServiceId = encryptedText;
             }
 
             foreach (var ServiceName in result.ServiceNames)
             {
-                CryptographyTool.Encrypt(ServiceName.Value, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+                MCCCryptographyTool.Encrypt(ServiceName.Value, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
                 result.ServiceNames[ServiceName.Key] = encryptedText;
             }
 

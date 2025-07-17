@@ -40,7 +40,7 @@ public class ProviderService(
     public async Task<ProviderAlertDTO> AcknowledgeProviderAlertAsync(ProviderAlertDTO dto)
     {
         var response = new ProviderAlertDTO();
-        CryptographyTool.Decrypt(dto.ProviderAlertId, out var decryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ProviderAlertId, out var decryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -161,12 +161,12 @@ public class ProviderService(
                 provider.NextBillingDate = provider.TrialEndDate.AddDays(1);
 
                 var alert = new ProviderAlertModel(provider.ProviderId,
-                    $"Your free trial starts now. It will end on {DateTimeTool.ConvertUtcToLocal(provider.TrialEndDate, timeZoneStr): M/d/yyyy}",
+                    $"Your free trial starts now. It will end on {MCCDateTimeTool.ConvertUtcToLocal(provider.TrialEndDate, timeZoneStr): M/d/yyyy}",
                     DateTime.UtcNow);
                 await db.ProviderAlerts.AddAsync(alert);
 
                 alert = new ProviderAlertModel(provider.ProviderId,
-                    $"Next billing date: {DateTimeTool.ConvertUtcToLocal((DateTime)provider.NextBillingDate, timeZoneStr): M/d/yyyy}",
+                    $"Next billing date: {MCCDateTimeTool.ConvertUtcToLocal((DateTime)provider.NextBillingDate, timeZoneStr): M/d/yyyy}",
                     DateTime.UtcNow);
                 await db.ProviderAlerts.AddAsync(alert);
 
@@ -208,7 +208,7 @@ public class ProviderService(
         {
             var dto = new ProviderAlertDTO();
             dto.CreateRecordFromModel(alert);
-            CryptographyTool.Encrypt(dto.ProviderAlertId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+            MCCCryptographyTool.Encrypt(dto.ProviderAlertId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             dto.ProviderAlertId = encryptedText;
             response.Add(dto);
         }
@@ -282,9 +282,9 @@ public class ProviderService(
 
         foreach (var review in response.ProviderReviews)
         {
-            review.CreateDate = DateTimeTool.ConvertUtcToLocal(review.CreateDate, timeZoneStr);
+            review.CreateDate = MCCDateTimeTool.ConvertUtcToLocal(review.CreateDate, timeZoneStr);
 
-            CryptographyTool.Encrypt(review.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+            MCCCryptographyTool.Encrypt(review.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             review.ProviderReviewId = encryptedText;
         }
 
@@ -324,10 +324,10 @@ public class ProviderService(
             var dto = new ProviderReviewDTO();
             dto.CreateNewRecordFromModel(review);
 
-            CryptographyTool.Encrypt(dto.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+            MCCCryptographyTool.Encrypt(dto.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             dto.ProviderReviewId = encryptedText;
 
-            dto.CreateDate = DateTimeTool.ConvertUtcToLocal(dto.CreateDate, timeZoneStr);
+            dto.CreateDate = MCCDateTimeTool.ConvertUtcToLocal(dto.CreateDate, timeZoneStr);
             response.Add(dto);
         }
 
@@ -372,7 +372,7 @@ public class ProviderService(
 
         response.CreateNewRecordFromModel(review);
 
-        CryptographyTool.Encrypt(response.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Encrypt(response.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         response.ProviderReviewId = encryptedText;
 

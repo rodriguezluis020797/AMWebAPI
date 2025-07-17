@@ -87,7 +87,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        CryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         var clientModel = new ClientModel(0, string.Empty, string.Empty, string.Empty, string.Empty);
 
@@ -141,8 +141,8 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return dto;
 
-        CryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
-        CryptographyTool.Encrypt(dto.Note, out var encryptedNote, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Encrypt(dto.Note, out var encryptedNote, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         var clientNoteModel = new ClientNoteModel(long.Parse(decryptedId), encryptedNote);
 
@@ -162,7 +162,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        CryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         var clientNoteModels = new List<ClientNoteModel>();
         var timeZoneCode = TimeZoneCodeEnum.Select;
@@ -184,21 +184,21 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
         var timeZoneCodeStr = timeZoneCode.ToString().Replace("_", " ");
         foreach (var clientNote in clientNoteModels)
         {
-            clientNote.CreateDate = DateTimeTool.ConvertUtcToLocal(clientNote.CreateDate, timeZoneCodeStr);
+            clientNote.CreateDate = MCCDateTimeTool.ConvertUtcToLocal(clientNote.CreateDate, timeZoneCodeStr);
 
             if (clientNote.UpdateDate.HasValue)
-                clientNote.UpdateDate = DateTimeTool.ConvertUtcToLocal(clientNote.UpdateDate.Value, timeZoneCodeStr);
+                clientNote.UpdateDate = MCCDateTimeTool.ConvertUtcToLocal(clientNote.UpdateDate.Value, timeZoneCodeStr);
 
             var clientNoteDto = new ClientNoteDTO();
             clientNoteDto.CreateRecordFromModel(clientNote);
 
-            CryptographyTool.Encrypt(clientNoteDto.ClientNoteId, out var encryptedClientNoteId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+            MCCCryptographyTool.Encrypt(clientNoteDto.ClientNoteId, out var encryptedClientNoteId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             clientNoteDto.ClientNoteId = encryptedClientNoteId;
 
-            CryptographyTool.Encrypt(clientNoteDto.ClientId, out var encryptedClientId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+            MCCCryptographyTool.Encrypt(clientNoteDto.ClientId, out var encryptedClientId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             clientNoteDto.ClientId = encryptedClientId;
 
-            CryptographyTool.Decrypt(clientNoteDto.Note, out var decryptedNote, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+            MCCCryptographyTool.Decrypt(clientNoteDto.Note, out var decryptedNote, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             clientNoteDto.Note = decryptedNote;
 
             response.Add(clientNoteDto);
@@ -213,8 +213,8 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
         dto.Validate();
         if (!string.IsNullOrEmpty(dto.ErrorMessage)) return response;
 
-        CryptographyTool.Decrypt(dto.ClientNoteId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
-        CryptographyTool.Encrypt(dto.Note, out var encryptedNote, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ClientNoteId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Encrypt(dto.Note, out var encryptedNote, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -234,7 +234,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
     {
         var response = new BaseDTO();
 
-        CryptographyTool.Decrypt(dto.ClientNoteId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ClientNoteId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -255,7 +255,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        CryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        MCCCryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         var appointmentExists = false;
 
@@ -300,7 +300,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
         {
             var dto = new ClientDTO();
             dto.CreateRecordFromModel(client);
-            CryptographyTool.Encrypt(dto.ClientId, out var encryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+            MCCCryptographyTool.Encrypt(dto.ClientId, out var encryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             dto.ClientId = encryptedId;
             clientDtoList.Add(dto);
         }
@@ -312,7 +312,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
     {
         var exists = false;
         var decryptedId = string.Empty;
-        if (!isNewRecord) CryptographyTool.Decrypt(dto.ClientId, out decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        if (!isNewRecord) MCCCryptographyTool.Decrypt(dto.ClientId, out decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         await db.ExecuteWithRetryAsync(async () =>
             {
