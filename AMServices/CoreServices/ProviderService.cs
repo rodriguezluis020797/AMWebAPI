@@ -5,6 +5,7 @@ using AMServices.DataServices;
 using AMServices.PaymentEngineServices;
 using AMTools;
 using AMTools.Tools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Stripe;
@@ -39,7 +40,7 @@ public class ProviderService(
     public async Task<ProviderAlertDTO> AcknowledgeProviderAlertAsync(ProviderAlertDTO dto)
     {
         var response = new ProviderAlertDTO();
-        CryptographyTool.Decrypt(dto.ProviderAlertId, out var decryptedText);
+        CryptographyTool.Decrypt(dto.ProviderAlertId, out var decryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -207,7 +208,7 @@ public class ProviderService(
         {
             var dto = new ProviderAlertDTO();
             dto.CreateRecordFromModel(alert);
-            CryptographyTool.Encrypt(dto.ProviderAlertId, out var encryptedText);
+            CryptographyTool.Encrypt(dto.ProviderAlertId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             dto.ProviderAlertId = encryptedText;
             response.Add(dto);
         }
@@ -283,7 +284,7 @@ public class ProviderService(
         {
             review.CreateDate = DateTimeTool.ConvertUtcToLocal(review.CreateDate, timeZoneStr);
 
-            CryptographyTool.Encrypt(review.ProviderReviewId, out var encryptedText);
+            CryptographyTool.Encrypt(review.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             review.ProviderReviewId = encryptedText;
         }
 
@@ -323,7 +324,7 @@ public class ProviderService(
             var dto = new ProviderReviewDTO();
             dto.CreateNewRecordFromModel(review);
 
-            CryptographyTool.Encrypt(dto.ProviderReviewId, out var encryptedText);
+            CryptographyTool.Encrypt(dto.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             dto.ProviderReviewId = encryptedText;
 
             dto.CreateDate = DateTimeTool.ConvertUtcToLocal(dto.CreateDate, timeZoneStr);
@@ -371,7 +372,7 @@ public class ProviderService(
 
         response.CreateNewRecordFromModel(review);
 
-        CryptographyTool.Encrypt(response.ProviderReviewId, out var encryptedText);
+        CryptographyTool.Encrypt(response.ProviderReviewId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         response.ProviderReviewId = encryptedText;
 

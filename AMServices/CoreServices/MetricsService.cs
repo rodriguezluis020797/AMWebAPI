@@ -3,6 +3,7 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
 using AMTools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -89,13 +90,13 @@ public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsServ
                     dto.EndDate = DateTimeTool.ConvertUtcToLocal(dateTimeCopy, timeZoneString);
                 }
 
-                CryptographyTool.Encrypt(appDto.ServiceId, out var encryptedText);
+                CryptographyTool.Encrypt(appDto.ServiceId, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
                 appDto.ServiceId = encryptedText;
             }
 
             foreach (var ServiceName in result.ServiceNames)
             {
-                CryptographyTool.Encrypt(ServiceName.Value, out var encryptedText);
+                CryptographyTool.Encrypt(ServiceName.Value, out var encryptedText, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
                 result.ServiceNames[ServiceName.Key] = encryptedText;
             }
 

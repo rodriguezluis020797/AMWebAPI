@@ -5,6 +5,7 @@ using AMData.Models.DTOModels;
 using AMData.Models.IdentityModels;
 using AMServices.DataServices;
 using AMTools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -79,7 +80,7 @@ public class IdentityService(
         logger.LogAudit(
             $"Provider Id: {provider.ProviderId} - Login details: IP = {fingerprintDTO.IPAddress} - User Agent = {fingerprintDTO.UserAgent} - Platform = {fingerprintDTO.Platform} - Language = {fingerprintDTO.Language}");
 
-        CryptographyTool.Encrypt(refreshTokenModel.Token, out var encryptedRefreshToken);
+        CryptographyTool.Encrypt(refreshTokenModel.Token, out var encryptedRefreshToken, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         return new LogInResponseDTO
         {
@@ -261,7 +262,7 @@ public class IdentityService(
         if (!IsFingerprintTrustworthy(storedFingerprint, fingerprintDTO))
             throw new ArgumentException("Fingerprint mismatch.");
 
-        CryptographyTool.Decrypt(refreshToken, out var decryptedToken);
+        CryptographyTool.Decrypt(refreshToken, out var decryptedToken, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
         if (refreshTokenModel.Token != decryptedToken)
             throw new ArgumentException("Refresh token mismatch.");
 

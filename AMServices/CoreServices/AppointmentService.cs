@@ -4,6 +4,7 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
 using AMTools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -90,7 +91,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         var appointmentModel = new AppointmentModel();
         var clientComm = new ClientCommunicationModel();
 
-        CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
+        CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
         dto.AppointmentId = decryptedAppointmentId;
 
 
@@ -247,7 +248,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId);
+        CryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         await db.ExecuteWithRetryAsync(async () =>
         {
@@ -305,8 +306,8 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         if (await ConflictsWithExistingAppointment(dto, providerId))
             return new AppointmentDTO { ErrorMessage = "This conflicts with a different appointment." };
 
-        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedServiceId);
-        CryptographyTool.Decrypt(dto.ClientId, out var decryptedClientId);
+        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedServiceId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        CryptographyTool.Decrypt(dto.ClientId, out var decryptedClientId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
 
         var appointmentModel = new AppointmentModel(
@@ -402,9 +403,9 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
         var dto = new AppointmentDTO();
         dto.CreateNewRecordFromModel(model);
 
-        CryptographyTool.Encrypt(dto.AppointmentId, out var encryptedAppointmentId);
-        CryptographyTool.Encrypt(dto.ServiceId, out var encryptedServiceId);
-        CryptographyTool.Encrypt(dto.ClientId, out var encryptedClientId);
+        CryptographyTool.Encrypt(dto.AppointmentId, out var encryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        CryptographyTool.Encrypt(dto.ServiceId, out var encryptedServiceId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
+        CryptographyTool.Encrypt(dto.ClientId, out var encryptedClientId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
 
         dto.AppointmentId = encryptedAppointmentId;
         dto.ServiceId = encryptedServiceId;

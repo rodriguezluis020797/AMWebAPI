@@ -3,6 +3,7 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
 using AMTools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -80,7 +81,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
         {
             var dto = new ServiceDTO();
             dto.AssignFromModel(model);
-            CryptographyTool.Encrypt(dto.ServiceId, out var encryptedId);
+            CryptographyTool.Encrypt(dto.ServiceId, out var encryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
             dto.ServiceId = encryptedId;
             serviceDTOs.Add(dto);
         }
@@ -93,7 +94,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
+        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
         var serviceId = long.Parse(decryptedId);
 
         await db.ExecuteWithRetryAsync(async () =>
@@ -115,7 +116,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
+        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
         var serviceId = long.Parse(decryptedId);
 
         await db.ExecuteWithRetryAsync(async () =>
@@ -141,7 +142,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
         var providerId = IdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
-        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId);
+        CryptographyTool.Decrypt(dto.ServiceId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
         var serviceId = long.Parse(decryptedId);
         var appointmentExists = false;
 
