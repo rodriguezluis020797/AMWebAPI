@@ -3,7 +3,6 @@ using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
-using AMTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using MCCDotnetTools;
@@ -23,7 +22,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
 {
     public async Task<List<AppointmentDTO>> GetAllAppointmentsAsync(string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var response = new List<AppointmentDTO>();
         var appointmentModels = new List<AppointmentModel>();
@@ -51,7 +50,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
 
     public async Task<List<AppointmentDTO>> GetUpcomingAppointmentsAsync(string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var appointmentModels = new List<AppointmentModel>();
         var timeZoneCode = TimeZoneCodeEnum.Select;
@@ -84,7 +83,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
 
     public async Task<AppointmentDTO> UpdateAppointmentAsync(AppointmentDTO dto, string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
 
@@ -245,7 +244,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
 
     public async Task<AppointmentDTO> DeleteAppointmentAsync(AppointmentDTO dto, string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         MCCCryptographyTool.Decrypt(dto.AppointmentId, out var decryptedAppointmentId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
@@ -273,7 +272,7 @@ public class AppointmentService(AMCoreData db, IConfiguration config) : IAppoint
 
     public async Task<AppointmentDTO> CreateAppointmentAsync(AppointmentDTO dto, string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var providerTimeZone = TimeZoneCodeEnum.Select;

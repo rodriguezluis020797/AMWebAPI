@@ -7,13 +7,15 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\AMTools\AMTools.csproj"/>
-    </ItemGroup>
-
-    <ItemGroup>
         <PackageReference Include="NodaTime" Version="3.2.2"/>
         <PackageReference Include="Stripe.net" Version="48.1.0"/>
         <PackageReference Include="TimeZoneConverter" Version="7.0.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="MCCDotnetTools">
+        <HintPath>..\..\..\MCC\MontereyCodeCompanyDotnetTools\MCCDotnetTools\bin\Release\net8.0\MCCDotnetTools.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
 </Project>

@@ -1,6 +1,6 @@
 ﻿using AMData.Models.CoreModels;
 using AMServices.DataServices;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using SendGrid;
@@ -14,7 +14,7 @@ namespace AMCommunication;
 internal class Program
 {
     private static IConfiguration _config;
-    private static AMDevLogger _logger;
+    private static IMCCLogger _logger;
 
     private static async Task Main(string[] args)
     {
@@ -32,7 +32,7 @@ internal class Program
 
     private static void InitializeConfiguration()
     {
-        _logger = new AMDevLogger();
+        _logger = new MCCLogger();
         _config = (IConfiguration)new ConfigurationManager()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", false, true);

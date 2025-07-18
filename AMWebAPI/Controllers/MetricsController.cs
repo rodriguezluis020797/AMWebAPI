@@ -1,7 +1,7 @@
 using AMData.Models;
 using AMData.Models.DTOModels;
 using AMServices.CoreServices;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,7 +10,7 @@ namespace AMWebAPI.Controllers;
 [ApiController]
 [Route("api/[controller]/[action]")]
 [Authorize]
-public class MetricsController(IAMLogger logger, IMetricsService metricsService) : ControllerBase
+public class MetricsController(IMCCLogger logger, IMetricsService metricsService) : ControllerBase
 {
     [HttpPost]
     public async Task<IActionResult> GetMetricsByRange([FromBody] MetricsDTO dto)

@@ -1,5 +1,5 @@
 ﻿using AMData.Models.CoreModels;
-using AMTools.Tools;
+using MCCDotnetTools;
 
 namespace AMData.Models.DTOModels;
 
@@ -56,46 +56,46 @@ public class ProviderDTO : BaseDTO
     public void Validate()
     {
         // Validate Business Name
-        ValidationTool.ValidateName(BusinessName, out var bnOutput);
+        MCCValidationTool.ValidateName(BusinessName, out var bnOutput);
         BusinessName = bnOutput;
         ErrorMessage = string.IsNullOrEmpty(BusinessName) ? "Please enter business name." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate Business Description
-        ValidationTool.ValidateName(Description, out var bdOutput);
+        MCCValidationTool.ValidateName(Description, out var bdOutput);
         Description = bdOutput;
         ErrorMessage = string.IsNullOrEmpty(Description) ? "Please enter description." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate First Name
-        ValidationTool.ValidateName(FirstName, out var fnOutput);
+        MCCValidationTool.ValidateName(FirstName, out var fnOutput);
         FirstName = fnOutput;
         ErrorMessage = string.IsNullOrEmpty(FirstName) ? "Please enter first name." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate Middle Name
-        ValidationTool.ValidateName(MiddleName, out var mnOutput);
+        MCCValidationTool.ValidateName(MiddleName, out var mnOutput);
         MiddleName = mnOutput;
         MiddleName = string.IsNullOrEmpty(MiddleName) ? null : MiddleName;
 
         // Validate Last Name
-        ValidationTool.ValidateName(LastName, out var lnOutput);
+        MCCValidationTool.ValidateName(LastName, out var lnOutput);
         LastName = lnOutput;
         ErrorMessage = string.IsNullOrEmpty(LastName) ? "Please enter last name." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate Address Line 1
-        ValidationTool.ValidateName(AddressLine1, out var al1Output);
+        MCCValidationTool.ValidateName(AddressLine1, out var al1Output);
         AddressLine1 = al1Output;
         ErrorMessage = string.IsNullOrEmpty(AddressLine1) ? "Please enter address line 1." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate Address Line 2
-        ValidationTool.ValidateName(AddressLine2, out var al2Output);
+        MCCValidationTool.ValidateName(AddressLine2, out var al2Output);
         AddressLine2 = al2Output;
         AddressLine2 = string.IsNullOrEmpty(AddressLine2) ? null : AddressLine2;
 
-        ValidationTool.ValidateZipCode(ZipCode, out var zcOutput);
+        MCCValidationTool.ValidateZipCode(ZipCode, out var zcOutput);
         ZipCode = zcOutput;
         ErrorMessage = string.IsNullOrEmpty(ZipCode) ? "Please enter valid 5 digit zip code." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
@@ -104,7 +104,7 @@ public class ProviderDTO : BaseDTO
         if (!string.IsNullOrEmpty(EMail))
         {
             EMail = EMail.Trim();
-            ErrorMessage = !ValidationTool.IsValidEmail(EMail) ? "Please enter valid e-mail." : string.Empty;
+            ErrorMessage = !MCCValidationTool.IsValidEmail(EMail) ? "Please enter valid e-mail." : string.Empty;
         }
 
         if (!string.IsNullOrEmpty(ErrorMessage)) return;

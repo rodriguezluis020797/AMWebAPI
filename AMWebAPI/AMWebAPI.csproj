@@ -25,7 +25,6 @@
     <ItemGroup>
         <ProjectReference Include="..\AMData\AMData.csproj"/>
         <ProjectReference Include="..\AMServices\AMServices.csproj"/>
-        <ProjectReference Include="..\AMTools\AMTools.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -37,6 +36,9 @@
         </Content>
         <Content Update="appsettings.json">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+        <Content Update="nlog.config">
+                <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
         <Content Remove="Migrations\**"/>
     </ItemGroup>
@@ -57,5 +59,7 @@
         <Folder Include="CoreMigrations\"/>
         <Folder Include="IdentityMigrations\"/>
     </ItemGroup>
+    
+    
 
 </Project>

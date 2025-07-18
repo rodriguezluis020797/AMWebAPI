@@ -2,7 +2,6 @@ using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
-using AMTools;
 using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -25,7 +24,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
         dto.Validate();
         if (!string.IsNullOrWhiteSpace(dto.ErrorMessage)) return dto;
 
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var serviceNameExists = false;
@@ -63,7 +62,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
 
     public async Task<List<ServiceDTO>> GetServicesAsync(string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var services = new List<ServiceModel>();
@@ -91,7 +90,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
 
     public async Task<ServiceDTO> GetServicePrice(ServiceDTO dto, string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         MCCCryptographyTool.Decrypt(dto.ServiceId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
@@ -113,7 +112,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
         dto.Validate();
         if (!string.IsNullOrWhiteSpace(dto.ErrorMessage)) return dto;
 
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         MCCCryptographyTool.Decrypt(dto.ServiceId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
@@ -139,7 +138,7 @@ public class ServiceService(AMCoreData db, IConfiguration config) : IServiceServ
 
     public async Task<ServiceDTO> DeleteServiceAsync(ServiceDTO dto, string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         MCCCryptographyTool.Decrypt(dto.ServiceId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);

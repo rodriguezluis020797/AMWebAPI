@@ -1,7 +1,7 @@
 using AMData.Models;
 using AMData.Models.DTOModels;
 using AMServices.CoreServices;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,7 +10,7 @@ namespace AMWebAPI.Controllers;
 [ApiController]
 [Route("api/[controller]/[action]")]
 [Authorize]
-public class ServiceController(IAMLogger logger, IServiceService serviceService) : ControllerBase
+public class ServiceController(IMCCLogger logger, IServiceService serviceService) : ControllerBase
 {
     [HttpPost]
     public async Task<ActionResult> CreateService([FromBody] ServiceDTO dto)

@@ -1,5 +1,5 @@
 using AMData.Models.CoreModels;
-using AMTools.Tools;
+using MCCDotnetTools;
 
 namespace AMData.Models.DTOModels;
 
@@ -20,12 +20,12 @@ public class AppointmentDTO : BaseDTO
 
     public void Validate()
     {
-        ValidationTool.ValidateName(ClientId, out var cIdOutput);
+        MCCValidationTool.ValidateName(ClientId, out var cIdOutput);
         ClientId = cIdOutput;
         ErrorMessage = string.IsNullOrEmpty(ClientId) ? "Please select client." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
-        ValidationTool.ValidateName(ServiceId, out var sIdOutput);
+        MCCValidationTool.ValidateName(ServiceId, out var sIdOutput);
         ServiceId = sIdOutput;
         ErrorMessage = string.IsNullOrEmpty(ServiceId) ? "Please select service." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;

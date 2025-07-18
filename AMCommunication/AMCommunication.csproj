@@ -39,4 +39,10 @@
         </None>
     </ItemGroup>
 
+    <ItemGroup>
+      <Reference Include="MCCDotnetTools">
+        <HintPath>..\..\..\MCC\MontereyCodeCompanyDotnetTools\MCCDotnetTools\bin\Release\net8.0\MCCDotnetTools.dll</HintPath>
+      </Reference>
+    </ItemGroup>
+
 </Project>

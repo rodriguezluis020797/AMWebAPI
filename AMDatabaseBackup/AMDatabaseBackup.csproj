@@ -9,7 +9,7 @@
 
     <ItemGroup>
         <None Update="appsettings.json">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </None>
     </ItemGroup>
 
@@ -18,7 +18,9 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\AMTools\AMTools.csproj"/>
+      <Reference Include="MCCDotnetTools">
+        <HintPath>..\..\..\MCC\MontereyCodeCompanyDotnetTools\MCCDotnetTools\bin\Release\net8.0\MCCDotnetTools.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
 </Project>

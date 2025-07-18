@@ -2,7 +2,7 @@
 using AMData.Models.CoreModels;
 using AMServices.DataServices;
 using AMServices.PaymentEngineServices;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Stripe;
@@ -12,7 +12,7 @@ namespace AMProviderBillingProcessor;
 internal class Program
 {
     private static IConfiguration _config;
-    private static AMDevLogger _logger;
+    private static IMCCLogger _logger;
     private static IProviderBillingService _providerBillingService;
 
     /*
@@ -20,7 +20,7 @@ internal class Program
      */
     private static async Task Main(string[] args)
     {
-        _logger = new AMDevLogger();
+        _logger = new MCCLogger();
         _logger.LogAudit("+");
 
         try

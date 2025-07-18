@@ -1,5 +1,5 @@
 using AMData.Models.CoreModels;
-using AMTools.Tools;
+using MCCDotnetTools;
 
 namespace AMData.Models.DTOModels;
 
@@ -13,7 +13,7 @@ public class ServiceDTO : BaseDTO
 
     public void Validate()
     {
-        ValidationTool.ValidateName(Name, out var nOutput);
+        MCCValidationTool.ValidateName(Name, out var nOutput);
         Name = nOutput;
         if (string.IsNullOrEmpty(Name))
         {
@@ -21,7 +21,7 @@ public class ServiceDTO : BaseDTO
             return;
         }
 
-        ValidationTool.ValidateName(Description, out var dOutput);
+        MCCValidationTool.ValidateName(Description, out var dOutput);
         Description = !string.IsNullOrEmpty(dOutput) ? dOutput : null;
 
         if (Price < decimal.Zero)

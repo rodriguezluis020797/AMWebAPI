@@ -1,13 +1,13 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using AMData.Models.CoreModels;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
 namespace AMServices.DataServices;
 
-public class AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration, IAMLogger logger)
+public class AMCoreData(DbContextOptions<AMCoreData> options, IConfiguration configuration, IMCCLogger logger)
     : DbContext(options)
 {
     public DbSet<AppointmentModel> Appointments { get; init; }

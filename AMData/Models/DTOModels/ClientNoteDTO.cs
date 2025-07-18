@@ -1,6 +1,6 @@
 using System.Globalization;
 using AMData.Models.CoreModels;
-using AMTools.Tools;
+using MCCDotnetTools;
 
 namespace AMData.Models.DTOModels;
 
@@ -14,7 +14,7 @@ public class ClientNoteDTO : BaseDTO
 
     public void Validate()
     {
-        ValidationTool.ValidateName(Note, out var nOutput);
+        MCCValidationTool.ValidateName(Note, out var nOutput);
         Note = nOutput;
         ErrorMessage = string.IsNullOrEmpty(Note) ? "Please note." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;

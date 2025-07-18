@@ -1,6 +1,6 @@
 ﻿using System.IO.Compression;
 using System.Text.Json;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.Data.SqlClient;
 
 namespace AMDatabaseBackup;
@@ -13,11 +13,11 @@ public class BackupConfig
 
 internal static class Program
 {
-    private static AMDevLogger _logger = null!;
+    private static IMCCLogger _logger = null!;
 
     private static void Main()
     {
-        _logger = new AMDevLogger();
+        _logger = new MCCLogger();
 
         _logger.LogInfo("+");
 

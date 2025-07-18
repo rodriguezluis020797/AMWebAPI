@@ -2,7 +2,6 @@ using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
-using AMTools;
 using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -36,7 +35,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
             return response;
         }
 
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var clientModel = new ClientModel(providerId, dto.FirstName, dto.MiddleName, dto.LastName, dto.PhoneNumber);
@@ -84,7 +83,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
             return response;
         }
 
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         MCCCryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
@@ -159,7 +158,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
     {
         var response = new List<ClientNoteDTO>();
 
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         MCCCryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
@@ -252,7 +251,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
     {
         var response = new ClientDTO();
 
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         MCCCryptographyTool.Decrypt(dto.ClientId, out var decryptedId, config["Cryptography:Key"]!, config["Cryptography:IV"]!);
@@ -281,7 +280,7 @@ public class ClientService(AMCoreData db, IConfiguration config) : IClientServic
 
     public async Task<List<ClientDTO>> GetClients(string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var clients = new List<ClientModel>();

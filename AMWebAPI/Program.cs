@@ -3,7 +3,7 @@ using AMServices.CoreServices;
 using AMServices.DataServices;
 using AMServices.IdentityServices;
 using AMServices.PaymentEngineServices;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -137,7 +137,7 @@ public class Program
 
         builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.None);
 
-        builder.Services.AddSingleton<IAMLogger, AMDevLogger>();
+        builder.Services.AddSingleton<IMCCLogger, MCCLogger>();
     }
 
     private static void ConfigureMiddleware(WebApplication app)

@@ -1,5 +1,5 @@
 ﻿using AMServices.DataServices;
-using AMTools;
+using MCCDotnetTools;
 
 namespace AMServices.CoreServices;
 
@@ -8,7 +8,7 @@ public interface ISystemStatusService
     Task<bool> IsFullSystemActive();
 }
 
-public class SystemStatusService(IAMLogger logger, AMCoreData coreData, AMIdentityData identityData)
+public class SystemStatusService(IMCCLogger logger, AMCoreData coreData, AMIdentityData identityData)
     : ISystemStatusService
 {
     public async Task<bool> IsFullSystemActive()

@@ -1,7 +1,7 @@
 ﻿using AMData.Models;
 using AMData.Models.DTOModels;
 using AMServices.IdentityServices;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,7 +10,7 @@ namespace AMWebAPI.Controllers;
 [ApiController]
 [Route("api/[controller]/[action]")]
 [Authorize]
-public class IdentityController(IAMLogger logger, IIdentityService identityService, IConfiguration configuration)
+public class IdentityController(IMCCLogger logger, IIdentityService identityService, IConfiguration configuration)
     : ControllerBase
 {
     private void ExpireAuthCookies()
@@ -133,7 +133,7 @@ public class IdentityController(IAMLogger logger, IIdentityService identityServi
 
             if (!string.IsNullOrEmpty(jwt) &&
                 !string.IsNullOrEmpty(refreshToken) &&
-                !IdentityTool.IsTheJWTExpired(jwt))
+                !MCCIdentityTool.IsTheJWTExpired(jwt))
                 return StatusCode((int)HttpStatusCodeEnum.Success);
 
             var newJwt = await identityService.RefreshJWT(jwt!, refreshToken!, fingerprint);

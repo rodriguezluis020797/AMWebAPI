@@ -1,5 +1,5 @@
 using AMData.Models.CoreModels;
-using AMTools;
+using MCCDotnetTools;
 using Stripe;
 
 namespace AMServices.PaymentEngineServices;
@@ -15,7 +15,7 @@ public interface IProviderBillingService
     Task<bool> IsThereADefaultPaymentMetho(string paymentEngineId);
 }
 
-public class StripeProviderBillingService(IAMLogger logger) : IProviderBillingService
+public class StripeProviderBillingService(IMCCLogger logger) : IProviderBillingService
 {
     public async Task<string> CreateProviderBillingProfileAsync(string eMail, string businessName, string firstName,
         string? middleName, string lastName)

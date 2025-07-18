@@ -1,7 +1,7 @@
 ﻿using AMData.Models.CoreModels;
 using AMData.Models.IdentityModels;
 using AMServices.DataServices;
-using AMTools;
+using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 
@@ -9,7 +9,7 @@ namespace AMUserAcceptance;
 
 internal class Program
 {
-    private readonly AMDevLogger _logger = new();
+    private readonly IMCCLogger _logger = null!;
     private IConfigurationRoot _config = default!;
     private AMCoreData _coreData = default!;
     private AMIdentityData _identityData = default!;
@@ -59,9 +59,9 @@ internal class Program
 
         foreach (var provider in providers)
         {
-            var salt = IdentityTool.GenerateSaltString();
-            var password = IdentityTool.GenerateRandomPassword();
-            var hashedPassword = IdentityTool.HashPassword(password, salt);
+            var salt = MCCIdentityTool.GenerateSaltString();
+            var password = MCCIdentityTool.GenerateRandomPassword();
+            var hashedPassword = MCCIdentityTool.HashPassword(password, salt);
 
             var passwordModel = new PasswordModel(provider.ProviderId, true, hashedPassword, salt);
 

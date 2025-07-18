@@ -1,5 +1,5 @@
 using AMData.Models.CoreModels;
-using AMTools.Tools;
+using MCCDotnetTools;
 
 namespace AMData.Models.DTOModels;
 
@@ -17,7 +17,7 @@ public class ProviderReviewDTO : BaseDTO
     public void Validate()
     {
         // Validate First Name
-        ValidationTool.ValidateName(ReviewText, out var rtOutput);
+        MCCValidationTool.ValidateName(ReviewText, out var rtOutput);
         ReviewText = rtOutput;
         ErrorMessage = string.IsNullOrEmpty(ReviewText) ? "Please enter valid review." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;

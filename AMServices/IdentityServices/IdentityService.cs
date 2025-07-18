@@ -4,7 +4,6 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMData.Models.IdentityModels;
 using AMServices.DataServices;
-using AMTools;
 using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +22,7 @@ public interface IIdentityService
 public class IdentityService(
     AMCoreData coreData,
     AMIdentityData identityData,
-    IAMLogger logger,
+    IMCCLogger logger,
     IConfiguration config)
     : IIdentityService
 {
@@ -50,13 +49,13 @@ public class IdentityService(
         });
 
 
-        var hashedPassword = IdentityTool.HashPassword(dto.CurrentPassword, passwordModel.Salt);
+        var hashedPassword = MCCIdentityTool.HashPassword(dto.CurrentPassword, passwordModel.Salt);
         if (!string.Equals(hashedPassword, passwordModel.HashedPassword))
             throw new ArgumentException("Incorrect password.");
 
         var session = new SessionModel(provider.ProviderId);
         var sessionAction = new SessionActionModel(SessionActionEnum.LogIn);
-        var refreshTokenModel = CreateRefreshTokenModel(provider.ProviderId, IdentityTool.GenerateRefreshToken(),
+        var refreshTokenModel = CreateRefreshTokenModel(provider.ProviderId, MCCIdentityTool.GenerateRefreshToken(),
             fingerprintDTO);
 
         await coreData.ExecuteWithRetryAsync(async () =>
@@ -99,15 +98,15 @@ public class IdentityService(
     {
         var response = new BaseDTO { IsSpecialCase = dto.IsTempPassword };
 
-        if (!IdentityTool.IsValidPassword(dto.NewPassword))
+        if (!MCCIdentityTool.IsValidPassword(dto.NewPassword))
             throw new ArgumentException("Password does not meet complexity requirements.");
 
         var providerId =
-            IdentityTool
+            MCCIdentityTool
                 .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var sessionId =
-            IdentityTool
+            MCCIdentityTool
                 .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.SessionId));
 
         if (!dto.IsTempPassword)
@@ -123,7 +122,7 @@ public class IdentityService(
             });
 
             if (currentPassword == null ||
-                IdentityTool.HashPassword(dto.CurrentPassword, currentPassword.Salt)
+                MCCIdentityTool.HashPassword(dto.CurrentPassword, currentPassword.Salt)
                     .Equals(currentPassword.HashedPassword))
                 throw new ArgumentException("Current password does not match.");
         }
@@ -138,12 +137,12 @@ public class IdentityService(
         });
 
         if (recentPasswords.Any(p =>
-                IdentityTool.HashPassword(dto.NewPassword, p.Salt) == p.HashedPassword))
+                MCCIdentityTool.HashPassword(dto.NewPassword, p.Salt) == p.HashedPassword))
             throw new ArgumentException("Password was recently used.");
 
-        var salt = IdentityTool.GenerateSaltString();
+        var salt = MCCIdentityTool.GenerateSaltString();
         var newPassword =
-            new PasswordModel(providerId, false, IdentityTool.HashPassword(dto.NewPassword, salt), salt);
+            new PasswordModel(providerId, false, MCCIdentityTool.HashPassword(dto.NewPassword, salt), salt);
 
         var sessionAction = new SessionActionModel(SessionActionEnum.ChangePassword)
         {
@@ -191,17 +190,17 @@ public class IdentityService(
         });
 
         if (recentPasswords.Any(p =>
-                IdentityTool.HashPassword(dto.NewPassword, p.Salt).Equals(p.HashedPassword)))
+                MCCIdentityTool.HashPassword(dto.NewPassword, p.Salt).Equals(p.HashedPassword)))
         {
             response.ErrorMessage = "Password was recently used.";
             return response;
         }
 
-        var salt = IdentityTool
+        var salt = MCCIdentityTool
             .GenerateSaltString();
 
         var newPassword =
-            new PasswordModel(request.ProviderId, false, IdentityTool
+            new PasswordModel(request.ProviderId, false, MCCIdentityTool
                 .HashPassword(dto.NewPassword, salt), salt);
 
         var providerComm = new ProviderCommunicationModel(request.ProviderId,
@@ -241,9 +240,9 @@ public class IdentityService(
     public async Task<string> RefreshJWT(string jwt, string refreshToken, FingerprintDTO fingerprintDTO)
     {
         var providerId =
-            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
+            MCCIdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var sessionId =
-            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.SessionId));
+            MCCIdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.SessionId));
 
         var refreshTokenModel = await identityData.RefreshTokens
                                     .Where(x => x.ProviderId == providerId && x.DeleteDate == null &&
@@ -323,7 +322,7 @@ public class IdentityService(
             new Claim(nameof(SessionClaimEnum.SessionId), sessionId.ToString())
         };
 
-        return IdentityTool.GenerateJWTToken(
+        return MCCIdentityTool.GenerateJWTToken(
             claims,
             config["Jwt:Key"]!,
             config["Jwt:Issuer"]!,

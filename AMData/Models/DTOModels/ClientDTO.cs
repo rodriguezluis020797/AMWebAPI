@@ -1,5 +1,5 @@
 using AMData.Models.CoreModels;
-using AMTools.Tools;
+using MCCDotnetTools;
 
 namespace AMData.Models.DTOModels;
 
@@ -14,24 +14,24 @@ public class ClientDTO : BaseDTO
     public void Validate()
     {
         // Validate First Name
-        ValidationTool.ValidateName(FirstName, out var fnOutput);
+        MCCValidationTool.ValidateName(FirstName, out var fnOutput);
         FirstName = fnOutput;
         ErrorMessage = string.IsNullOrEmpty(FirstName) ? "Please enter first name." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate Middle Name
-        ValidationTool.ValidateName(MiddleName, out var mnOutput);
+        MCCValidationTool.ValidateName(MiddleName, out var mnOutput);
         MiddleName = mnOutput;
         MiddleName = string.IsNullOrEmpty(MiddleName) ? null : MiddleName;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
         // Validate Last Name
-        ValidationTool.ValidateName(LastName, out var lnOutput);
+        MCCValidationTool.ValidateName(LastName, out var lnOutput);
         LastName = lnOutput;
         ErrorMessage = string.IsNullOrEmpty(LastName) ? "Please enter last name." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;
 
-        ValidationTool.IsValidPhoneNumber(PhoneNumber, out var pnOutput);
+        MCCValidationTool.IsValidPhoneNumber(PhoneNumber, out var pnOutput);
         PhoneNumber = pnOutput;
         ErrorMessage = string.IsNullOrEmpty(PhoneNumber) ? "Please enter valid 10 digit phone number." : string.Empty;
         if (!string.IsNullOrEmpty(ErrorMessage)) return;

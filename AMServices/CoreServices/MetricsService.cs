@@ -2,7 +2,6 @@ using AMData.Models;
 using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
-using AMTools;
 using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -24,7 +23,7 @@ public class MetricsService(AMCoreData db, IConfiguration config) : IMetricsServ
                 EndDate = dto.EndDate
             };
 
-            var providerId = IdentityTool
+            var providerId = MCCIdentityTool
                 .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
             var appointments = new List<AppointmentModel>();

@@ -3,8 +3,6 @@ using AMData.Models.CoreModels;
 using AMData.Models.DTOModels;
 using AMServices.DataServices;
 using AMServices.PaymentEngineServices;
-using AMTools;
-using AMTools.Tools;
 using MCCDotnetTools;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -31,7 +29,7 @@ public interface IProviderService
 }
 
 public class ProviderService(
-    IAMLogger logger,
+    IMCCLogger logger,
     AMCoreData db,
     IConfiguration config,
     IProviderBillingService providerBillingService)
@@ -57,7 +55,7 @@ public class ProviderService(
     public async Task<BaseDTO> CancelSubscriptionAsync(string jwt)
     {
         var response = new BaseDTO();
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         await db.ExecuteWithRetryAsync(async () =>
@@ -123,7 +121,7 @@ public class ProviderService(
 
     public async Task<ProviderDTO> GetProviderAsync(string jwt, bool generateUrl)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var provider = new ProviderModel();
 
@@ -189,7 +187,7 @@ public class ProviderService(
 
     public async Task<List<ProviderAlertDTO>> GetProviderAlertsAsync(string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
         var response = new List<ProviderAlertDTO>();
         var alerts = new List<ProviderAlertModel>();
@@ -293,7 +291,7 @@ public class ProviderService(
 
     public async Task<List<ProviderReviewDTO>> GetProviderReviewsForProviderAsync(string jwt)
     {
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var response = new List<ProviderReviewDTO>();
@@ -383,7 +381,7 @@ public class ProviderService(
     {
         var response = new BaseDTO();
 
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var provider = new ProviderModel();
@@ -469,7 +467,7 @@ public class ProviderService(
                 .Where(x => x.NewEMail == dto.EMail && x.DeleteDate == null)
                 .AnyAsync();
         });
-        if (!ValidationTool.IsValidEmail(dto.EMail) || existingProviderExists || existingEMailRequestExists)
+        if (!MCCValidationTool.IsValidEmail(dto.EMail) || existingProviderExists || existingEMailRequestExists)
         {
             response.ErrorMessage = "Provider with given e-mail already exists or e-mail is not in valid format.";
             return response;
@@ -477,7 +475,7 @@ public class ProviderService(
 
 
         var providerId =
-            IdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
+            MCCIdentityTool.GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var request = new UpdateProviderEMailRequestModel(providerId, dto.EMail);
         var message =
@@ -515,7 +513,7 @@ public class ProviderService(
             return response;
         }
 
-        var providerId = IdentityTool
+        var providerId = MCCIdentityTool
             .GetProviderIdFromJwt(jwt, config["Jwt:Key"]!, nameof(SessionClaimEnum.ProviderId));
 
         var provider = new ProviderModel();
