@@ -23,6 +23,7 @@
     </ItemGroup>
 
     <ItemGroup>
+        <ProjectReference Include="..\..\..\MCC\MontereyCodeCompanyDotnetTools\MCCDotnetTools\MCCDotnetTools.csproj" />
         <ProjectReference Include="..\AMData\AMData.csproj"/>
         <ProjectReference Include="..\AMServices\AMServices.csproj"/>
     </ItemGroup>
